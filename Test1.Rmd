@@ -1,0 +1,63 @@
+---
+title: "Test1"
+author: "Jeremiah Groom"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+To find the mean and variance of proportions where the number of values for each proportion are not necessarily equal, you can follow these steps:
+
+### Mean of Proportions
+
+1. **Collect Data**: Suppose you have multiple groups, each with a different number of observations. Let $n_i$ be the number of observations in the $i$-th group, and let $p_i$ be the proportion of successes in the $i$-th group.
+
+2. **Total Observations and Successes**: Calculate the total number of observations $N$ and the total number of successes $S$ across all groups.
+   $$
+   N = \sum_{i=1}^{k} n_i
+   $$
+   $$
+   S = \sum_{i=1}^{k} (p_i \times n_i)
+   $$
+
+3. **Overall Proportion (Mean of Proportions)**: The mean of the proportions is the overall proportion of successes across all groups.
+   $$
+   \hat{p} = \frac{S}{N} = \frac{\sum_{i=1}^{k} (p_i \times n_i)}{\sum_{i=1}^{k} n_i}
+   $$
+
+### Variance of Proportions
+
+1. **Calculate Individual Variances**: For each group, the variance of the proportion $p_i$ is:
+   $$
+   \text{Var}(p_i) = \frac{p_i (1 - p_i)}{n_i}
+   $$
+
+2. **Weighted Variance**: Since the groups have different sizes, you need to weight the variances by the group sizes. The overall variance of the proportions can be calculated as follows:
+
+   $$
+   \text{Var}(\hat{p}) = \frac{1}{N} \left( \sum_{i=1}^{k} n_i \times \text{Var}(p_i) \right)
+   $$
+   where $\text{Var}(p_i) = \frac{p_i (1 - p_i)}{n_i}$.
+
+3. **Plugging in Individual Variances**: Substitute the individual variances into the formula.
+   $$
+   \text{Var}(\hat{p}) = \frac{1}{N} \left( \sum_{i=1}^{k} n_i \times \frac{p_i (1 - p_i)}{n_i} \right)
+   $$
+   $$
+   \text{Var}(\hat{p}) = \frac{1}{N} \left( \sum_{i=1}^{k} p_i (1 - p_i) \right)
+   $$
+
+### Summary
+
+- **Mean of Proportions**: 
+  $$
+  \hat{p} = \frac{\sum_{i=1}^{k} (p_i \times n_i)}{\sum_{i=1}^{k} n_i}
+  $$
+
+- **Variance of Proportions**:
+  $$
+  \text{Var}(\hat{p}) = \frac{1}{\sum_{i=1}^{k} n_i} \left( \sum_{i=1}^{k} p_i (1 - p_i) \right)
+  $$
+
+By following these steps, you can accurately calculate the mean and variance of proportions, even when the number of values for each proportion are not necessarily equal.
