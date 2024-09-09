@@ -8,12 +8,10 @@ library(viridis)
 library(cowplot)
 library(patchwork)
 library(readxl)
-<<<<<<< HEAD
+
 library(furrr)
 library(parallel)
-=======
 library(RSQLite) # For obtaining SQLite FIA databases
->>>>>>> issFIA
 
 
 
