@@ -8,6 +8,8 @@ library(viridis)
 library(cowplot)
 library(patchwork)
 library(readxl)
+library(furrr)
+library(parallel)
 
 
 
@@ -21,14 +23,15 @@ RESULTS.LOC <- "Results/"
 #SEL.SPP <- "X98" # Sitka spruce
 #SEL.SPP <- "X108" # Lodgepole pine
 #SEL.SPP <- "X312" # Bigleaf maple
+# SEL.SPP <- "X242" # Western Red Cedar
 SEL.SPP <- "X127" # Gray pine
 VAR1 <- "pre.vpdmin"
 VAR.DELT <- "delt.vpdmin"
 QUANT.PROBS <- c(0.25, 0.75)
 QUANT.LEVELS <- c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
-
-
+BS.N <- 1000    # Bootstrap iteration number
+ 
 
 ## Stratum info - not sure we need this. 'orig' already has W_h, # of strata = length(unique(W_h))
 strat <- read_csv(paste0(DATA.LOC, "strat_info052120.csv"), show_col_types = FALSE) %>%
@@ -50,4 +53,7 @@ spp.list <- as.numeric(gsub("X", "", names(orig)[(ncol(orig) - (length(grep("X",
 spp.id <- names(orig)[(ncol(orig) - (length(grep("X", names(orig))) - 1)):ncol(orig)]
 
 spp.names <- read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx")) %>% filter(SPCD %in% spp.list)
+
+## Items for parallel computing
+n.cores <- round(detectCores() * 0.75, 0) # Number of cores, package "parallel".  Using 75% of the available cores, rounded.
 

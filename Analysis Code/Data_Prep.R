@@ -63,7 +63,7 @@ clim.tree.resp.fcn <- function(spcd, clim.var) {
   
     
   
-  dat.cent <- tree.plots2 %>% group_by(var.deltvar) %>% # Qartile centers, good for finding centroids in each quadrant
+  dat.cent <- tree.plots2 %>% group_by(var.deltvar) %>% # Quartile centers, good for finding centroids in each quadrant
     reframe(end.x = mean(pre.vpdmin),        # Referred to as "end" because of distance measurements from the main centroid to each of the outer (end) centroids.
             end.y = mean(delt.vpdmin)) %>% 
     right_join(dat.cent.start, by = "var.deltvar") %>%
@@ -126,6 +126,8 @@ quant.array <- array(unlist(extract.quant), dim = c(nrow(extract.quant[[1]]), nc
                                      spp.id))
 
  # Matrix of quantile values for each species' plots joined with climate data
+# The values for plots with trees of a species are given the ID number for their respective quantile (e.g., i = 9 has plot values of 0 or 9).
+# Note that this is just for the construction of the quantile matrix (values 0 through 9), not quant.array.
 q2 <- quant.array
 for (i in 1:n_quant) {
   q2[, i, ] <- q2[, i, ] * i
@@ -150,6 +152,35 @@ centroid.array <- array(unlist(extract.centroid), dim = c(nrow(extract.centroid[
                                        spp.id))
 
 
+### State level ###
+state.matrix <- quant.matrix[, 1:length(spp.list)]
+state.matrix <- (state.matrix / state.matrix)
+state.matrix <- apply(state.matrix, 2, function(x) {ifelse(is.nan(x) == TRUE, 0, x)})
+all.array <- state.matrix
+state.matrix <- state.matrix %>% cbind(ado_vals[, 1])
+
+state.list <- unique(ado_vals$STATECD) # 6 = California, 41 = Oregon, 53 = Washington
+
+state.array.fcn <- function(sel.state, q.matrix) {
+  q.matrix2 <- q.matrix %>% mutate(STATECD = ifelse(STATECD == sel.state, 1, 0))
+  q.matrix2[, 1:length(spp.list)] <- q.matrix2[, 1:length(spp.list)] * q.matrix2[, ncol(q.matrix2)]
+  q.matrix2 <- q.matrix2[, 1:length(spp.list)]
+  return(q.matrix2)
+}
+
+extract.state <- map(state.list, state.array.fcn, state.quant.matrix)
+# Creating a 3D array out of the quantile info (plots x quantiles x spp)
+state.array <- array(unlist(extract.state), dim = c(nrow(extract.state[[1]]), ncol(extract.state[[1]]), length(state.list)),
+                     dimnames = list(c(1:nrow(extract.state[[1]])),
+                                     spp.id,
+                                     state.list))
+state.array <- aperm(state.array, c(1, 3, 2))  # Changing the order of the dimensions to match those for quantiles. 
+
+# Obtaining the number of plots per state.
+state.n.extract <- map(1:3, function(x) apply(extract.state[[x]], 2, sum)) #sum plots by state.
+state.n <- reduce(state.n.extract, bind_rows) %>%  # Combine state data into a tibble.
+  mutate(state = state.list)
+
 ## We now have the data at the level needed to conduct the mortality analysis.  We need to select a species and a quantile and find the 
 #  estimated mortality rate for that quantile.  The quantile array (quant.array) offers a mask to remove all values other than the quantile 
 #  plots of interest for the species. 
@@ -161,9 +192,12 @@ dieout.dat <- list(
                    ado_vals = ado_vals, 
                    all_vals = all_vals, 
                    quant.array = quant.array, 
+                   state.array = state.array,
+                   all.array = all.array,
                    quant.matrix = quant.matrix,
                    centroid.array = centroid.array,
                    quant.n = quant.n,
+                   state.n = state.n,
                    quant.lims = extract.quant.lims)
 write_rds(dieout.dat, paste0(DATA.LOC, "dieout_dat.rds"))
 

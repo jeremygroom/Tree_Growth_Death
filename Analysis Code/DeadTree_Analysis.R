@@ -15,6 +15,8 @@ spp.list <- dieout.dat$spp.list
 ado_vals <- dieout.dat$ado_vals
 all_vals <- dieout.dat$all_vals
 quant.array <- dieout.dat$quant.array
+state.array <- dieout.dat$state.array
+state.n <- dieout.dat$state.n
 quant.matrix <- dieout.dat$quant.matrix
 centroid_array <- dieout.dat$centroid.array
 centroid.array <- dieout.dat$centroid.array
@@ -61,60 +63,87 @@ n.spp <- length(spp.id)
 
 n_quant <- length(QUANT.LEVELS)
 
-q_means <- q_SE <- rep(NA, n_quant)
+q_means <- q_SE <- q_bs.UCI <- q_bs.LCI <- rep(NA, n_quant)
+
+# Strata for bootstrap resampling procedure
+strata <- unique(ado_vals$STRATUM)
+strata.num <- data.frame(val = 1:nrow(ado_vals), stratum = ado_vals$STRATUM) 
 
 
-#for (q in 1:n_quant) {
-
-q_dieout.fcn <- function(q1, ado.dat, all.dat) {
+q_dieout.fcn <- function(q1, ado.dat, all.dat, array.name, category.n) {
   # Multiplying all of the species dead values (or species total values) by the respective species masks for "LiLc".
   #   With this step complete, the values for that quantile can be calculated for all species.
-  ado.vals.use <- ado.dat[6:ncol(ado.dat)] * quant.array[, q1, ] 
+  ado.vals.use <- ado.dat[6:ncol(ado.dat)] * array.name[, q1, ] 
   
   dat.ado.use <- bind_cols(orig[, 1:6], ado.vals.use) #%>% 
   #    mutate(State_Plot2 = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
   #    left_join(clim.dat, by = c("State_Plot2" = "State_Plot"))
   
-  all.vals.use <- all.dat[6:ncol(all.dat)] * quant.array[, q1, ] 
+  all.vals.use <- all.dat[6:ncol(all.dat)] * array.name[, q1, ] 
   
   dat.all.use <- bind_cols(orig[, 1:6], all.vals.use) # %>% 
   #    mutate(State_Plot2 = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
   #    left_join(clim.dat, by = c("State_Plot2" = "State_Plot"))
-  
-  sel.spp <- 1
-  # This function will find, for any species, the estimate for quantile q1.
-  quant.est.spp <- function(spp.sel) {
+
+  bs.out <- data.frame(matrix(NA, nrow = BS.N, ncol = length(spp.list)))
+  # Bootstrap function for obtaining an estimate of the mean
+
+  bs.fcn <- function(iter, d.all_use, d.sub_use) { # Iteration number, all of the relevant data, the subset of the relevant data
+
+    # First, sample the tables in use. This procedure obtains samples with replacement from each stratum and then combines the selected
+    #  row numbers.  
+    samp <- unlist(map(strata, function(x) sample(strata.num$val[strata.num$stratum == x], replace = TRUE)))
     
-    spp.id1 <- paste0("X", spp.sel)
-    n_q <- get(spp.id1, quant.n)[q1]   # Are there fewer than N.PLOT.LIM? If so, we can skip the calcs.
+
+    temp.spp <- rep(NA, length(spp.id))
     
-    
-    # Means plus other metrics that are carried over into the calculation of the variance		
-    if (n_q < N.PLOT.LIM) { # If too few points, just enter NA
-      q_means$R <- NA; q_means$Zt <- NA; q_means$Yv <- NA; 
-    } else {
-      q_means <- mean.q.fcn(dat_tot = dat.all.use, resp = dat.ado.use, spp.sel1 = spp.sel)
+    # This function will find, for any species, the estimate for quantile q1.
+    quant.est.spp <- function(spp.sel) {
+      
+      spp.id1 <- paste0("X", spp.sel)
+      n_q <- get(spp.id1, category.n)[q1]   # Are there fewer than N.PLOT.LIM? If so, we can skip the calcs.
+      
+      # Means plus other metrics that are carried over into the calculation of the variance		
+      if (n_q < N.PLOT.LIM) { # If too few points, just enter NA
+        q_bs.mean <- NA 
+      } else {
+        q_bs.mean <- mean.q.fcn(dat_tot = d.all_use[samp, ], resp = d.sub_use[samp, ], spp.sel1 = spp.sel)$R # Mean given the selected rows
+      }
+      return(q_bs.mean)
     }
-    # Standard errors
-    if (n_q < N.PLOT.LIM) {
-      q_SE <- NA
-    } else {
-      q_SE <- sqrt(ratio.SE.fcn(d.all_z = dat.all.use, d.ado_y = dat.ado.use, meandat = q_means))
-    }
-    
-    list(q_means.R = q_means$R, q_means.Zt = q_means$Zt, q_means.Yv = q_means$Yv,
-         q_SE = q_SE, quant.n = n_q)
-    
-  }
+    bs.out[iter, ] <- unlist(map(spp.list, quant.est.spp))
+   }
+      # Running the parallel portion of the function
+  furrr.out <- future_map(1:BS.N, bs.fcn, d.all_use = all.dat, d.sub_use = ado.dat, .options = furrr_options(seed = TRUE))  
   
-  qX_ests <- map(spp.list, quant.est.spp)
-  qX_table <- bind_cols(Quantiles = q1, spp_id = spp.list, bind_rows(qX_ests))
-  return(qX_table)
+  # Processing the results and returning quantiles/mean
+  furrr.table <- matrix(unlist(furrr.out), ncol = length(spp.list), byrow = TRUE)
+  quants <- data.frame(t(apply(furrr.table, 2, function(x) quantile(x, probs = c(0.5, 0.025, 0.975), na.rm = TRUE))))
+  names(quants) <- c("Median", "LCI.95", "UCI.95")
+  row.names(quants) <- spp.id
+  quants$Means <- apply(furrr.table, 2, mean, na.rm = TRUE)
+  quants$n.plts <- as.vector(category.n[q1, 1:length(spp.id) ])
+  
+  return(quants)
 }
 
+
+plan(multisession, workers = n.cores) # Setting up parallel computing
+
+
 # Running for all species, all quantiles: 30 seconds
-all.quants <- map(1:n_quant, q_dieout.fcn, ado.dat = ado_vals, all.dat = all_vals)
+all.quants <- map(1:n_quant, q_dieout.fcn, ado.dat = ado_vals, all.dat = all_vals, array.name = quant.array, category.n = quant.n)
 quant.table <- bind_rows(all.quants) %>% arrange(spp_id, Quantiles)
+
+
+
+# Running for states
+state.list <- unique(ado_vals$STATECD) # 6 = California, 41 = Oregon, 53 = Washington
+y <- Sys.time()  # 16 minutes on new computer at 1000 iterations
+state.ests <- map(1:length(state.list), q_dieout.fcn, ado.dat = ado_vals, all.dat = all_vals, array.name = state.array, category.n = state.n)
+Sys.time() - y
+#state.table <- bind_rows(state.ests)
+
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
 pair.plts.fcn <- function(sppnum.to.plot){
