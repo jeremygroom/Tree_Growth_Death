@@ -8,6 +8,7 @@ library(viridis)
 library(cowplot)
 library(patchwork)
 library(readxl)
+library(RSQLite) # For obtaining SQLite FIA databases
 
 
 
@@ -15,6 +16,9 @@ library(readxl)
 DATA.LOC <- "Data/"
 CODE.LOC <- "Analysis Code/"
 RESULTS.LOC <- "Results/"
+
+# Assuming WA/OR/CA zipped databases are in the same location
+SQL.LOC <- "G:/My Drive/Consulting Practice/Contracts/ODF_FIA_2024/sqlDB_WA_CA/"
 
 ### Select spp for analysis
 #SEL.SPP <- "X202" # Douglas fir, 8600 + 

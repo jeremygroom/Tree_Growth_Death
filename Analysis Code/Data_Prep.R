@@ -7,7 +7,6 @@ source("Global.R")
 
 # DATA PREP
 
-
 # Climate variables and reduction to a single table
 tmp <- read_csv(paste0(DATA.LOC, "tmp.20.10.csv")) %>% dplyr::select(-INVYR) %>% mutate(delt.temp = post.temp - pre.temp) 
 precip <- read_csv(paste0(DATA.LOC, "precip.20.10.csv")) %>% dplyr::select(-INVYR) %>% mutate(delt.precip = post.precip - pre.precip)
@@ -23,6 +22,25 @@ clim.dat <- list(tmp, precip, vpdmin, vpdmax) %>% reduce(left_join, by = c("STAT
 
 
 
+##### Tree and plot info  ####
+## Some info (harvest, fire deaths for trees) was absent in the range-shift analysis.  We need to introduce it here. 
+##  The following code relies on downloaded and zipped SQLite FIA data from Oregon, Washington, and CA.  See the Global.R file:
+#    the zip files should be placed in the same folder, defined by SQL.LOC.  The following code unpacks, reduces, combines, and saves
+#   the PLOT, TREE, and COND files for each state as a zipped RDS file.  
+if (file.exists(paste0(DATA.LOC, "Addl_PlotTreeInfo.zip")) == FALSE) {
+  source(paste0(CODE.LOC, "FIA_SQL_compile.R"))
+}
+
+fia.tables <- read_rds(unzip(paste0(DATA.LOC, "Addl_PlotTreeInfo.zip"), "Addl_PlotTreeInfo.rds")) # This unzips the folder in the parent directory.
+
+# Deleting written RDS file (~80 MB)
+if (file.exists("Addl_PlotTreeInfo.rds") == TRUE) {
+  file.remove("Addl_PlotTreeInfo.rds")
+}
+
+
+
+
 ## Cleaned tree data, removing trees beyond 24 feet (only subplot data)
 Tree1 <- readr::read_csv(unzip(paste0(DATA.LOC, "Cleaned_Trees_2019v2.zip"), "Cleaned_Trees_2019v2.csv")) %>% filter(DIST <= 24, SDN != 3)
    # SDN = 1 is alive-alive, SDN = 2 = alive-dead.  We are removing all ingrowth.
@@ -31,6 +49,24 @@ Tree1 <- readr::read_csv(unzip(paste0(DATA.LOC, "Cleaned_Trees_2019v2.zip"), "Cl
 if (file.exists("Cleaned_Trees_2019v2.csv") == TRUE) {
   file.remove("Cleaned_Trees_2019v2.csv")
 }
+
+fia.tree <- fia.tables$tree_vals %>% filter(INVYR > 2010 & INVYR < 2020) %>%
+  select(-INVYR) %>%
+  mutate(CN = as.numeric(CN))
+
+Tree1.1 <- Tree1 %>% left_join(fia.tree, by = c("CN", "STATECD", "PLOT_FIADB" = "PLOT", "TREE", "SUBP"))
+
+# Check: which trees were harvested, using STATUSCD and AGENTCD?
+#tree.a80 <- Tree1.1 %>% filter(AGENTCD == 80, STATUSCD != 3)   # 4,204 trees = AGENTCD == 80, STATUSCD == 2
+#tree.s3 <- Tree1.1 %>% filter(AGENTCD != 80, STATUSCD == 3)   # No trees were coded as harvest without AGENTCD == 80
+# Check: 
+
+# Extracting the trees which burned or were cut or cleared
+tree.cut.fire <- Tree1.1 %>% filter(AGENTCD %in% c(30, 80)) %>% select(State_Plot_Subp_Tree)
+
+# Removing cut/cleared trees from the tree list.
+Tree1.2 <- Tree1.1 %>% anti_join(tree.cut.fire, by = "State_Plot_Subp_Tree")
+
 
 
 PlotDat <- orig[, 1:5]
@@ -44,7 +80,7 @@ clim.tree.resp.fcn <- function(spcd, clim.var) {
   var.delt <- paste0("delt.", clim.var)
   return.col <- paste0("nd.", spcd)
   
-  Tree2 <- Tree1 %>% filter(SPCD == spcd) %>%
+  Tree2 <- Tree1.1 %>% filter(SPCD == spcd) %>%
     dplyr::select(State_Plot, SUBP, TREE, SDN)
   
   tree.plots <- clim.dat %>% filter(State_Plot %in% Tree2$State_Plot) %>% 
