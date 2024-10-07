@@ -15,18 +15,38 @@ mean.q.fcn <- function(dat_tot, resp, spp.sel1) {     #dat_tot = data frame of s
   col.spp <- grep(paste0("nd.", spp.sel1),  colnames(dat_tot))
   col.name <- paste0("nd.", spp.sel1)
   
-  Zt_i <- Yv_i <-  rep(0, strat.num)  # Weighted values for each strata
+  strat.vals <- table(dat_tot$STRATUM)/nrow(dat_tot)
+  data.frame(strat.vals = strat.vals, w_h = unique(dat_tot$W_h)) %>% mutate(diff = strat.vals - w_h, pct.diff = diff/strat.vals)
+  
+  
+  Zt_i <- Yv_i <- rep(0, strat.num)  # Weighted values for each strata
   for (h in 1:strat.num) {                  # h indexes strata
-    n_h <- length(dat_tot$STRATUM[dat_tot$STRATUM == strat2$STRATUM[h]] )    # Number of plots in stratum h with species of interest
+    n_h <- length(dat_tot$STRATUM[dat_tot$STRATUM == strat2$STRATUM[h]] )    # Number of plots in stratum h 
     Zt_i[h] <- strat2$W_h[h] * sum(get(col.name, dat_tot)[dat_tot$STRATUM == strat2$STRATUM[h]]) / n_h     
-    Yv_i[h] <- strat2$W_h[h] * sum(get(col.name, resp)[resp$STRATUM == strat2$STRATUM[h]]) / n_h     
+    Yv_i[h] <- strat2$W_h[h] * sum(get(col.name, resp)[resp$STRATUM == strat2$STRATUM[h]])/ n_h     
   }
   Zt <- sum(Zt_i) 
   Yv <- sum(Yv_i) 
   R <- Yv / Zt
-  
+
   means <- list(Zt = Zt, Yv = Yv, R = R)
   return(means)
+
+#    dat.use <- left_join(dat_tot %>% select(STATECD, PLOT_FIADB, STRATUM, W_h, eval(col.name)),
+#                       resp %>% select(STATECD, PLOT_FIADB, STRATUM, W_h, eval(col.name)), 
+#                       by = c("STRATUM", "W_h", "PLOT_FIADB", "STATECD")) %>%
+#    rename("all" := (!!paste0(col.name, ".x")),
+#           "reduced" := (!!paste0(col.name, ".y"))) %>%
+#    group_by(STRATUM, W_h) %>%
+#    reframe(n_h = n(),
+#            Zt_i = W_h * sum(all)/n_h,
+#            Yv_i = W_h * sum(reduced)/n_h) %>% distinct()
+#  
+#  results.mean <- dat.use %>% group_by() %>%
+#    reframe(Zt = sum(Zt_i),
+#            Yv = sum(Yv_i),
+#            R = Yv/Zt)
+ 
 }
 
 # Helper functions for ratio.SE.fcn: 

@@ -23,8 +23,9 @@ centroid.array <- dieout.dat$centroid.array
 quant.n <- dieout.dat$quant.n
 quant.lims <- dieout.dat$quant.lims
 
-
-
+## First, adjusting the species list
+spp.list <- sort(as.numeric(gsub("X", "", SEL.SPP)))
+spp.id <- paste0("X", spp.list)
 
 # Questions about the plot data
 # 1) Are there intensification plots
@@ -114,15 +115,16 @@ q_dieout.fcn <- function(q1, ado.dat, all.dat, array.name, category.n) {
     bs.out[iter, ] <- unlist(map(spp.list, quant.est.spp))
    }
       # Running the parallel portion of the function
-  furrr.out <- future_map(1:BS.N, bs.fcn, d.all_use = all.dat, d.sub_use = ado.dat, .options = furrr_options(seed = TRUE))  
+  furrr.out <- future_map(1:BS.N, bs.fcn, d.all_use = dat.all.use, d.sub_use = dat.ado.use, .options = furrr_options(seed = TRUE))  
   
   # Processing the results and returning quantiles/mean
   furrr.table <- matrix(unlist(furrr.out), ncol = length(spp.list), byrow = TRUE)
   quants <- data.frame(t(apply(furrr.table, 2, function(x) quantile(x, probs = c(0.5, 0.025, 0.975), na.rm = TRUE))))
   names(quants) <- c("Median", "LCI.95", "UCI.95")
-  row.names(quants) <- spp.id
   quants$Means <- apply(furrr.table, 2, mean, na.rm = TRUE)
   quants$n.plts <- as.vector(category.n[q1, 1:length(spp.id) ])
+  quants$Species <- spp.id
+  quants$Quantile <- q1
   
   return(quants)
 }
@@ -132,17 +134,19 @@ plan(multisession, workers = n.cores) # Setting up parallel computing
 
 
 # Running for all species, all quantiles: 30 seconds
+y <- Sys.time()  # 16 minutes on new computer at 1000 iterations (9.4 min for 9 spp)
 all.quants <- map(1:n_quant, q_dieout.fcn, ado.dat = ado_vals, all.dat = all_vals, array.name = quant.array, category.n = quant.n)
-quant.table <- bind_rows(all.quants) %>% arrange(spp_id, Quantiles)
+quant.table <- bind_rows(all.quants) %>% arrange(Species, Quantile)
+Sys.time() - y
 
 
-
-# Running for states
+# Running for states.  11.5 min on new machine, 16 min on old machine  (2.4 minutes using new machine, 9 species)
 state.list <- unique(ado_vals$STATECD) # 6 = California, 41 = Oregon, 53 = Washington
 y <- Sys.time()  # 16 minutes on new computer at 1000 iterations
 state.ests <- map(1:length(state.list), q_dieout.fcn, ado.dat = ado_vals, all.dat = all_vals, array.name = state.array, category.n = state.n)
 Sys.time() - y
 #state.table <- bind_rows(state.ests)
+#write_rds(state.ests, file = paste0(RESULTS.LOC, "Estimates/State_Ests_2024.rds"))
 
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
@@ -150,36 +154,26 @@ pair.plts.fcn <- function(sppnum.to.plot){
 
 plot.spp <- sppnum.to.plot
 plot.quant.dat <- quant.table %>% 
-  filter(spp_id == plot.spp) %>%
+  filter(Species == plot.spp) %>%
   #bind_cols(quant.n %>% dplyr::select(plot.spp)) %>%
   #rename("n" = plot.spp) %>%
-  mutate(q_uci = q_means.R + 1.96 * q_SE,
-         q_lci = q_means.R - 1.96 * q_SE,
-         Quantiles = case_match(Quantiles, 1:9 ~ QUANT.LEVELS),
-         Quantiles = factor(Quantiles, levels = QUANT.LEVELS)) %>%
-  dplyr::select(-q_means.Yv, -q_means.Zt, -q_SE) 
+  mutate(Quantiles = case_match(Quantile, 1:length(QUANT.LEVELS) ~ QUANT.LEVELS),
+         Quantiles = factor(Quantiles, levels = QUANT.LEVELS))
 
 
 # Details for plotting
 virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_quant)  # Get colors for plotting
 
-qt.max <- ceiling(max(plot.quant.dat$q_uci, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
-
-
-#ggplot(data = plot.quant.dat, aes(Quantiles, q_means.R, fill = Quantiles)) + 
-#  geom_col() + 
-#  geom_errorbar(aes(ymax = q_uci, ymin = q_lci), width = 0.25) + 
-#  scale_fill_viridis_d(name = "Quartiles", option = "H", begin = 0.1, end = 0.9)
+qt.max <- ceiling(max(plot.quant.dat$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
 
 
 # Create a grid of plots to match bivariate plot
-
 q.g.p.labs <- paste0(plot.quant.dat$Quantiles, ", n = ", plot.quant.dat$quant.n) # Labels for the quantile grid plot
 
 quant.grid.plt.fcn <- function(quants, quant.index) {
-  ggplot(data = plot.quant.dat %>% filter(Quantiles %in% quants), aes(Quantiles, q_means.R, fill = Quantiles)) + 
+  ggplot(data = plot.quant.dat %>% filter(Quantiles %in% quants), aes(Quantiles, Means, fill = Quantiles)) + 
     geom_col() + 
-    geom_errorbar(aes(ymax = q_uci, ymin = q_lci), width = 0.1) + 
+    geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.1) + 
     scale_fill_manual(values = virid.use[quant.index]) + 
     scale_y_continuous(limits = c(0, qt.max)) +
     scale_x_discrete(labels = q.g.p.labs[quant.index]) +
@@ -195,33 +189,35 @@ p3 <- quant.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9)
 
 p_all <- plot_grid(p1, p2, p3, ncol = 1)
 
-quant.table1 <- quant.table %>% filter(spp_id == spp.sel)
+quant.table1 <- quant.table %>% filter(Species == plot.spp)
 
 
 # Obtain figure of quantile distribution relative to climate info
 
 
-spp.id1 <- spp.id[which(spp.list == plot.spp)]
-q_plot_spp <- quant.matrix %>% dplyr::select(spp.id1, pre.vpdmin, delt.vpdmin) %>%
-  filter(get(all_of(spp.id1)) > 0) 
+#spp.id1 <- spp.id[which(spp.list == plot.spp)]
+q_plot_spp <- quant.matrix %>% dplyr::select(all_of(plot.spp), pre.vpdmin, delt.vpdmin) %>%
+  filter(get(all_of(plot.spp)) > 0) 
 names(q_plot_spp)[1] <- "Quantile"
 #q_plot_spp %>% mutate(Quantile = case_match(Quantile,  (1:n_quant) ~ QUANT.LEVELS))
 
 
 
-n_plots <- get(all_of(spp.id1), quant.n)#  table(get(all_of(spp.id1), q_plot_spp))
+n_plots <- get(all_of(plot.spp), quant.n)#  table(get(all_of(spp.id1), q_plot_spp))
 n_plots2 <- tibble(loc = 1:n_quant, n = n_plots) %>%
   left_join(tibble(Quantiles = quant.table1$Quantiles, loc = 1:n_quant), by = "loc")
 
-dim(quant.array)
+#dim(quant.array)
 
 quant.lims <- dieout.dat$quant.lims
 
-quant.lims.plt <- get(spp.id1, quant.lims)
+quant.lims.plt <- get(plot.spp, quant.lims)
+
+sppnum <- as.numeric(gsub("X", "", sppnum.to.plot))
 
 # Common and Genus/species name for plot title
-com.name <- spp.names$COMMON_NAME[spp.names$SPCD == sppnum.to.plot]
-g.s.name <- paste(spp.names$GENUS[spp.names$SPCD == sppnum.to.plot], spp.names$SPECIES[spp.names$SPCD == sppnum.to.plot])
+com.name <- spp.names$COMMON_NAME[spp.names$SPCD == sppnum]
+g.s.name <- paste(spp.names$GENUS[spp.names$SPCD == sppnum], spp.names$SPECIES[spp.names$SPCD == sppnum])
 
 plot.vals.plt <- ggplot(q_plot_spp, aes(pre.vpdmin, delt.vpdmin, color = factor(Quantile))) + 
   geom_point() + 
@@ -240,9 +236,9 @@ plot.vals.plt <- ggplot(q_plot_spp, aes(pre.vpdmin, delt.vpdmin, color = factor(
 
 comb.plt <- p_all + plot.vals.plt + plot_layout(widths = c(1, 1.3))
 
-ggsave(paste0(RESULTS.LOC, "Test_figs_vpdmin/",spp.id1, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
+ggsave(paste0(RESULTS.LOC, "Test_figs_vpdmin/",sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
 
 }
 
-map(spp.list, pair.plts.fcn)
+map(spp.id, pair.plts.fcn)
 

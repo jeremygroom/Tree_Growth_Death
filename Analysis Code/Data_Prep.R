@@ -51,17 +51,19 @@ if (file.exists("Cleaned_Trees_2019v2.csv") == TRUE) {
 }
 
 fia.tree <- fia.tables$tree_vals %>% filter(INVYR > 2010 & INVYR < 2020) %>%
-  select(-INVYR) %>%
-  mutate(CN = as.numeric(CN))
+  select(-INVYR) %>%                      # Need to leave in to double-match trees to harvest events.
+  mutate(CN = as.numeric(CN), 
+         join.test = 1)
 
-Tree1.1 <- Tree1 %>% left_join(fia.tree, by = c("CN", "STATECD", "PLOT_FIADB" = "PLOT", "TREE", "SUBP"))
+Tree1.1 <- Tree1 %>% left_join(fia.tree, by = c("STATECD", "PLOT_FIADB" = "PLOT", "TREE", "SUBP"))  # CN (Better if this is left out, as we want )
 
-# Check: which trees were harvested, using STATUSCD and AGENTCD?
+# Check: Did the join work as intended? Which trees were harvested, using STATUSCD and AGENTCD?
+#sum(Tree1.1$join.test, na.rm = TRUE) # All fia.tree entries were successfully joined with Tree1 trees.
+#table(Tree1.1$STATUSCD, Tree1.1$AGENTCD)   # 32073 trees burned (12609), were harvested (15260), or both (4204)
 #tree.a80 <- Tree1.1 %>% filter(AGENTCD == 80, STATUSCD != 3)   # 4,204 trees = AGENTCD == 80, STATUSCD == 2
 #tree.s3 <- Tree1.1 %>% filter(AGENTCD != 80, STATUSCD == 3)   # No trees were coded as harvest without AGENTCD == 80
-# Check: 
 
-# Extracting the trees which burned or were cut or cleared
+# Extracting the trees which burned or were cut or cleared.  63,472
 tree.cut.fire <- Tree1.1 %>% filter(AGENTCD %in% c(30, 80)) %>% select(State_Plot_Subp_Tree)
 
 # Removing cut/cleared trees from the tree list.
@@ -80,7 +82,7 @@ clim.tree.resp.fcn <- function(spcd, clim.var) {
   var.delt <- paste0("delt.", clim.var)
   return.col <- paste0("nd.", spcd)
   
-  Tree2 <- Tree1.1 %>% filter(SPCD == spcd) %>%
+  Tree2 <- Tree1.2 %>% filter(SPCD == spcd) %>%
     dplyr::select(State_Plot, SUBP, TREE, SDN)
   
   tree.plots <- clim.dat %>% filter(State_Plot %in% Tree2$State_Plot) %>% 
@@ -89,7 +91,7 @@ clim.tree.resp.fcn <- function(spcd, clim.var) {
   # Data quantiles
   quant.lims <- apply(tree.plots[, c(which(names(tree.plots) == var1), which(names(tree.plots) == var.delt))], 2, quantile, probs = QUANT.PROBS)
   
-  
+  # Applying quantiles to a particular species
   tree.plots2 <- tree.plots %>% dplyr::select(State_Plot, all_of(c(var1, var.delt))) %>% 
     mutate(var.quants = ifelse(get(var1) > quant.lims[2, 1], 1, ifelse(get(var1) < quant.lims[1, 1], -1, 0)),
            deltvar.quants = ifelse(get(var.delt) > quant.lims[2, 2], 1, ifelse(get(var.delt) < quant.lims[1, 2], -1, 0)),
@@ -98,26 +100,28 @@ clim.tree.resp.fcn <- function(spcd, clim.var) {
            var.deltvar = factor(paste0(vq, dvq), levels = c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")))
   
     
-  
+  # For centroid calcluation
   dat.cent <- tree.plots2 %>% group_by(var.deltvar) %>% # Quartile centers, good for finding centroids in each quadrant
-    reframe(end.x = mean(pre.vpdmin),        # Referred to as "end" because of distance measurements from the main centroid to each of the outer (end) centroids.
-            end.y = mean(delt.vpdmin)) %>% 
+    reframe(end.x = mean(get(var1)),        # Referred to as "end" because of distance measurements from the main centroid to each of the outer (end) centroids.
+            end.y = mean(get(var.delt))) %>% 
     right_join(dat.cent.start, by = "var.deltvar") %>%
     arrange(var.deltvar)
   
-  
+  # Joining tree data with quantile assignment, providing plot-level summary of the number of trees, number that died, and percent that died.
   Tree3 <- left_join(Tree2, tree.plots2, by = "State_Plot") %>%
-    group_by(State_Plot, var.deltvar, get(var1), get(var.delt)) %>%
+    group_by(State_Plot, var.deltvar, get(var1), get(var.delt)) %>%  # This will assign the names `get(var1)` and `get(var.delt)`, which are cleaned up below
     reframe(n.trees = n(),
             n.died = length(SDN[SDN == 2]),
             pct.died = n.died / n.trees) %>%
     rename(!!var1 := `get(var1)`,
            !!var.delt := `get(var.delt)`) 
            
+  # Separate out a data set for those that died
   died.out <- left_join(PlotDat, Tree3 %>% dplyr::select(State_Plot, n.died), by = "State_Plot") %>%
     rename(!!return.col := n.died)
   died.out[is.na(died.out)] <- 0
   
+  # Data set for all trees, alive and died
   all.trees <- left_join(PlotDat, Tree3 %>% dplyr::select(State_Plot, n.trees), by = "State_Plot") %>%
     rename(!!return.col := n.trees)
   all.trees[is.na(all.trees)] <- 0
@@ -204,7 +208,7 @@ state.array.fcn <- function(sel.state, q.matrix) {
   return(q.matrix2)
 }
 
-extract.state <- map(state.list, state.array.fcn, state.quant.matrix)
+extract.state <- map(state.list, state.array.fcn, state.matrix)
 # Creating a 3D array out of the quantile info (plots x quantiles x spp)
 state.array <- array(unlist(extract.state), dim = c(nrow(extract.state[[1]]), ncol(extract.state[[1]]), length(state.list)),
                      dimnames = list(c(1:nrow(extract.state[[1]])),
@@ -234,7 +238,8 @@ dieout.dat <- list(
                    centroid.array = centroid.array,
                    quant.n = quant.n,
                    state.n = state.n,
-                   quant.lims = extract.quant.lims)
+                   quant.lims = extract.quant.lims,
+                   tree.dat = Tree1.2)
 write_rds(dieout.dat, paste0(DATA.LOC, "dieout_dat.rds"))
 
 zip(zipfile = paste0(DATA.LOC, "dieout_dat.zip"), files = paste0(DATA.LOC, "dieout_dat.rds"))
