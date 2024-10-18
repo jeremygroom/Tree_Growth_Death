@@ -1,16 +1,28 @@
 source("Global.R")
 source(paste0(CODE.LOC, "Functions.R"))
 
+# Set the climate varible to examine:
+
+VAR1 <- "pre.vpdmax"
+VAR.DELT <- "delt.vpdmax"
+
+# Need climate names for files and axes.
+clim.names <- read_csv(paste0(DATA.LOC, "ClimateNames.csv"), show_col_types = FALSE)
+
+var.label <- clim.names$label[clim.names$values == VAR1]
+var.filename <- clim.names$filename[clim.names$values == VAR1]
+var.delt.label <- clim.names$label[clim.names$values == VAR.DELT]
+
 # Obtaining the data to work with: 
 # Opening the zipped RDS file, output from Data_Prep.R
-dieout.dat <- readr::read_rds(unzip(paste0(DATA.LOC, "dieout_dat.zip"), paste0(DATA.LOC,"dieout_dat.rds")))
+dieout.dat <- readr::read_rds(unzip(paste0(DATA.LOC, "dieout_dat_", var.filename, ".zip"), paste0(DATA.LOC,"dieout_dat_", var.filename, ".rds")))
 
 # Deleting written RDS file (~150 MB)
-if (file.exists(paste0(DATA.LOC, "dieout_dat.rds")) == TRUE) {
-  file.remove(paste0(DATA.LOC, "dieout_dat.rds"))
+if (file.exists(paste0(DATA.LOC, "dieout_dat_", var.filename, ".rds")) == TRUE) {
+  file.remove(paste0(DATA.LOC, "dieout_dat_", var.filename, ".rds"))
 }
 
-spp.id <- dieout.dat$spp.id
+#spp.id <- dieout.dat$spp.id
 spp.list <- dieout.dat$spp.list
 ado_vals <- dieout.dat$ado_vals
 all_vals <- dieout.dat$all_vals
@@ -18,14 +30,17 @@ quant.array <- dieout.dat$quant.array
 state.array <- dieout.dat$state.array
 state.n <- dieout.dat$state.n
 quant.matrix <- dieout.dat$quant.matrix
-centroid_array <- dieout.dat$centroid.array
 centroid.array <- dieout.dat$centroid.array
-quant.n <- dieout.dat$quant.n
+quant.n <- dieout.dat$quant.n 
 quant.lims <- dieout.dat$quant.lims
+quant.lims.delta <- dieout.dat$quant.lims.delt
 
 ## First, adjusting the species list
-spp.list <- sort(as.numeric(gsub("X", "", SEL.SPP)))
-spp.id <- paste0("X", spp.list)
+#spp.id <- paste0("X", spp.list)     # Can use SEL.SPP
+spp.list <- as.numeric(gsub("X", "", SEL.SPP))
+
+# Need climate names for files and axes.
+clim.names <- read_csv(paste0(DATA.LOC, "ClimateNames.csv"), show_col_types = FALSE)
 
 # Questions about the plot data
 # 1) Are there intensification plots
@@ -49,14 +64,11 @@ spp.id <- paste0("X", spp.list)
 
 
 
-VAR1 <- "pre.vpdmin"
-VAR.DELT <- "delt.vpdmin"
-
 # temporary: will change as this is automated # 
 #quant.sel <- "LiLc"                            # Select the quantile
 #spp.sel <- as.numeric(gsub("X", "", SEL.SPP))  # Select the species (set above)
 #spp.sel.index <- which(colnames(orig)[grep("X", colnames(orig))] == SEL.SPP)
-n.spp <- length(spp.id)
+n.spp <- length(SEL.SPP)
 
 
 
@@ -85,10 +97,11 @@ q_dieout.fcn <- function(q1, ado.dat, all.dat, array.name, category.n) {
   dat.all.use <- bind_cols(orig[, 1:6], all.vals.use) # %>% 
   #    mutate(State_Plot2 = as.numeric(paste0(PLOT_FIADB, STATECD))) %>%
   #    left_join(clim.dat, by = c("State_Plot2" = "State_Plot"))
-
+   
+   # Bootstrap estimate holding matrix
   bs.out <- data.frame(matrix(NA, nrow = BS.N, ncol = length(spp.list)))
+  
   # Bootstrap function for obtaining an estimate of the mean
-
   bs.fcn <- function(iter, d.all_use, d.sub_use) { # Iteration number, all of the relevant data, the subset of the relevant data
 
     # First, sample the tables in use. This procedure obtains samples with replacement from each stratum and then combines the selected
@@ -96,7 +109,7 @@ q_dieout.fcn <- function(q1, ado.dat, all.dat, array.name, category.n) {
     samp <- unlist(map(strata, function(x) sample(strata.num$val[strata.num$stratum == x], replace = TRUE)))
     
 
-    temp.spp <- rep(NA, length(spp.id))
+    temp.spp <- rep(NA, length(SEL.SPP))
     
     # This function will find, for any species, the estimate for quantile q1.
     quant.est.spp <- function(spp.sel) {
@@ -122,8 +135,8 @@ q_dieout.fcn <- function(q1, ado.dat, all.dat, array.name, category.n) {
   quants <- data.frame(t(apply(furrr.table, 2, function(x) quantile(x, probs = c(0.5, 0.025, 0.975), na.rm = TRUE))))
   names(quants) <- c("Median", "LCI.95", "UCI.95")
   quants$Means <- apply(furrr.table, 2, mean, na.rm = TRUE)
-  quants$n.plts <- as.vector(category.n[q1, 1:length(spp.id) ])
-  quants$Species <- spp.id
+  quants$n.plts <- as.vector(category.n[q1, SEL.SPP ])
+  quants$Species <- SEL.SPP
   quants$Quantile <- q1
   
   return(quants)
@@ -138,6 +151,8 @@ y <- Sys.time()  # 16 minutes on new computer at 1000 iterations (9.4 min for 9 
 all.quants <- map(1:n_quant, q_dieout.fcn, ado.dat = ado_vals, all.dat = all_vals, array.name = quant.array, category.n = quant.n)
 quant.table <- bind_rows(all.quants) %>% arrange(Species, Quantile)
 Sys.time() - y
+
+write_csv(quant.table, paste0(RESULTS.LOC, "Mort_figs_", var.filename, "/Estimates_", var.filename, ".csv"))
 
 
 # Running for states.  11.5 min on new machine, 16 min on old machine  (2.4 minutes using new machine, 9 species)
@@ -168,7 +183,7 @@ qt.max <- ceiling(max(plot.quant.dat$UCI.95, na.rm = TRUE) * 10) / 10 # For cons
 
 
 # Create a grid of plots to match bivariate plot
-q.g.p.labs <- paste0(plot.quant.dat$Quantiles, ", n = ", plot.quant.dat$quant.n) # Labels for the quantile grid plot
+q.g.p.labs <- paste0(plot.quant.dat$Quantiles, ", n = ", as.numeric(plot.quant.dat$n.plts)) # Labels for the quantile grid plot
 
 quant.grid.plt.fcn <- function(quants, quant.index) {
   ggplot(data = plot.quant.dat %>% filter(Quantiles %in% quants), aes(Quantiles, Means, fill = Quantiles)) + 
@@ -195,8 +210,8 @@ quant.table1 <- quant.table %>% filter(Species == plot.spp)
 # Obtain figure of quantile distribution relative to climate info
 
 
-#spp.id1 <- spp.id[which(spp.list == plot.spp)]
-q_plot_spp <- quant.matrix %>% dplyr::select(all_of(plot.spp), pre.vpdmin, delt.vpdmin) %>%
+#spp.id1 <- SEL.SPP[which(spp.list == plot.spp)]
+q_plot_spp <- quant.matrix %>% dplyr::select(all_of(plot.spp), all_of(VAR1), all_of(VAR.DELT)) %>%
   filter(get(all_of(plot.spp)) > 0) 
 names(q_plot_spp)[1] <- "Quantile"
 #q_plot_spp %>% mutate(Quantile = case_match(Quantile,  (1:n_quant) ~ QUANT.LEVELS))
@@ -209,9 +224,9 @@ n_plots2 <- tibble(loc = 1:n_quant, n = n_plots) %>%
 
 #dim(quant.array)
 
-quant.lims <- dieout.dat$quant.lims
 
 quant.lims.plt <- get(plot.spp, quant.lims)
+quant.lims.delt.plt <- get(plot.spp, quant.lims.delta)
 
 sppnum <- as.numeric(gsub("X", "", sppnum.to.plot))
 
@@ -219,16 +234,17 @@ sppnum <- as.numeric(gsub("X", "", sppnum.to.plot))
 com.name <- spp.names$COMMON_NAME[spp.names$SPCD == sppnum]
 g.s.name <- paste(spp.names$GENUS[spp.names$SPCD == sppnum], spp.names$SPECIES[spp.names$SPCD == sppnum])
 
-plot.vals.plt <- ggplot(q_plot_spp, aes(pre.vpdmin, delt.vpdmin, color = factor(Quantile))) + 
+plot.vals.plt <- ggplot(q_plot_spp, aes(get(VAR1), get(VAR.DELT), color = factor(Quantile))) + 
   geom_point() + 
   #stat_ellipse(type = "norm", level = 0.95, col = "orange", lwd = 2) +
-  geom_hline(yintercept = quant.lims.plt[1, 2], col = "blue") +
-  geom_hline(yintercept = quant.lims.plt[2, 2], col = "blue") +
-  geom_vline(xintercept = quant.lims.plt[1, 1], col = "green") +
-  geom_vline(xintercept = quant.lims.plt[2, 1], col = "green") +
+  geom_hline(yintercept = quant.lims.delt.plt[1], col = "blue") +
+  geom_hline(yintercept = quant.lims.delt.plt[2], col = "blue") +
+  geom_vline(xintercept = quant.lims.plt[1], col = "green") +
+  geom_vline(xintercept = quant.lims.plt[2], col = "green") +
   theme_bw() + 
   scale_color_manual(values = virid.use, name = "Quantiles", labels = QUANT.LEVELS) + 
-  labs(title = paste0("Plot conditions for ", com.name, ", ", g.s.name, ", ",  spp.id1)) +
+  labs(title = paste0("Plot conditions for ", com.name, ", ", g.s.name, ", ",  sppnum.to.plot),
+       x = var.label, y = var.delt.label) +
   theme(text = element_text(size = 7))
 #  scale_color_viridis_d(name = "Quartiles", option = "H", begin = 0.1, end = 0.9) #+
 #labs(x = var1.lab, y = var.delt.lab, title = spp.name)
@@ -236,9 +252,9 @@ plot.vals.plt <- ggplot(q_plot_spp, aes(pre.vpdmin, delt.vpdmin, color = factor(
 
 comb.plt <- p_all + plot.vals.plt + plot_layout(widths = c(1, 1.3))
 
-ggsave(paste0(RESULTS.LOC, "Test_figs_vpdmin/",sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
+ggsave(paste0(RESULTS.LOC, "Mort_figs_", var.filename, "/",sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
 
 }
 
-map(spp.id, pair.plts.fcn)
+map(SEL.SPP, pair.plts.fcn)
 

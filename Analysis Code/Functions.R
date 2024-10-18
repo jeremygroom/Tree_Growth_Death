@@ -1,8 +1,87 @@
 
 ##### ---- Functions ---- #####
 
+### DATA PREP FUNCTIONS - MORTALITY ####
 
-## Functions used, organized by script that uses them ##
+
+## Quantile masks for each species. Used in clim.tree.resp.fcn (called in Data_Prep.R), operates on a single quantile level and species 
+quant.divide.fcn <- function(quant.level, spcd2, tree.plots2, PlotDat) {
+  quant.name <- paste0(quant.level, ".",  spcd2)
+  quant.died.out <- left_join(PlotDat, tree.plots2 %>% 
+                                dplyr::select(State_Plot, var.deltvar) %>% # var.deltvar defined in clim.tree.resp.fcn, "LiHc" etc.
+                                filter(var.deltvar == quant.level), by = "State_Plot") %>%
+    mutate(var.deltvar = ifelse(is.na(var.deltvar), 0, 1)) %>%
+    rename(!!quant.name := var.deltvar) 
+}
+
+
+## Function to determine the number of trees that died in a plot and their climate quantiles, used in Data_Prep.R.
+clim.tree.resp.fcn <- function(spcd, clim.var) {
+  var1 <- paste0("pre.", clim.var)
+  var.delt <- paste0("delt.", clim.var)
+  return.col <- paste0("nd.", spcd)
+  
+  Tree2 <- Tree1.2 %>% filter(SPCD == spcd) %>%
+    dplyr::select(State_Plot, SUBP, TREE, SDN)
+  
+  tree.plots <- clim.dat %>% filter(State_Plot %in% Tree2$State_Plot) %>% 
+    dplyr::select(State_Plot, all_of(var1), all_of(var.delt))
+  
+  # Data quantiles
+  quant.lims.delta.pos <- quantile(get(var.delt, tree.plots)[get(var.delt, tree.plots) > 0], probs = QUANT.DELTA.PROBS.POS)
+  quant.lims.delta.neg <- quantile(get(var.delt, tree.plots)[get(var.delt, tree.plots) < 0], probs = QUANT.DELTA.PROBS.NEG)
+  quant.lims.delta <- c(quant.lims.delta.neg, quant.lims.delta.pos)
+  quant.lims <- quantile(get(var1, tree.plots), probs = QUANT.PROBS)
+  
+  # Applying quantiles to a particular species
+  tree.plots2 <- tree.plots %>% dplyr::select(State_Plot, all_of(c(var1, var.delt))) %>% 
+    mutate(var.quants = ifelse(get(var1) > quant.lims[2], 1, ifelse(get(var1) < quant.lims[1], -1, 0)),
+           deltvar.quants = ifelse(get(var.delt) > quant.lims.delta[2], 1, ifelse(get(var.delt) < quant.lims.delta[1], -1, 0)),
+           vq = case_match(var.quants, -1 ~ "Li", 0 ~ "Mi", 1 ~ "Hi"),
+           dvq = case_match(deltvar.quants, -1 ~ "Lc", 0 ~ "Mc", 1 ~ "Hc"),
+           var.deltvar = factor(paste0(vq, dvq), levels = c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")))
+  
+  
+  # For centroid calcluation
+  dat.cent <- tree.plots2 %>% group_by(var.deltvar) %>% # Quartile centers, good for finding centroids in each quadrant
+    reframe(end.x = mean(get(var1)),        # Referred to as "end" because of distance measurements from the main centroid to each of the outer (end) centroids.
+            end.y = mean(get(var.delt))) %>% 
+    right_join(dat.cent.start, by = "var.deltvar") %>%
+    arrange(var.deltvar)
+  
+  # Joining tree data with quantile assignment, providing plot-level summary of the number of trees, number that died, and percent that died.
+  Tree3 <- left_join(Tree2, tree.plots2, by = "State_Plot") %>%
+    group_by(State_Plot, var.deltvar, get(var1), get(var.delt)) %>%  # This will assign the names `get(var1)` and `get(var.delt)`, which are cleaned up below
+    reframe(n.trees = n(),
+            n.died = length(SDN[SDN == 2]),
+            pct.died = n.died / n.trees) %>%
+    rename(!!var1 := `get(var1)`,
+           !!var.delt := `get(var.delt)`) 
+  
+  # Separate out a data set for those that died
+  died.out <- left_join(PlotDat, Tree3 %>% dplyr::select(State_Plot, n.died), by = "State_Plot") %>%
+    rename(!!return.col := n.died)
+  died.out[is.na(died.out)] <- 0
+  
+  # Data set for all trees, alive and died
+  all.trees <- left_join(PlotDat, Tree3 %>% dplyr::select(State_Plot, n.trees), by = "State_Plot") %>%
+    rename(!!return.col := n.trees)
+  all.trees[is.na(all.trees)] <- 0
+  
+  
+  quant.out1 <- map(QUANT.LEVELS, quant.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
+  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM")) %>%
+    dplyr::select(-c("STATECD", "PLOT_FIADB", "State_Plot", "STRATUM", "W_h"))
+  
+  out.list <- list(spp.list = spp.list, spp.id = spp.id, died.out = died.out, all.trees = all.trees, 
+                   quant.out = quant.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
+  
+  return(out.list)
+}
+
+
+
+### ------ Mortality estimation -------  ####
 
 
 # Find the estimates for mu_hat (the ratio estimator), Y_hat (numerator, thing we're interested in), and 
@@ -28,25 +107,25 @@ mean.q.fcn <- function(dat_tot, resp, spp.sel1) {     #dat_tot = data frame of s
   Zt <- sum(Zt_i) 
   Yv <- sum(Yv_i) 
   R <- Yv / Zt
-
+  
   means <- list(Zt = Zt, Yv = Yv, R = R)
   return(means)
-
-#    dat.use <- left_join(dat_tot %>% select(STATECD, PLOT_FIADB, STRATUM, W_h, eval(col.name)),
-#                       resp %>% select(STATECD, PLOT_FIADB, STRATUM, W_h, eval(col.name)), 
-#                       by = c("STRATUM", "W_h", "PLOT_FIADB", "STATECD")) %>%
-#    rename("all" := (!!paste0(col.name, ".x")),
-#           "reduced" := (!!paste0(col.name, ".y"))) %>%
-#    group_by(STRATUM, W_h) %>%
-#    reframe(n_h = n(),
-#            Zt_i = W_h * sum(all)/n_h,
-#            Yv_i = W_h * sum(reduced)/n_h) %>% distinct()
-#  
-#  results.mean <- dat.use %>% group_by() %>%
-#    reframe(Zt = sum(Zt_i),
-#            Yv = sum(Yv_i),
-#            R = Yv/Zt)
- 
+  
+  #    dat.use <- left_join(dat_tot %>% select(STATECD, PLOT_FIADB, STRATUM, W_h, eval(col.name)),
+  #                       resp %>% select(STATECD, PLOT_FIADB, STRATUM, W_h, eval(col.name)), 
+  #                       by = c("STRATUM", "W_h", "PLOT_FIADB", "STATECD")) %>%
+  #    rename("all" := (!!paste0(col.name, ".x")),
+  #           "reduced" := (!!paste0(col.name, ".y"))) %>%
+  #    group_by(STRATUM, W_h) %>%
+  #    reframe(n_h = n(),
+  #            Zt_i = W_h * sum(all)/n_h,
+  #            Yv_i = W_h * sum(reduced)/n_h) %>% distinct()
+  #  
+  #  results.mean <- dat.use %>% group_by() %>%
+  #    reframe(Zt = sum(Zt_i),
+  #            Yv = sum(Yv_i),
+  #            R = Yv/Zt)
+  
 }
 
 # Helper functions for ratio.SE.fcn: 
@@ -85,7 +164,7 @@ ratio.SE.fcn <- function(d.all_z, d.ado_y, meandat)	{   # ii = column for respon
   
   (7121 - 592*(0.00571^2))/(592 * (592 - 1))
   (Zu2h[18] - (1/nn_h[18])*Zh[18]^2)/(nn_h[18] * (nn_h[18] - 1))
-
+  
   varcov.fcn <- function(xy.sum, xsum, ysum, nnh) {(1/(nnh * (nnh - 1))) * (xy.sum - (1/nnh) * xsum * ysum)} # Equations 10 and 11
   
   nn <- dim(d.all_z)[1]   # nn = N = total plots including ones not sampled
