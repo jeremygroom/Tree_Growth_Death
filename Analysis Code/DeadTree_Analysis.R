@@ -152,8 +152,6 @@ all.quants <- map(1:n_quant, q_dieout.fcn, ado.dat = ado_vals, all.dat = all_val
 quant.table <- bind_rows(all.quants) %>% arrange(Species, Quantile)
 Sys.time() - y
 
-write_csv(quant.table, paste0(RESULTS.LOC, "Mort_figs_", var.filename, "/Estimates_", var.filename, ".csv"))
-
 
 # Running for states.  11.5 min on new machine, 16 min on old machine  (2.4 minutes using new machine, 9 species)
 state.list <- unique(ado_vals$STATECD) # 6 = California, 41 = Oregon, 53 = Washington
