@@ -32,13 +32,16 @@ SQL.LOC <- "G:/My Drive/Consulting Practice/Contracts/ODF_FIA_2024/sqlDB_WA_CA/"
 SEL.SPP <- c("X11", "X122", "X117", "X202", "X242", "X805", "X81", "X818", "X93") # List of 9 species I decided to focus upon
 VAR1 <- "pre.vpdmin"
 VAR.DELT <- "delt.vpdmin"
-QUANT.DELTA.PROBS.POS <- 0.33 # Delta climate variable: positive values broken between this quantile. 
-QUANT.DELTA.PROBS.NEG <- 0.33 # Delta climate variable: negative values broken between this quantile.
+#QUANT.DELTA.PROBS.POS <- 0.33 # Delta climate variable: positive values broken between this quantile. 
+#QUANT.DELTA.PROBS.NEG <- 0.33 # Delta climate variable: negative values broken between this quantile.
+VAR.DELTA.BOUNDARIES <- tibble(clim.var = c("vpdmin", "vpdmax", "temp", "precip"), max.min = c(0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables
+
+
 QUANT.PROBS <- c(0.25, 0.75)  # First-visit climate variable values: Broken between these values into three parts.
 
 QUANT.LEVELS <- c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
-BS.N <- 1000    # Bootstrap iteration number
+BS.N <- 200    # Bootstrap iteration number
  
 
 ## Stratum info - not sure we need this. 'orig' already has W_h, # of strata = length(unique(W_h))

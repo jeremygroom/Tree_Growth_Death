@@ -8,7 +8,7 @@ db.extract.fcn <- function(state, db.loc) {
   db.use <- dbConnect(RSQLite::SQLite(), unzip(paste0(db.loc, "SQLite_FIADB_", state, ".zip"), paste0("SQLite_FIADB_", state, ".db")))
   plot <- dbReadTable(db.use, "PLOT", row.names = FALSE) %>% select(CN, STATECD, PLOT, INVYR, MEASYEAR, REMPER)
   tree <- dbReadTable(db.use, "TREE", row.names = FALSE) %>% select(CN, STATECD, PLOT, TREE, SUBP, INVYR, AGENTCD)
-  cond <- dbReadTable(db.use, "COND", row.names = FALSE) %>% select(CN, INVYR, STATECD, PLOT, MICRPROP_UNADJ, MACRPROP_UNADJ)
+  cond <- dbReadTable(db.use, "COND", row.names = FALSE) %>% select(CN, STATECD, PLOT, PLT_CN, INVYR, STATECD, PLOT, MICRPROP_UNADJ, MACRPROP_UNADJ, SITECLCD)
   
   list.out <- list(plot = plot, tree = tree, cond = cond)
   dbDisconnect(db.use)  # Need to disconnect the databases so that it can be reconnected to a different state.

@@ -39,9 +39,6 @@ if (file.exists("Addl_PlotTreeInfo.rds") == TRUE) {
   file.remove("Addl_PlotTreeInfo.rds")
 }
 
-
-
-
 ## Cleaned tree data, removing trees beyond 24 feet (only subplot data)
 Tree1 <- readr::read_csv(unzip(paste0(DATA.LOC, "Cleaned_Trees_2019v2.zip"), "Cleaned_Trees_2019v2.csv")) %>% filter(DIST <= 24, SDN != 3)
 # SDN = 1 is alive-alive, SDN = 2 = alive-dead.  We are removing all ingrowth.
@@ -56,7 +53,14 @@ fia.tree <- fia.tables$tree_vals %>% filter(INVYR > 2010 & INVYR < 2020) %>%
   mutate(CN = as.numeric(CN), 
          join.test = 1)
 
-Tree1.1 <- Tree1 %>% left_join(fia.tree, by = c("STATECD", "PLOT_FIADB" = "PLOT", "TREE", "SUBP"))  # CN (Better if this is left out, as we want )
+fia.cond <- fia.tables$cond_vals %>% filter(INVYR < 2011) %>% 
+  select(STATECD, PLOT, SITECLCD) %>%
+  filter(is.na(SITECLCD) == FALSE) %>% # May as well remove these to avoid multiple join values where SITECLCD = NA and an integer for a single PLT_CN.
+  group_by(STATECD, PLOT) %>%
+  reframe(SITECLCD = first(SITECLCD))   # This probably needs to be changed (or will change with Bryce's CLCD values) as I'm arbitrarily using the first value when more than one values exist.
+  
+
+Tree1.1 <- Tree1 %>% left_join(fia.tree, by = c("STATECD", "PLOT_FIADB" = "PLOT", "TREE", "SUBP")) # CN (Better if this is left out, as we want )
 
 # Check: Did the join work as intended? Which trees were harvested, using STATUSCD and AGENTCD?
 #sum(Tree1.1$join.test, na.rm = TRUE) # All fia.tree entries were successfully joined with Tree1 trees.
@@ -74,22 +78,35 @@ Tree1.2 <- Tree1.1 %>% anti_join(tree.cut, by = "State_Plot_Subp_Tree")
 
 
 
-PlotDat <- orig[, 1:5]
+PlotDat <- orig[, 1:5] %>% 
+  left_join(fia.cond, by = c("PLOT_FIADB" = "PLOT", "STATECD")) # Attaching SITECLCD for site productivity class code.
+
+
 dat.cent.start <- tibble(var.deltvar = factor(QUANT.LEVELS, level = QUANT.LEVELS))
 
 # Create a list of the number of dead trees of each species in each plot.
-tree.dat.vpdmin <- map(spp.list, clim.tree.resp.fcn, clim.var = "vpdmin") 
-tree.dat.vpdmax <- map(spp.list, clim.tree.resp.fcn, clim.var = "vpdmax")
-tree.dat.temp <- map(spp.list, clim.tree.resp.fcn, clim.var = "temp")
-tree.dat.precip <- map(spp.list, clim.tree.resp.fcn, clim.var = "precip")
+tree.mort.dat.vpdmin <- map(spp.list, clim.mort.resp.fcn, clim.var = "vpdmin") 
+tree.mort.dat.vpdmax <- map(spp.list, clim.mort.resp.fcn, clim.var = "vpdmax")
+tree.mort.dat.temp <- map(spp.list, clim.mort.resp.fcn, clim.var = "temp")
+tree.mort.dat.precip <- map(spp.list, clim.mort.resp.fcn, clim.var = "precip")
 
-parse.tree.clim.fcn <- function(tree.dat, clim.var) {
-  # Makes a list of all of the "(all)died.out" tables for the next step to operate on.
-  extract.diedout <- map(tree.dat , ~.[["died.out"]]) 
-  ado_vals <- reduce(extract.diedout, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM")) # Combining the list into a single tibble.
+
+# Create lists of tree growth and number of trees that grew in each plot
+tree.grow.dat.vpdmin <- map(spp.list, clim.growth.resp.fcn, clim.var = "vpdmin") 
+tree.grow.dat.vpdmax <- map(spp.list, clim.growth.resp.fcn, clim.var = "vpdmax")
+tree.grow.dat.temp <- map(spp.list, clim.growth.resp.fcn, clim.var = "temp")
+tree.grow.dat.precip <- map(spp.list, clim.growth.resp.fcn, clim.var = "precip")
+
+
+parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot.dat) {  # tree.dat = prepped list of data, clim.var = which climate variable name, analysis.type = "mort" or "grow", resp.dat = response 
+                                                                                        #   data set (i.e., "died.out" or "growth.val"), tot.dat = total trees data set (i.e., "all.trees" or "growth.n.trees")
+  # Makes a list of all of the response tables and all-tree tables for the next step to operate on.
+  extract.resp <- map(tree.dat , ~.[[resp.dat]]) 
+  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM","SITECLCD")) # Combining the list into a single tibble.
   
-  extract.all <- map(tree.dat , ~.[["all.trees"]]) 
-  all_vals <- reduce(extract.all, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM")) 
+  extract.all <- map(tree.dat , ~.[[tot.dat]]) 
+  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD")) 
+  
   
   # Now extracting the quantile category information for each species 
   extract.quant <- map(tree.dat , ~.[["quant.out"]]) 
@@ -164,11 +181,11 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var) {
   #  plots of interest for the species. 
   
   
-  dieout.dat <- list(
+  mort.grow.dat <- list(
     spp.list = tree.dat[[1]]$spp.list,
     spp.id = tree.dat[[1]]$spp.id,
-    ado_vals = ado_vals, 
-    all_vals = all_vals, 
+    vals_dat = vals_dat, 
+    all_dat = all_dat, 
     quant.array = quant.array, 
     state.array = state.array,
     all.array = all.array,
@@ -180,11 +197,11 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var) {
     quant.lims.delt = extract.delt.quant.lims,
     tree.dat = Tree1.2)
   
-  rds.name <- paste0(DATA.LOC, "dieout_dat_", clim.var, ".rds")
+  rds.name <- paste0(DATA.LOC, analysis.type, "_dat_", clim.var, ".rds")
   
-  write_rds(dieout.dat, rds.name)
+  write_rds(mort.grow.dat, rds.name)
   
-  zip(zipfile = paste0(DATA.LOC, "dieout_dat_", clim.var, ".zip"), files = rds.name)
+  zip(zipfile = paste0(DATA.LOC, analysis.type, "_dat_", clim.var, ".zip"), files = rds.name)
   
   # Deleting written RDS file (~150 MB)
   if (file.exists(rds.name) == TRUE) {
@@ -193,7 +210,16 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var) {
   
 }
 
-parse.tree.clim.fcn(tree.dat.vpdmin, "vpdmin")
-parse.tree.clim.fcn(tree.dat.vpdmax, "vpdmax")
-parse.tree.clim.fcn(tree.dat.temp, "temp")
-parse.tree.clim.fcn(tree.dat.precip, "precip")
+parse.tree.clim.fcn(tree.mort.dat.vpdmin, "vpdmin", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
+parse.tree.clim.fcn(tree.mort.dat.vpdmax, "vpdmax", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
+parse.tree.clim.fcn(tree.mort.dat.temp, "temp", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
+parse.tree.clim.fcn(tree.mort.dat.precip, "precip", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
+
+
+parse.tree.clim.fcn(tree.grow.dat.vpdmin, "vpdmin", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
+parse.tree.clim.fcn(tree.grow.dat.vpdmax, "vpdmax", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
+parse.tree.clim.fcn(tree.grow.dat.temp, "temp", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
+parse.tree.clim.fcn(tree.grow.dat.precip, "precip", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
+
+
+
