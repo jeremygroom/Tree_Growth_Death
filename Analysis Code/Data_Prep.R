@@ -102,10 +102,10 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
                                                                                         #   data set (i.e., "died.out" or "growth.val"), tot.dat = total trees data set (i.e., "all.trees" or "growth.n.trees")
   # Makes a list of all of the response tables and all-tree tables for the next step to operate on.
   extract.resp <- map(tree.dat , ~.[[resp.dat]]) 
-  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM","SITECLCD")) # Combining the list into a single tibble.
+  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM","SITECLCD_plot")) # Combining the list into a single tibble.
   
   extract.all <- map(tree.dat , ~.[[tot.dat]]) 
-  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD")) 
+  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD_plot")) 
   
   
   # Now extracting the quantile category information for each species 
@@ -124,7 +124,7 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
     q2[, i, ] <- q2[, i, ] * i
   }
   quant.matrix <- apply(q2, c(1, 3), sum) %>%  # collapsing the quantile values into a single matrix
-    bind_cols(ado_vals %>% dplyr::select(State_Plot)) %>% 
+    bind_cols(vals_dat %>% dplyr::select(State_Plot)) %>% # It does not matter whether vals_dat or all_dat, just want State_Plot
     left_join(clim.dat, by =  "State_Plot")
   
   # Number of plots in each quantile
@@ -148,18 +148,18 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
   
   
   ### State level ###
-  state.matrix <- quant.matrix[, 1:length(spp.list)]
-  state.matrix <- (state.matrix / state.matrix)
-  state.matrix <- apply(state.matrix, 2, function(x) {ifelse(is.nan(x) == TRUE, 0, x)})
+  state.matrix <- quant.matrix[, 1:length(SEL.SPP)]
+  state.matrix <- (state.matrix / state.matrix)  # obtain 1s and nan's
+  state.matrix <- apply(state.matrix, 2, function(x) {ifelse(is.nan(x) == TRUE, 0, x)}) # Change the nan to 0
   all.array <- state.matrix
-  state.matrix <- state.matrix %>% cbind(ado_vals[, 1])
+  state.matrix <- state.matrix %>% cbind(vals_dat[, 1])
   
-  state.list <- unique(ado_vals$STATECD) # 6 = California, 41 = Oregon, 53 = Washington
+  state.list <- unique(vals_dat$STATECD) # 6 = California, 41 = Oregon, 53 = Washington
   
   state.array.fcn <- function(sel.state, q.matrix) {
     q.matrix2 <- q.matrix %>% mutate(STATECD = ifelse(STATECD == sel.state, 1, 0))
-    q.matrix2[, 1:length(spp.list)] <- q.matrix2[, 1:length(spp.list)] * q.matrix2[, ncol(q.matrix2)]
-    q.matrix2 <- q.matrix2[, 1:length(spp.list)]
+    q.matrix2[, 1:length(SEL.SPP)] <- q.matrix2[, 1:length(SEL.SPP)] * q.matrix2[, ncol(q.matrix2)]
+    q.matrix2 <- q.matrix2[, 1:length(SEL.SPP)]
     return(q.matrix2)
   }
   
@@ -196,18 +196,16 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
     quant.lims = extract.quant.lims,
     quant.lims.delt = extract.delt.quant.lims,
     tree.dat = Tree1.2)
-  
-  rds.name <- paste0(DATA.LOC, analysis.type, "_dat_", clim.var, ".rds")
-  
-  write_rds(mort.grow.dat, rds.name)
-  
-  zip(zipfile = paste0(DATA.LOC, analysis.type, "_dat_", clim.var, ".zip"), files = rds.name)
+
+## --- NOTE: This function used to save each file.  That's mothballed.  
+#  rds.name <- paste0(DATA.LOC, analysis.type, "_dat_", clim.var, ".rds")
+#  write_rds(mort.grow.dat, rds.name)
+# zip(zipfile = paste0(DATA.LOC, analysis.type, "_dat_", clim.var, ".zip"), files = rds.name)
   
   # Deleting written RDS file (~150 MB)
-  if (file.exists(rds.name) == TRUE) {
-    file.remove(rds.name)
-  }
-  
+#  if (file.exists(rds.name) == TRUE) {
+#    file.remove(rds.name)
+# }
 }
 
 parse.tree.clim.fcn(tree.mort.dat.vpdmin, "vpdmin", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")

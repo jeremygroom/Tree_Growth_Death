@@ -12,29 +12,41 @@ library(readxl)
 library(furrr)
 library(parallel)
 library(RSQLite) # For obtaining SQLite FIA databases
+library(tictoc)  # For development, timing routines.
 
 
 
 ##### ---- Constants ---- #####
+
+# File locations:
 DATA.LOC <- "Data/"
 CODE.LOC <- "Analysis Code/"
 RESULTS.LOC <- "Results/"
+RESULTS1.LOC <- "Results/Quantile_Only/"  # For ANALYSIS.PATHWAY 1
+RESULTS2.LOC <- "Results/Size_Class/"  # For ANALYSIS.PATHWAY 2
+RESULTS3.LOC <- "Results/Site_Class/"  # For ANALYSIS.PATHWAY 3
 
-# Assuming WA/OR/CA zipped databases are in the same location
+
+
+# Assuming WA/OR/CA zipped databases are in the same location (outside of GitHub clone)
 SQL.LOC <- "G:/My Drive/Consulting Practice/Contracts/ODF_FIA_2024/sqlDB_WA_CA/"
 
+# Which analysis to do??
+# Pathway 1 = Mortality/Growth analysis by 9 quantiles, 4 climate variables.
+# Pathway 2 = Pathway 1 run for each of 2 tree size classes (< / >= DBH cutpoint)
+# Pathway 3 = Mortality/Growth analysis by 9 quantiles * 7 site class categories,
+#                4 climate variables.
+ANALYSIS.PATHWAY <- 2   # 1, 2, or 3
+DBH.CUTPOINT <- 12      # DBH inches. Examine trees above & below this amount.
+
 ### Select spp for analysis
-#SEL.SPP <- "X202" # Douglas fir, 8600 + 
-#SEL.SPP <- "X98" # Sitka spruce
-#SEL.SPP <- "X108" # Lodgepole pine
-#SEL.SPP <- "X312" # Bigleaf maple
-# SEL.SPP <- "X242" # Western Red Cedar
 SEL.SPP <- c("X11", "X122", "X117", "X202", "X242", "X805", "X81", "X818", "X93") # List of 9 species I decided to focus upon
-VAR1 <- "pre.vpdmin"
-VAR.DELT <- "delt.vpdmin"
+CLIM.VAR <- c("vpdmin", "vpdmax", "temp", "precip")  # Climate variables under examination.
+ANALYSIS.TYPE <- c("grow", "mort")
+
 #QUANT.DELTA.PROBS.POS <- 0.33 # Delta climate variable: positive values broken between this quantile. 
 #QUANT.DELTA.PROBS.NEG <- 0.33 # Delta climate variable: negative values broken between this quantile.
-VAR.DELTA.BOUNDARIES <- tibble(clim.var = c("vpdmin", "vpdmax", "temp", "precip"), max.min = c(0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables
+VAR.DELTA.BOUNDARIES <- tibble(clim.var = CLIM.VAR, max.min = c(0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables
 
 
 QUANT.PROBS <- c(0.25, 0.75)  # First-visit climate variable values: Broken between these values into three parts.
@@ -44,6 +56,9 @@ N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate w
 BS.N <- 200    # Bootstrap iteration number
  
 
+# Species number as number
+sel.spp <- as.numeric(gsub("X", "", SEL.SPP))
+
 ## Stratum info - not sure we need this. 'orig' already has W_h, # of strata = length(unique(W_h))
 strat <- read_csv(paste0(DATA.LOC, "strat_info052120.csv"), show_col_types = FALSE) %>%
   mutate(W_h = P1POINTCNT/p1pntcnt_eu)             # W_h is the stratum weight
@@ -52,6 +67,7 @@ strat.num <- dim(strat2)[1]
 
 
 n_quant <- length(QUANT.LEVELS)
+quant.level.table <- tibble(var.deltvar = factor(QUANT.LEVELS, level = QUANT.LEVELS), q.num = 1:length(QUANT.LEVELS))
 
 # From the previous analysis (Groom and Monleon 2023)
 orig <- read_csv(paste0(DATA.LOC, "Occ_OriginalVisit2.csv")) %>%

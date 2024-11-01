@@ -19,13 +19,14 @@ quant.divide.fcn <- function(quant.level, spcd2, tree.plots2, PlotDat) {
 #### Data prep function for mortality --------------------------------------------------
 
 ## Function to determine the number of trees that died in a plot and their climate quantiles, used in Data_Prep.R.
-clim.mort.resp.fcn <- function(spcd, clim.var) {
+clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel) {
   var1 <- paste0("pre.", clim.var)
   var.delt <- paste0("delt.", clim.var)
   return.col <- paste0("nd.", spcd)
   
-  # For alive/dead tree assessments
-  Tree2 <- Tree1.2 %>% filter(SPCD == spcd) %>%
+  # For alive/dead tree assessments, with filter for ANALYSIS.PATHWAY == 2
+  Tree2 <- treedat.sel %>% 
+    filter(SPCD == spcd) %>%
     dplyr::select(State_Plot, SUBP, TREE, SDN)
   
   tree.plots <- clim.dat %>% filter(State_Plot %in% Tree2$State_Plot) %>% 
@@ -51,7 +52,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var) {
   dat.cent <- tree.plots2 %>% group_by(var.deltvar) %>% # Quartile centers, good for finding centroids in each quadrant
     reframe(end.x = mean(get(var1)),        # Referred to as "end" because of distance measurements from the main centroid to each of the outer (end) centroids.
             end.y = mean(get(var.delt))) %>% 
-    right_join(dat.cent.start, by = "var.deltvar") %>%
+    right_join(quant.level.table %>% select(-q.num), by = "var.deltvar") %>%
     arrange(var.deltvar)
   
   # Joining tree data with quantile assignment, providing plot-level summary of the number of trees, number that died, and percent that died.
@@ -77,8 +78,8 @@ clim.mort.resp.fcn <- function(spcd, clim.var) {
   
   
   quant.out1 <- map(QUANT.LEVELS, quant.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
-  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD")) %>%
-    dplyr::select(-c("STATECD", "PLOT_FIADB", "State_Plot", "STRATUM", "W_h", "SITECLCD"))
+  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD_plot")) %>%
+    dplyr::select(-c("STATECD", "PLOT_FIADB", "State_Plot", "STRATUM", "W_h", "SITECLCD_plot"))
   
   out.list <- list(spp.list = spp.list, spp.id = spp.id, died.out = died.out, all.trees = all.trees, 
                    quant.out = quant.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
@@ -90,16 +91,16 @@ clim.mort.resp.fcn <- function(spcd, clim.var) {
 #### Data prep function for growth  --------------------------------------------------
 
 ## Function to determine the number of trees that died in a plot and their climate quantiles, used in Data_Prep.R.
-clim.growth.resp.fcn <- function(spcd, clim.var) {
+clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel) {
   var1 <- paste0("pre.", clim.var)
   var.delt <- paste0("delt.", clim.var)
   return.col <- paste0("nd.", spcd)
   
   # For basal area growth/tree
-  Treediam.1 <- Tree1.2 %>% filter(SPCD == spcd, STATUSCD == 1, INVYR < 2011) %>%
+  Treediam.1 <- treedat.sel %>% filter(SPCD == spcd, STATUSCD == 1, INVYR < 2011) %>%
     select(State_Plot, SUBP, TREE, SPCD, DIA)
   
-  Treediam.2 <-  Tree1.2 %>% filter(SPCD == spcd, STATUSCD == 1, INVYR > 2010) %>%
+  Treediam.2 <-  treedat.sel %>% filter(SPCD == spcd, STATUSCD == 1, INVYR > 2010) %>%
     select(State_Plot, SUBP, TREE, SPCD, DIA)
   
   TreeG <- inner_join(Treediam.1, Treediam.2, by = c("State_Plot",  "SUBP", "TREE", "SPCD")) %>% #The inner join reduces the two data frames to trees that occur alive at times 1 and 2.
@@ -130,7 +131,7 @@ clim.growth.resp.fcn <- function(spcd, clim.var) {
   dat.cent <- tree.plots2 %>% group_by(var.deltvar) %>% # Quartile centers, good for finding centroids in each quadrant
     reframe(end.x = mean(get(var1)),        # Referred to as "end" because of distance measurements from the main centroid to each of the outer (end) centroids.
             end.y = mean(get(var.delt))) %>% 
-    right_join(dat.cent.start, by = "var.deltvar") %>%
+    right_join(quant.level.table %>% select(-q.num), by = "var.deltvar") %>%
     arrange(var.deltvar)
   
   # Joining tree data with quantile assignment, providing plot-level summary of the number of trees, number that died, and percent that died.
@@ -151,13 +152,128 @@ clim.growth.resp.fcn <- function(spcd, clim.var) {
   
   
   quant.out1 <- map(QUANT.LEVELS, quant.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
-  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD")) %>%
-    dplyr::select(-c("STATECD", "PLOT_FIADB", "State_Plot", "STRATUM", "W_h", "SITECLCD"))
+  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD_plot")) %>%
+    dplyr::select(-c("STATECD", "PLOT_FIADB", "State_Plot", "STRATUM", "W_h", "SITECLCD_plot"))
   
-  out.list <- list(spp.list = spp.list, spp.id = spp.id, died.out = died.out, all.trees = all.trees, growth.val = growth.val, growth.n.trees = growth.n.trees,
+  out.list <- list(spp.list = spp.list, spp.id = spp.id, growth.val = growth.val, growth.n.trees = growth.n.trees,
                    quant.out = quant.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
   
   return(out.list)
+}
+
+
+## This is a large function that takes species-specific data and creates arrays to assist with analyses.
+parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot.dat) {  
+  # tree.dat = prepped list of data, clim.var = which climate variable name, 
+  #  analysis.type = "mort" or "grow", resp.dat = response data set (i.e., 
+  # "died.out" or "growth.val"), tot.dat = total trees data set (i.e., "all.trees" or "growth.n.trees")
+  # Makes a list of all of the response tables and all-tree tables for the next step to operate on.
+  
+  extract.resp <- map(tree.dat , ~.[[resp.dat]]) 
+  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM","SITECLCD_plot")) # Combining the list into a single tibble.
+  
+  extract.all <- map(tree.dat , ~.[[tot.dat]]) 
+  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD_plot")) 
+  
+  
+  # Now extracting the quantile category information for each species 
+  extract.quant <- map(tree.dat , ~.[["quant.out"]]) 
+  # Creating a 3D array out of the quantile info (plots x quantiles x spp)
+  quant.array <- array(unlist(extract.quant), dim = c(nrow(extract.quant[[1]]), ncol(extract.quant[[1]]), length(extract.quant)), 
+                       dimnames = list(c(1:nrow(extract.quant[[1]])),
+                                       QUANT.LEVELS, 
+                                       SEL.SPP))
+  
+  # Matrix of quantile values for each species' plots joined with climate data
+  # The values for plots with trees of a species are given the ID number for their respective quantile (e.g., i = 9 has plot values of 0 or 9).
+  # Note that this is just for the construction of the quantile matrix (values 0 through 9), not quant.array.
+  q2 <- quant.array
+  for (i in 1:n_quant) {
+    q2[, i, ] <- q2[, i, ] * i
+  }
+  quant.matrix <- apply(q2, c(1, 3), sum) %>%  # collapsing the quantile values into a single matrix
+    bind_cols(vals_dat %>% dplyr::select(State_Plot)) %>% # It does not matter whether vals_dat or all_dat, just want State_Plot
+    left_join(clim.dat, by =  "State_Plot")
+  
+  # Number of plots in each quantile
+  quant.n <- map(1:length(extract.quant), function(x) apply(quant.array[, , x], 2, sum))
+  quant.n <- bind_cols(quant.n)
+  names(quant.n) <- SEL.SPP
+  
+  extract.quant.lims <- map(tree.dat, ~.[["quant.lims"]]) 
+  names(extract.quant.lims) <- SEL.SPP
+  
+  extract.delt.quant.lims <- map(tree.dat, ~.[["quant.lims.delta"]]) 
+  names(extract.delt.quant.lims) <- SEL.SPP
+  
+  
+  # Now extracting the centroid information for each quantile/species)
+  extract.centroid <- map(tree.dat, ~.[["cent.loc"]]) 
+  centroid.array <- array(unlist(extract.centroid), dim = c(nrow(extract.centroid[[1]]), ncol(extract.centroid[[1]]), length(extract.centroid)), 
+                          dimnames = list(QUANT.LEVELS, 
+                                          c("var.deltvar", "end.x", "end.y"),
+                                          SEL.SPP))
+  
+  
+  ### State level ###
+  state.matrix <- quant.matrix[, 1:length(SEL.SPP)]
+  state.matrix <- (state.matrix / state.matrix)  # obtain 1s and nan's
+  state.matrix <- apply(state.matrix, 2, function(x) {ifelse(is.nan(x) == TRUE, 0, x)}) # Change the nan to 0
+  all.array <- state.matrix
+  state.matrix <- state.matrix %>% cbind(vals_dat[, 1])
+  
+  state.list <- unique(vals_dat$STATECD) # 6 = California, 41 = Oregon, 53 = Washington
+  
+  state.array.fcn <- function(sel.state, q.matrix) {
+    q.matrix2 <- q.matrix %>% mutate(STATECD = ifelse(STATECD == sel.state, 1, 0))
+    q.matrix2[, 1:length(SEL.SPP)] <- q.matrix2[, 1:length(SEL.SPP)] * q.matrix2[, ncol(q.matrix2)]
+    q.matrix2 <- q.matrix2[, 1:length(SEL.SPP)]
+    return(q.matrix2)
+  }
+  
+  extract.state <- map(state.list, state.array.fcn, state.matrix)
+  # Creating a 3D array out of the quantile info (plots x quantiles x spp)
+  state.array <- array(unlist(extract.state), dim = c(nrow(extract.state[[1]]), ncol(extract.state[[1]]), length(state.list)),
+                       dimnames = list(c(1:nrow(extract.state[[1]])),
+                                       SEL.SPP,
+                                       state.list))
+  state.array <- aperm(state.array, c(1, 3, 2))  # Changing the order of the dimensions to match those for quantiles. 
+  
+  # Obtaining the number of plots per state.
+  state.n.extract <- map(1:3, function(x) apply(extract.state[[x]], 2, sum)) #sum plots by state.
+  state.n <- reduce(state.n.extract, bind_rows) %>%  # Combine state data into a tibble.
+    mutate(state = state.list)
+  
+  ## We now have the data at the level needed to conduct the mortality analysis.  We need to select a species and a quantile and find the 
+  #  estimated mortality rate for that quantile.  The quantile array (quant.array) offers a mask to remove all values other than the quantile 
+  #  plots of interest for the species. 
+  
+  
+  mort.grow.dat <- list(
+    spp.list = tree.dat[[1]]$spp.list,
+    spp.id = tree.dat[[1]]$spp.id,
+    vals_dat = vals_dat, 
+    all_dat = all_dat, 
+    quant.array = quant.array, 
+    state.array = state.array,
+    all.array = all.array,
+    quant.matrix = quant.matrix,
+    centroid.array = centroid.array,
+    quant.n = quant.n,
+    state.n = state.n,
+    quant.lims = extract.quant.lims,
+    quant.lims.delt = extract.delt.quant.lims,
+    tree.dat = Tree1.2)
+  
+  ## --- NOTE: This function used to save each file.  That's mothballed.  
+  #  rds.name <- paste0(DATA.LOC, analysis.type, "_dat_", clim.var, ".rds")
+  #  write_rds(mort.grow.dat, rds.name)
+  # zip(zipfile = paste0(DATA.LOC, analysis.type, "_dat_", clim.var, ".zip"), files = rds.name)
+  
+  # Deleting written RDS file (~150 MB)
+  #  if (file.exists(rds.name) == TRUE) {
+  #    file.remove(rds.name)
+  # }
 }
 
 
@@ -212,7 +328,7 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {     #dat_tot = data frame 
 
 
 ### This function will find, for any species, the estimate for quantile q1. Nested within bs.fcn and q_mort.grow.fcn.
-quant.est.spp.fcn <- function(spp.sel, d.all_use, d.vals_use, samp) {
+quant.est.spp.fcn <- function(spp.sel, d.all_use, d.vals_use, samp, category.n, q1) {
   
   spp.id1 <- paste0("X", spp.sel)
   n_q <- get(spp.id1, category.n)[q1]   # Are there fewer than N.PLOT.LIM? If so, we can skip the calcs.
@@ -228,15 +344,14 @@ quant.est.spp.fcn <- function(spp.sel, d.all_use, d.vals_use, samp) {
 
 
 # Bootstrap function for obtaining an estimate of the mean for a single iteration.  Nested within q_mort.grow.fcn.
-bs.fcn <- function(iter, d.all_use, d.vals_use, e=parent.frame()) { # Iteration number, all of the relevant trees data, the tree values data (number dead, basal area growth)
+bs.fcn <- function(iter, d.all_use, d.vals_use, category.n, q1) { # Iteration number, all of the relevant trees data, the tree values data (number dead, basal area growth)
   
   # First, sample the tables in use. This procedure obtains samples with replacement from each stratum and then combines the selected
   #  row numbers.  
   samp <- unlist(map(strata, function(x) sample(strata.num$val[strata.num$stratum == x], replace = TRUE)))
 
-  temp.spp <- rep(NA, length(SEL.SPP)) # Empty storage vector
-  
-  bs.out[iter, ] <- unlist(spp.list %>% map(\(x) quant.est.spp.fcn(x, d.all_use, d.vals_use, samp)))  # For a given iteration, finding the mean value for a given quantile (domain)
+  bs.output <- unlist(spp.list %>% map(\(x) quant.est.spp.fcn(x, d.all_use, d.vals_use, samp, category.n, q1)))  # For a given iteration, finding the mean value for a given quantile (domain)
+  return(bs.output)
 }
 
 ## Base function for finding the estimated means for mortality/growth for a given quantile.
@@ -245,16 +360,13 @@ q_mort.grow.fcn <- function(q1, vals.dat, all.dat, array.name, category.n) {
   #   With this step complete, the values for that quantile can be calculated for all species.
   
   vals.use <- vals.dat %>% select(starts_with("nd.")) * array.name[, q1, ] 
-  dat.vals.use <- bind_cols(orig[, 1:6], vals.use) 
+  dat.vals.use <- bind_cols(PlotDat[, 1:6], vals.use) 
   
   all.use <- all.dat %>% select(starts_with("nd.")) * array.name[, q1, ] 
-  dat.all.use <- bind_cols(orig[, 1:6], all.use) 
-  
-  # Bootstrap estimate holding matrix
-  bs.out <- data.frame(matrix(NA, nrow = BS.N, ncol = length(spp.list)))
+  dat.all.use <- bind_cols(PlotDat[, 1:6], all.use) 
   
   # Running the parallel portion of the function
-  furrr.out <- 1:BS.N %>% future_map(\(x) bs.fcn(iter = x, d.all_use = dat.all.use, d.vals_use = dat.vals.use), .options = furrr_options(seed = TRUE))
+  furrr.out <- 1:BS.N %>% future_map(\(x) bs.fcn(iter = x, d.all_use = dat.all.use, d.vals_use = dat.vals.use, category.n, q1), .options = furrr_options(seed = TRUE))
   
   # Processing the results and returning quantiles/mean
   furrr.table <- matrix(unlist(furrr.out), ncol = length(spp.list), byrow = TRUE)
@@ -356,20 +468,78 @@ ratio.SE.fcn <- function(d.all_z, d.ado_y, meandat)	{   # ii = column for respon
 
 
 
-#### Graphical output functions ---------------------------------
+#### Graphical output functions -----------------------------------------------
 
+
+
+
+
+
+### - Quantile distribution plot, used in multiple analysis pathways - ###
+#       Obtain figure of quantile distribution relative to climate info
+# plot.spp = species of interest (e.g., "X11"), quant.matrix = quantiles (1 thru 9)
+# for each species, var1, var.delt = carried through from input for pairs.plts.fcn,
+# quant.lims, quant.n = quantile boundaries and number of plots, established in parse.tree.clim.fcn,
+# size.trees = one of "small diameter ", "large diameter ", and (for pathways 1 and 3) "".  
+quant.dist.plt.fcn <- function(plot.spp, quant.matrix, var1, var.delt, quant.lims, quant.n, size.trees) {
+  
+  q_plot_spp <- quant.matrix %>% dplyr::select(all_of(plot.spp), all_of(var1), all_of(var.delt)) %>%
+    filter(get(all_of(plot.spp)) > 0) 
+  names(q_plot_spp)[1] <- "Quantile"
+  
+  n_plots <- get(all_of(plot.spp), quant.n)#  table(get(all_of(spp.id1), q_plot_spp))
+  n_plots2 <- tibble(loc = 1:n_quant, n = n_plots) %>%
+    left_join(tibble(Quantiles = plot.quant.dat$Quantiles, loc = 1:n_quant), by = "loc")
+  
+  quant.lims.plt <- get(plot.spp, quant.lims)
+  quant.lims.delt.plt <- get(plot.spp, quant.lims.delta)
+  
+  sppnum <- as.numeric(gsub("X", "", sppnum.to.plot))
+  
+  # Common and Genus/species name for plot title
+  com.name <- spp.names$COMMON_NAME[spp.names$SPCD == sppnum]
+  g.s.name <- paste(spp.names$GENUS[spp.names$SPCD == sppnum], spp.names$SPECIES[spp.names$SPCD == sppnum])
+  
+  # Need to isolate the correct colors if some quadrants are without plots:
+  scatter.virid.use <- virid.use[n_plots2$loc[n_plots2$n > 0]]
+  
+  
+  plot.vals.plt <- ggplot(q_plot_spp, aes(get(var1), get(var.delt), color = factor(Quantile))) + 
+    geom_point() + 
+    #stat_ellipse(type = "norm", level = 0.95, col = "orange", lwd = 2) +
+    geom_hline(yintercept = quant.lims.delt.plt[1], col = "blue") +
+    geom_hline(yintercept = quant.lims.delt.plt[2], col = "blue") +
+    geom_vline(xintercept = quant.lims.plt[1], col = "green") +
+    geom_vline(xintercept = quant.lims.plt[2], col = "green") +
+    theme_bw() + 
+    scale_color_manual(values = scatter.virid.use, name = "Quantiles", labels = QUANT.LEVELS[which(n_plots2$n > 0)]) + 
+    labs(title = paste0("Plot conditions for ", size.trees, com.name, ", ", g.s.name, ", ",  sppnum.to.plot),
+         x = var.label, y = var.delt.label) +
+    theme(text = element_text(size = 7))
+  
+  return(plot.vals.plt)
+}
+
+
+
+
+
+
+
+
+
+
+
+# -- Plots for ANALYSIS.PATHWAY 1 -- #
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
-pair.plts.fcn <- function(sppnum.to.plot){
+pair.plts.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.label){
   
   plot.spp <- sppnum.to.plot
   plot.quant.dat <- quant.table %>% 
     filter(Species == plot.spp) %>%
-    #bind_cols(quant.n %>% dplyr::select(plot.spp)) %>%
-    #rename("n" = plot.spp) %>%
-    mutate(Quantiles = case_match(Quantile, 1:length(QUANT.LEVELS) ~ QUANT.LEVELS),
-           Quantiles = factor(Quantiles, levels = QUANT.LEVELS))
-  
+    left_join(quant.level.table, by = c("Quantile" = "q.num"))
+
   
   # Details for plotting
   virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_quant)  # Get colors for plotting
@@ -378,7 +548,7 @@ pair.plts.fcn <- function(sppnum.to.plot){
   
   
   # Create a grid of plots to match bivariate plot
-  q.g.p.labs <- paste0(plot.quant.dat$Quantiles, ", n = ", as.numeric(plot.quant.dat$n.plts)) # Labels for the quantile grid plot
+  q.g.p.labs <- paste0(plot.quant.dat$var.deltvar, ", n = ", as.numeric(plot.quant.dat$n.plts)) # Labels for the quantile grid plot
   
   quant.grid.plt.fcn <- function(quants, quant.index) {
     ggplot(data = plot.quant.dat %>% filter(Quantiles %in% quants), aes(Quantiles, Means, fill = Quantiles)) + 
@@ -401,52 +571,89 @@ pair.plts.fcn <- function(sppnum.to.plot){
   
   quant.table1 <- quant.table %>% filter(Species == plot.spp)
   
-  
-  ## - Obtain figure of quantile distribution relative to climate info - ##
-  q_plot_spp <- quant.matrix %>% dplyr::select(all_of(plot.spp), all_of(VAR1), all_of(VAR.DELT)) %>%
-    filter(get(all_of(plot.spp)) > 0) 
-  names(q_plot_spp)[1] <- "Quantile"
-  
-    n_plots <- get(all_of(plot.spp), quant.n)#  table(get(all_of(spp.id1), q_plot_spp))
-    n_plots2 <- tibble(loc = 1:n_quant, n = n_plots) %>%
-    left_join(tibble(Quantiles = quant.table1$Quantiles, loc = 1:n_quant), by = "loc")
-  
-  quant.lims.plt <- get(plot.spp, quant.lims)
-  quant.lims.delt.plt <- get(plot.spp, quant.lims.delta)
-  
-  sppnum <- as.numeric(gsub("X", "", sppnum.to.plot))
-  
-  # Common and Genus/species name for plot title
-  com.name <- spp.names$COMMON_NAME[spp.names$SPCD == sppnum]
-  g.s.name <- paste(spp.names$GENUS[spp.names$SPCD == sppnum], spp.names$SPECIES[spp.names$SPCD == sppnum])
-  
-  # Need to isolate the correct colors if some quadrants are without plots:
-  scatter.virid.use <- virid.use[n_plots2$loc[n_plots2$n > 0]]
-  
-  
-  plot.vals.plt <- ggplot(q_plot_spp, aes(get(VAR1), get(VAR.DELT), color = factor(Quantile))) + 
-    geom_point() + 
-    #stat_ellipse(type = "norm", level = 0.95, col = "orange", lwd = 2) +
-    geom_hline(yintercept = quant.lims.delt.plt[1], col = "blue") +
-    geom_hline(yintercept = quant.lims.delt.plt[2], col = "blue") +
-    geom_vline(xintercept = quant.lims.plt[1], col = "green") +
-    geom_vline(xintercept = quant.lims.plt[2], col = "green") +
-    theme_bw() + 
-    scale_color_manual(values = scatter.virid.use, name = "Quantiles", labels = QUANT.LEVELS) + 
-    labs(title = paste0("Plot conditions for ", com.name, ", ", g.s.name, ", ",  sppnum.to.plot),
-         x = var.label, y = var.delt.label) +
-    theme(text = element_text(size = 7))
-  #  scale_color_viridis_d(name = "Quartiles", option = "H", begin = 0.1, end = 0.9) #+
-  #labs(x = var1.lab, y = var.delt.lab, title = spp.name)
-  
-  
+  plot.vals.plt <- quant.dist.plt.fcn(plot.spp = plot.spp, quant.matrix = quant.matrix, 
+                                      var1 = var1, var.delt = var.delt, quant.lims = quant.lims,
+                                      quant.n = quant.n, size.trees = "") 
+    
+
   comb.plt <- p_all + plot.vals.plt + plot_layout(widths = c(1, 1.3))
   
   #ggsave(paste0(RESULTS.LOC, "Mort_figs_", var.filename, "/",sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
-  ggsave(paste0(RESULTS.LOC, switch(ANALYSIS.TYPE, "mort" = "Mort", "grow" = "Growth"), "_figs_", var.filename, "/", sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
+  ggsave(paste0(RESULTS1.LOC, switch(ANALYSIS.TYPE[j], "mort" = "Mort", "grow" = "Growth"), "_figs_", var.filename, "/", sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
+  
+}
+
+
+
+# -- Plots for ANALYSIS.PATHWAY 2 -- #
+
+## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
+
+
+
+pair.plts2.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.label, var1, var.delt,
+                           quant.matrix.1, quant.matrix.2, quant.lims.1, quant.lims.2,
+                           quant.n.1, quant.n.2){
+  
+  plot.spp <- sppnum.to.plot
+  plot.quant.dat <- quant.table %>% 
+    filter(Species == plot.spp) %>%
+    left_join(quant.level.table, by = c("Quantile" = "q.num"))
+  
+  
+  # Details for plotting
+  virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_quant)  # Get colors for plotting
+  
+  qt.max <- ceiling(max(plot.quant.dat$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
+  
+  
+  quant.grid.plt.fcn <- function(quants, quant.index) {
+  
+    num.labs <- plot.quant.dat %>% filter(Quantile %in% quant.index) %>%
+      mutate(loc = 0.8 * LCI.95,
+             lab = as.numeric(n.plts)) %>%
+      arrange(Quantile, smaller_larger)
+    
+    
+    ggplot(data = plot.quant.dat %>% filter(Quantile %in% quant.index), aes(Quantile, Means, fill = factor(smaller_larger), color = factor(Quantile))) + 
+      geom_col(position = "dodge", width = 0.75, linewidth = 2) + 
+      geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.2, position = position_dodge(width = 0.75), color = 'black') + 
+      geom_text(data = num.labs, aes(label = lab, x = Quantile, y = loc), position = position_dodge(width = 0.75), color = "black", size = 2) +
+      scale_color_manual(values = virid.use[quant.index]) + 
+      scale_fill_manual(values = c("#C1CDCD", "#838B8B")) +
+      scale_y_continuous(limits = c(0, qt.max)) +
+      scale_x_continuous(labels = quants, breaks = quant.index) +
+      theme_bw() +
+      theme(legend.position = "none") + 
+      labs(x = NULL, y = "Mean") +
+      theme(text = element_text(size = 7))
+  }
+  
+  p1 <- quant.grid.plt.fcn(c("LiHc", "MiHc", "HiHc"), 1:3) 
+  p2 <- quant.grid.plt.fcn(c("LiMc", "MiMc", "HiMc"), 4:6) 
+  p3 <- quant.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9) 
+  
+  p_all <- plot_grid(p1, p2, p3, ncol = 1)
+  
+  plot.vals.plt.1 <- quant.dist.plt.fcn(plot.spp = plot.spp, quant.matrix = quant.matrix.1, 
+                                      var1 = var1, var.delt = var.delt, quant.lims = quant.lims.1,
+                                      quant.n = quant.n.1, size.trees = "smaller diameter ") 
+  
+  plot.vals.plt.2 <- quant.dist.plt.fcn(plot.spp = plot.spp, quant.matrix = quant.matrix.2, 
+                                        var1 = var1, var.delt = var.delt, quant.lims = quant.lims.2,
+                                        quant.n = quant.n.2, size.trees = "larger diameter ") 
+  
+  comb.plt <- p_all +(plot.vals.plt.1 + plot.vals.plt.2 + plot_layout(ncol = 1)) + plot_layout( widths = c(1, 1.2))
+  
+  #ggsave(paste0(RESULTS.LOC, "Mort_figs_", var.filename, "/",sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
+  ggsave(paste0(RESULTS.LOC, switch(ANALYSIS.PATHWAY, "1" = "Quantile_Only/", "2" = "Size_Class/", "3" = "Site_Class/"), 
+                switch(ANALYSIS.TYPE[j], "mort" = "Mort", "grow" = "Growth"), 
+                   "_figs_", var.filename, "/", sppnum.to.plot, "_plots.png"), 
+         comb.plt, device = "png", width = 7, height = 5, units = "in")
   
 }
 
 
 
 
+####################### Trash?? #####################
