@@ -43,7 +43,8 @@ vpdmax <- read_csv(paste0(DATA.LOC, "vpdmax.20.10.csv")) %>% dplyr::select(-INVY
 clim.dat <- list(tmp, precip, vpdmin, vpdmax) %>% reduce(left_join, by = c("STATECD", "PLOT_FIADB")) %>% 
   mutate(State_Plot = paste0(PLOT_FIADB, STATECD),
          State_Plot = as.numeric(State_Plot)) %>% 
-  dplyr::select(-STATECD, -PLOT_FIADB)
+  dplyr::select(-STATECD, -PLOT_FIADB) %>% 
+  left_join(latlon, by = 'State_Plot')  # latlon loaded in Global.R .  For mapping.
 
 
 
@@ -147,14 +148,17 @@ remove.plot.fiadb <- fia.cond %>% filter(is.na(SITECLCD_plot) == TRUE)
 PlotDat <- PlotDat %>% anti_join(remove.plot.fiadb %>% select(PLOT_FIADB, STATECD), by = c("PLOT_FIADB", "STATECD"))
 #nrow(remove.plot.fiadb) == nrow(orig) - nrow(PlotDat)  # Verify that the correct number of rows were removed. Should be "TRUE".
 
+Tree1.3 <- left_join(Tree1.2, PlotDat %>% select(-STRATUM, -W_h), by = c("STATECD", "PLOT_FIADB", "State_Plot"))
+
 
 #  All three analysis pathways create these files. The first batch of eight tree...dat.. 
 #   objects will work for ANALYSIS.PATHWAYs 1 through 3.  "smaller" tells the function how to 
 #   handle pathway #2 for the smaller
 # Create a list of the number of dead trees of each species in each plot.
 
-treedat.use <- if(ANALYSIS.PATHWAY == 2) Tree1.2S else Tree1.2
+treedat.use <- if(ANALYSIS.PATHWAY == 2) Tree1.2S else Tree1.3
 
+n_quant <- if(ANALYSIS.PATHWAY != 3) length(QUANT.LEVELS) else 7
 
 
 #### 3) Specialized data prep --------------------------------------------------------
@@ -166,7 +170,6 @@ tree.mort.dat.vpdmin1 <- map(sel.spp, clim.mort.resp.fcn, clim.var = "vpdmin", t
 tree.mort.dat.vpdmax1 <- map(sel.spp, clim.mort.resp.fcn, clim.var = "vpdmax", treedat.sel = treedat.use)
 tree.mort.dat.temp1 <- map(sel.spp, clim.mort.resp.fcn, clim.var = "temp", treedat.sel = treedat.use)
 tree.mort.dat.precip1 <- map(sel.spp, clim.mort.resp.fcn, clim.var = "precip", treedat.sel = treedat.use)
-
 
 # Create lists of tree growth and number of trees that grew in each plot
 tree.grow.dat.vpdmin1 <- map(sel.spp, clim.growth.resp.fcn, clim.var = "vpdmin", treedat.sel = treedat.use) 
@@ -192,38 +195,49 @@ if(ANALYSIS.PATHWAY == 2) {
 }
 
 # Combining data into arrays and such, preparing for analysis.
-arrays.vpdmin.mort1 <- parse.tree.clim.fcn(tree.mort.dat.vpdmin1, "vpdmin", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
-arrays.vpdmax.mort1 <- parse.tree.clim.fcn(tree.mort.dat.vpdmax1, "vpdmax", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
-arrays.temp.mort1 <- parse.tree.clim.fcn(tree.mort.dat.temp1, "temp", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
-arrays.precip.mort1 <- parse.tree.clim.fcn(tree.mort.dat.precip1, "precip", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
+arrays.vpdmin.mort1 <- parse.tree.clim.fcn(tree.mort.dat.vpdmin1, "vpdmin", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
+arrays.vpdmax.mort1 <- parse.tree.clim.fcn(tree.mort.dat.vpdmax1, "vpdmax", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
+arrays.temp.mort1 <- parse.tree.clim.fcn(tree.mort.dat.temp1, "temp", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
+arrays.precip.mort1 <- parse.tree.clim.fcn(tree.mort.dat.precip1, "precip", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
 
 
-arrays.vpdmin.grow1 <- parse.tree.clim.fcn(tree.grow.dat.vpdmin1, "vpdmin", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
-arrays.vpdmax.grow1 <- parse.tree.clim.fcn(tree.grow.dat.vpdmax1, "vpdmax", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
-arrays.temp.grow1 <- parse.tree.clim.fcn(tree.grow.dat.temp1, "temp", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
-arrays.precip.grow1 <- parse.tree.clim.fcn(tree.grow.dat.precip1, "precip", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
+arrays.vpdmin.grow1 <- parse.tree.clim.fcn(tree.grow.dat.vpdmin1, "vpdmin", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
+arrays.vpdmax.grow1 <- parse.tree.clim.fcn(tree.grow.dat.vpdmax1, "vpdmax", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
+arrays.temp.grow1 <- parse.tree.clim.fcn(tree.grow.dat.temp1, "temp", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
+arrays.precip.grow1 <- parse.tree.clim.fcn(tree.grow.dat.precip1, "precip", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
 
 if(ANALYSIS.PATHWAY == 2) {
-  arrays.vpdmin.mort2 <- parse.tree.clim.fcn(tree.mort.dat.vpdmin2, "vpdmin", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
-  arrays.vpdmax.mort2 <- parse.tree.clim.fcn(tree.mort.dat.vpdmax2, "vpdmax", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
-  arrays.temp.mort2 <- parse.tree.clim.fcn(tree.mort.dat.temp2, "temp", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
-  arrays.precip.mort2 <- parse.tree.clim.fcn(tree.mort.dat.precip2, "precip", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees")
+  arrays.vpdmin.mort2 <- parse.tree.clim.fcn(tree.mort.dat.vpdmin2, "vpdmin", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
+  arrays.vpdmax.mort2 <- parse.tree.clim.fcn(tree.mort.dat.vpdmax2, "vpdmax", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
+  arrays.temp.mort2 <- parse.tree.clim.fcn(tree.mort.dat.temp2, "temp", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
+  arrays.precip.mort2 <- parse.tree.clim.fcn(tree.mort.dat.precip2, "precip", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
   
   
-  arrays.vpdmin.grow2 <- parse.tree.clim.fcn(tree.grow.dat.vpdmin2, "vpdmin", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
-  arrays.vpdmax.grow2 <- parse.tree.clim.fcn(tree.grow.dat.vpdmax2, "vpdmax", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
-  arrays.temp.grow2 <- parse.tree.clim.fcn(tree.grow.dat.temp2, "temp", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
-  arrays.precip.grow2 <- parse.tree.clim.fcn(tree.grow.dat.precip2, "precip", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees")
+  arrays.vpdmin.grow2 <- parse.tree.clim.fcn(tree.grow.dat.vpdmin2, "vpdmin", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
+  arrays.vpdmax.grow2 <- parse.tree.clim.fcn(tree.grow.dat.vpdmax2, "vpdmax", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
+  arrays.temp.grow2 <- parse.tree.clim.fcn(tree.grow.dat.temp2, "temp", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
+  arrays.precip.grow2 <- parse.tree.clim.fcn(tree.grow.dat.precip2, "precip", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
+}
+
+## Fire mortality: what proportion died from fire?  This info is only generated for pathway 1 and mortality.
+if (ANALYSIS.PATHWAY == 1 & CALC.FIREPROP == TRUE) {
+  fire.frac.table.fcn(tablename = "Fire_Prop_vpdmin_mort.csv", tableloc = paste0(RESULTS1.LOC, "Mort_figs_vpdmin/"), treedat = treedat.use, parseddat = arrays.vpdmin.mort1)  
+  fire.frac.table.fcn(tablename = "Fire_Prop_vpdmax_mort.csv", tableloc = paste0(RESULTS1.LOC, "Mort_figs_vpdmax/"), treedat = treedat.use, parseddat = arrays.vpdmax.mort1)  
+  fire.frac.table.fcn(tablename = "Fire_Prop_temp_mort.csv", tableloc = paste0(RESULTS1.LOC, "Mort_figs_temp/"), treedat = treedat.use, parseddat = arrays.temp.mort1)  
+  fire.frac.table.fcn(tablename = "Fire_Prop_precip_mort.csv", tableloc = paste0(RESULTS1.LOC, "Mort_figs_precip/"), treedat = treedat.use, parseddat = arrays.precip.mort1)  
 }
 
 
-Tree1.2 %>% filter(SPCD == 11) %>% group_by(State_Plot) %>% summarize(n = n())  # 1098
-Tree1.2 %>% filter(SPCD == 11, STATUSCD == 1, INVYR > 2010) %>% group_by(State_Plot) %>% summarize(n = n()) #1073
-Tree1.2 %>% filter(SPCD == 11, STATUSCD == 1, INVYR > 2010, PREVDIA < 12) %>% group_by(State_Plot) %>% summarize(n = n()) #1073
-Tree1.2 %>% filter(SPCD == 11, STATUSCD == 1, INVYR > 2010, PREVDIA >= 12) %>% group_by(State_Plot) %>% summarize(n = n()) #687
-
 
 #### 4) Analysis and plotting  --------------------------------------------------------
+
+# If desired, the analysis will obtain mortality estimates for each of the 50 species
+#  by state and overall. These values can be used to evaluate species for inclusion in the
+#  main analysis
+if(RUN.STATES == TRUE) {
+  source(paste0(CODE.LOC, "Overall_Mort_Est.R"))
+}
+
 
 # The remaining code breaks up the analyses by type (mortality, growth) and climate variables (4).
 # If ANALYSIS.PATHWAY is 2 then the process is run twice, once for each size class. 
@@ -232,7 +246,8 @@ Tree1.2 %>% filter(SPCD == 11, STATUSCD == 1, INVYR > 2010, PREVDIA >= 12) %>% g
 
 dataset.number <- if(ANALYSIS.PATHWAY == 2) 2 else 1 # How many times to run through.
 
-# For ANALYSIS.PATHWAY = 1 and ITER = 200, the new machine takes: 13.5 minutes
+# For ANALYSIS.PATHWAY = 1 and ITER = 200, the new machine takes: 23.5 minutes
+# For ANALYSIS.PATHWAY = 1 and ITER = 1000, the new machine takes: 42 minutes
 # ANALYSIS.PATHWAY = 2 and ITER = 200 takes the new machine 28 minutes
 
 tic()
@@ -271,12 +286,12 @@ for (i in 1:length(CLIM.VAR)){
       quant.lims <- mort.grow.dat$quant.lims
       quant.lims.delta <- mort.grow.dat$quant.lims.delt
       
+      
+      
       ## First, adjusting the species list
       #spp.id <- paste0("X", spp.list)     # Can use SEL.SPP
       spp.list <- as.numeric(gsub("X", "", SEL.SPP))
       
-      # Need climate names for files and axes.
-      clim.names <- read_csv(paste0(DATA.LOC, "ClimateNames.csv"), show_col_types = FALSE)
       
       # Questions about the plot data
       # 1) Are there intensification plots
@@ -302,9 +317,6 @@ for (i in 1:length(CLIM.VAR)){
       
       n.spp <- length(SEL.SPP)
       
-      n_quant <- length(QUANT.LEVELS)
-      
-      q_means <- q_SE <- q_bs.UCI <- q_bs.LCI <- rep(NA, n_quant)
       
       # Strata for bootstrap resampling procedure
       strata <- unique(vals_dat$STRATUM)
@@ -316,17 +328,12 @@ for (i in 1:length(CLIM.VAR)){
       
       ## Quantile estimates for mortality or growth, across select species.
       quant.index <- 1:n_quant
-      all.quants <- quant.index %>% map(\(x) q_mort.grow.fcn(q1 = x, vals.dat = vals_dat, all.dat = all_dat, array.name = quant.array, category.n = quant.n) )  # Alternate mapping formulation, only advantage is clarity.
+      all.quants <- quant.index %>% 
+        map(\(x) q_mort.grow.fcn(q1 = x, vals.dat = vals_dat, all.dat = all_dat, # Alternate mapping formulation, only advantage is clarity.
+                                 array.name = quant.array, category.n = quant.n,
+                                 selected.spp = SEL.SPP) )  
       quant.table <- bind_rows(all.quants) %>% arrange(Species, Quantile)
 
-      
-      # Running for states.  11.5 min on new machine, 16 min on old machine  (2.4 minutes using new machine, 9 species)
-      #   state.list <- unique(vals_dat$STATECD) # 6 = California, 41 = Oregon, 53 = Washington
-      #    y <- Sys.time()  # 16 minutes on new computer at 1000 iterations
-      #    state.ests <- map(1:length(state.list), q_mort.grow.fcn, vals.dat = vals_dat, all.dat = all_dat, array.name = state.array, category.n = state.n)
-      #    Sys.time() - y
-      #state.table <- bind_rows(state.ests)
-      #write_rds(state.ests, file = paste0(RESULTS.LOC, "Estimates/State_Ests_2024.rds"))
       
       results[[k]] <- list(quant.table = quant.table, var.label = var.label, var.delt.label = var.delt.label, 
                            quant.matrix = quant.matrix, quant.lims = quant.lims, quant.n = quant.n) 
@@ -339,7 +346,7 @@ for (i in 1:length(CLIM.VAR)){
     # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
     map(SEL.SPP, pair.plts.fcn, quant.table = results$results1$quant.table, var.label = results$results1$var.label, 
         var.delt.label = results$results1$var.delt.label, var1 = var1, var.delt = var.delt,
-        quant.matrix = quant.matrix, quant.lims = quant.lims, quant.n = quant.n)
+        quant.matrix = results$results1$quant.matrix, quant.lims = quant.lims, quant.n = quant.n)
     }
     
     if (ANALYSIS.PATHWAY == 2) {
@@ -358,6 +365,12 @@ for (i in 1:length(CLIM.VAR)){
         quant.n.1 = quant.n.1,
         quant.n.2 = quant.n.2)
     
+    }
+    
+    if (ANALYSIS.PATHWAY == 3) {
+      map(SEL.SPP, pair.plts3.fcn, quant.table = results$results1$quant.table, var.label = results$results1$var.label, 
+          var.delt.label = results$results1$var.delt.label, var1 = var1, var.delt = var.delt,
+          quant.matrix = quant.matrix, quant.n = quant.n)
     }
     
 

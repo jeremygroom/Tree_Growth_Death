@@ -8,6 +8,8 @@ library(viridis)
 library(cowplot)
 library(patchwork)
 library(readxl)
+library(data.table)
+library(abind) # for combining matrices into arrays
 
 library(furrr)
 library(parallel)
@@ -17,6 +19,11 @@ library(tictoc)  # For development, timing routines.
 
 
 ##### ---- Constants ---- #####
+
+# Code controls:
+CALC.FIREPROP <- TRUE   # Set this to TRUE if wanting to calculate or recalculate
+                          # the proportion of dead trees killed by fire by quantile.
+RUN.STATES <- FALSE # Should ANALYSIS.PATHWAY 1 find mortality estimates by state?
 
 # File locations:
 DATA.LOC <- "Data/"
@@ -36,11 +43,12 @@ SQL.LOC <- "G:/My Drive/Consulting Practice/Contracts/ODF_FIA_2024/sqlDB_WA_CA/"
 # Pathway 2 = Pathway 1 run for each of 2 tree size classes (< / >= DBH cutpoint)
 # Pathway 3 = Mortality/Growth analysis by 9 quantiles * 7 site class categories,
 #                4 climate variables.
-ANALYSIS.PATHWAY <- 2   # 1, 2, or 3
+ANALYSIS.PATHWAY <- 1   # 1, 2, or 3
 DBH.CUTPOINT <- 12      # DBH inches. Examine trees above & below this amount.
 
 ### Select spp for analysis
-SEL.SPP <- c("X11", "X122", "X117", "X202", "X242", "X805", "X81", "X818", "X93") # List of 9 species I decided to focus upon
+#SEL.SPP <- c("X11", "X122", "X117", "X202", "X242", "X805", "X81", "X818", "X93") # Original list of 9 species I decided to focus upon
+SEL.SPP <- c("X15", "X17", "X19", "X93", "X108", "X117", "X351", "X361", "X631", "X818") # List of 11 species with overall mortality > 0.15 and number of plots > 500
 CLIM.VAR <- c("vpdmin", "vpdmax", "temp", "precip")  # Climate variables under examination.
 ANALYSIS.TYPE <- c("grow", "mort")
 
@@ -53,7 +61,7 @@ QUANT.PROBS <- c(0.25, 0.75)  # First-visit climate variable values: Broken betw
 
 QUANT.LEVELS <- c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
-BS.N <- 200    # Bootstrap iteration number
+BS.N <- 1000    # Bootstrap iteration number
  
 
 # Species number as number
@@ -83,4 +91,12 @@ spp.names <- read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx")) %>% filter(SPCD %i
 
 ## Items for parallel computing
 n.cores <- round(detectCores() * 0.75, 0) # Number of cores, package "parallel".  Using 75% of the available cores, rounded.
+
+## GIS files
+   # Plot lat/lon (jittered)
+latlon <- read_csv("Data/PlotLatLon.csv", show_col_types = FALSE) %>% dplyr::select(-n)
+
+   # State layers
+states <- map_data("state")   # Loaded with ggplot2
+west_df <- subset(states, region == "california" | region == "oregon" | region == "washington")
 
