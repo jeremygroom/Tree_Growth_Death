@@ -37,6 +37,7 @@ RESULTS3.LOC <- "Results/Site_Class/"  # For ANALYSIS.PATHWAY 3
 
 # Assuming WA/OR/CA zipped databases are in the same location (outside of GitHub clone)
 SQL.LOC <- "G:/My Drive/Consulting Practice/Contracts/ODF_FIA_2024/sqlDB_WA_CA/"
+CLIMATE.LOC <- "G:/My Drive/Consulting Practice/Contracts/ODF_FIA_2024/TerraClimate data/"
 
 # Which analysis to do??
 # Pathway 1 = Mortality/Growth analysis by 9 quantiles, 4 climate variables.
@@ -49,29 +50,28 @@ DBH.CUTPOINT <- 12      # DBH inches. Examine trees above & below this amount.
 ### Select spp for analysis
 #SEL.SPP <- c("X11", "X122", "X117", "X202", "X242", "X805", "X81", "X818", "X93") # Original list of 9 species I decided to focus upon
 SEL.SPP <- c("X15", "X17", "X19", "X93", "X108", "X117", "X351", "X361", "X631", "X818") # List of 11 species with overall mortality > 0.15 and number of plots > 500
-CLIM.VAR <- c("vpdmin", "vpdmax", "temp", "precip")  # Climate variables under examination.
+CLIM.VAR <- c("aet", "vpdmin", "vpdmax", "temp", "precip")  # Climate variables under examination.
 ANALYSIS.TYPE <- c("grow", "mort")
 
-#QUANT.DELTA.PROBS.POS <- 0.33 # Delta climate variable: positive values broken between this quantile. 
-#QUANT.DELTA.PROBS.NEG <- 0.33 # Delta climate variable: negative values broken between this quantile.
-VAR.DELTA.BOUNDARIES <- tibble(clim.var = CLIM.VAR, max.min = c(0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables
+
+VAR.DELTA.BOUNDARIES <- tibble(clim.var = CLIM.VAR, max.min = c(3, 0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables
 
 
 QUANT.PROBS <- c(0.25, 0.75)  # First-visit climate variable values: Broken between these values into three parts.
 
 QUANT.LEVELS <- c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
-BS.N <- 1000    # Bootstrap iteration number
+BS.N <- 200    # Bootstrap iteration number
  
 
 # Species number as number
 sel.spp <- as.numeric(gsub("X", "", SEL.SPP))
 
 ## Stratum info - not sure we need this. 'orig' already has W_h, # of strata = length(unique(W_h))
-strat <- read_csv(paste0(DATA.LOC, "strat_info052120.csv"), show_col_types = FALSE) %>%
-  mutate(W_h = P1POINTCNT/p1pntcnt_eu)             # W_h is the stratum weight
-strat2 <- strat %>% select(STRATUM, P1POINTCNT, W_h)  # Reducing the number of columns to those we need 
-strat.num <- dim(strat2)[1]
+#strat <- read_csv(paste0(DATA.LOC, "strat_info052120.csv"), show_col_types = FALSE) %>%
+#  mutate(W_h = P1POINTCNT/p1pntcnt_eu)             # W_h is the stratum weight
+#strat2 <- strat %>% select(STRATUM, P1POINTCNT, W_h)  # Reducing the number of columns to those we need 
+#strat.num <- dim(strat2)[1]
 
 
 n_quant <- length(QUANT.LEVELS)
@@ -92,9 +92,6 @@ spp.names <- read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx")) %>% filter(SPCD %i
 ## Items for parallel computing
 n.cores <- round(detectCores() * 0.75, 0) # Number of cores, package "parallel".  Using 75% of the available cores, rounded.
 
-## GIS files
-   # Plot lat/lon (jittered)
-latlon <- read_csv("Data/PlotLatLon.csv", show_col_types = FALSE) %>% dplyr::select(-n)
 
    # State layers
 states <- map_data("state")   # Loaded with ggplot2

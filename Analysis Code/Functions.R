@@ -8,8 +8,8 @@
 quant.divide.fcn <- function(quant.level, spcd2, tree.plots2, PlotDat) {
   quant.name <- paste0(quant.level, ".",  spcd2)
   quant.died.out <- left_join(PlotDat, tree.plots2 %>% 
-                                dplyr::select(State_Plot, var.deltvar) %>% # var.deltvar defined in clim.tree.resp.fcn, "LiHc" etc.
-                                filter(var.deltvar == quant.level), by = "State_Plot") %>%
+                                dplyr::select(puid, var.deltvar) %>% # var.deltvar defined in clim.tree.resp.fcn, "LiHc" etc.
+                                filter(var.deltvar == quant.level), by = "puid") %>%
     mutate(var.deltvar = ifelse(is.na(var.deltvar), 0, 1)) %>%
     rename(!!quant.name := var.deltvar) 
 }
@@ -19,18 +19,18 @@ quant.divide.fcn <- function(quant.level, spcd2, tree.plots2, PlotDat) {
 #### Data prep function for mortality --------------------------------------------------
 
 ## Function to determine the number of trees that died in a plot and their climate quantiles, used in Data_Prep.R.
-clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel) {
-  var1 <- paste0("pre.", clim.var)
-  var.delt <- paste0("delt.", clim.var)
+clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
+  var1 <- "pre_mean" #paste0("pre.", clim.var)
+  var.delt <- "difference"  #paste0("delt.", clim.var)
   return.col <- paste0("nd.", spcd)
   
-  # For alive/dead tree assessments, with filter for ANALYSIS.PATHWAY == 2
+# For alive/dead tree assessments
   Tree2 <- treedat.sel %>% 
-    filter(SPCD == spcd, INVYR > 2010) %>%
-    dplyr::select(State_Plot, SUBP, TREE, SDN)
+    filter(SPCD == spcd) %>%
+    dplyr::select(puid, REMPER, TREE, STATUSCD, ntree.rep) %>% distinct()
   
-  tree.plots <- clim.dat %>% filter(State_Plot %in% Tree2$State_Plot) %>% 
-    dplyr::select(State_Plot, all_of(var1), all_of(var.delt))
+  tree.plots <- clim.dat %>% filter(puid %in% Tree2$puid) %>% 
+    dplyr::select(puid, all_of(var1), all_of(var.delt))
   
   # Data quantiles
   # Setting the delta-var amounts to be fixed values.  See Global for setting VAR.DELTA.BOUNDARIES.
@@ -41,7 +41,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel) {
   
   # Applying quantiles to a particular species
   if(ANALYSIS.PATHWAY != 3) {
-    tree.plots2 <- tree.plots %>% dplyr::select(State_Plot, all_of(c(var1, var.delt))) %>% 
+    tree.plots2 <- tree.plots %>% dplyr::select(puid, all_of(c(var1, var.delt))) %>% 
       mutate(var.quants = ifelse(get(var1) > quant.lims[2], 1, ifelse(get(var1) < quant.lims[1], -1, 0)),
              deltvar.quants = ifelse(get(var.delt) > quant.lims.delta[2], 1, ifelse(get(var.delt) < quant.lims.delta[1], -1, 0)),
              vq = case_match(var.quants, -1 ~ "Li", 0 ~ "Mi", 1 ~ "Hi"),
@@ -57,7 +57,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel) {
     
   } else {
     # For Analysis Pathway 3.  A different set-up - not using the 9 quantiles, but in effect 7 (for Site Classes). The plots will be much simpler.
-    tree.plots2 <- tree.plots %>% left_join(PlotDat %>% select(State_Plot, SITECLCD_plot), by = "State_Plot") %>% # Adding on the Site Class variable
+    tree.plots2 <- tree.plots %>% left_join(PlotDat %>% select(puid, SITECLCD_plot), by = "puid") %>% # Adding on the Site Class variable
       filter(is.na(SITECLCD_plot) == FALSE) %>%   # Removing any NA's in case they snuck in there.
       mutate(var.deltvar = factor(paste0("Class.", SITECLCD_plot)))
     
@@ -71,28 +71,26 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel) {
   # Joining tree data with quantile assignment, providing plot-level summary of the number of trees, number that died, and percent that died.
   
   # Mortality data
-  Tree3 <- left_join(Tree2, tree.plots2, by = "State_Plot") %>%
-    group_by(State_Plot) %>% #, var.deltvar, get(var1), get(var.delt)) %>%  # This will assign the names `get(var1)` and `get(var.delt)`, which are cleaned up below
-    reframe(n.trees = n(),
-            n.died = length(SDN[SDN == 2]),
-            pct.died = n.died / n.trees)# %>%
-  #rename(!!var1 := `get(var1)`,
-  #      !!var.delt := `get(var.delt)`) 
+  Tree3 <- left_join(Tree2, tree.plots2, by = "puid") %>%
+    group_by(puid) %>% #, var.deltvar, get(var1), get(var.delt)) %>%  # This will assign the names `get(var1)` and `get(var.delt)`, which are cleaned up below
+    reframe(n.trees = sum(ntree.rep),
+            n.died.yr = sum(ntree.rep[STATUSCD == 2])/mean(REMPER),
+            pct.died.yr = n.died.yr / n.trees)
   
   # Separate out a data set for those that died
-  died.out <- left_join(PlotDat, Tree3 %>% dplyr::select(State_Plot, n.died), by = "State_Plot") %>%
-    rename(!!return.col := n.died)
+  died.out <- left_join(PlotDat, Tree3 %>% dplyr::select(puid, n.died.yr), by = "puid") %>%
+    rename(!!return.col := n.died.yr)
   died.out[is.na(died.out)] <- 0
   
   # Data set for all trees, alive and died
-  all.trees <- left_join(PlotDat, Tree3 %>% dplyr::select(State_Plot, n.trees), by = "State_Plot") %>%
+  all.trees <- left_join(PlotDat, Tree3 %>% dplyr::select(puid, n.trees), by = "puid") %>%
     rename(!!return.col := n.trees)
   all.trees[is.na(all.trees)] <- 0
   
   
   quant.out1 <- map(QUANT.LEVELS, quant.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
-  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD_plot")) %>%
-    dplyr::select(-c("STATECD", "PLOT_FIADB", "State_Plot", "STRATUM", "W_h", "SITECLCD_plot"))
+  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) %>%
+    dplyr::select(-c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum"))
   
   out.list <- list(spp.list = spp.list, spp.id = spp.id, died.out = died.out, all.trees = all.trees, 
                    quant.out = quant.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
@@ -104,26 +102,24 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel) {
 #### Data prep function for growth  --------------------------------------------------
 
 ## Function to determine the number of trees that died in a plot and their climate quantiles, used in Data_Prep.R.
-clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel) {
-  var1 <- paste0("pre.", clim.var)
-  var.delt <- paste0("delt.", clim.var)
+clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
+  var1 <- "pre_mean" #paste0("pre.", clim.var)
+  var.delt <- "difference"  #paste0("delt.", clim.var)
   return.col <- paste0("nd.", spcd)
   
+  Tree.spp <- treedat.sel %>% filter(SPCD == spcd, STATUSCD == 1)
+  
   # For basal area growth/tree
-  Treediam.1 <- treedat.sel %>% filter(SPCD == spcd, STATUSCD == 1, INVYR < 2011) %>%
-    select(State_Plot, SUBP, TREE, SPCD, DIA)
-  
-  Treediam.2 <-  treedat.sel %>% filter(SPCD == spcd, STATUSCD == 1, INVYR > 2010) %>%
-    select(State_Plot, SUBP, TREE, SPCD, DIA)
-  
-  TreeG <- inner_join(Treediam.1, Treediam.2, by = c("State_Plot",  "SUBP", "TREE", "SPCD")) %>% #The inner join reduces the two data frames to trees that occur alive at times 1 and 2.
-    mutate(BA_Growth = pi * (DIA.y / 2)^2 - pi * (DIA.x / 2)^2) %>%
-    group_by(State_Plot) %>%
-    reframe(n_g.trees = n(),
-            total.growth = sum(BA_Growth))  # Will separate the number of trees and the sum of the growth to obtain a weighted mean of growth per plot and number of trees per plot 
-  
-  tree.plots <- clim.dat %>% filter(State_Plot %in% TreeG$State_Plot) %>% 
-    dplyr::select(State_Plot, all_of(var1), all_of(var.delt))
+  TreeG <- Tree.spp %>%
+    # Amount of tree growth per year since the previous visit, multiplied by the number of trees per acre the tree represents. 
+    mutate(BA_Growth = ntree.rep * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)/REMPER) %>%
+    group_by(puid) %>%
+    #Goal: sum(change in BA/REMPER)/Total # trees
+    reframe(n_g.trees = sum(ntree.rep),
+            total.growth = sum(BA_Growth))
+
+  tree.plots <- Tree.spp %>% 
+    dplyr::select(puid, all_of(var1), all_of(var.delt)) %>% distinct()
   
   # Data quantiles
   quant.lims.delta.pos <- VAR.DELTA.BOUNDARIES$max.min[VAR.DELTA.BOUNDARIES$clim.var == clim.var] #quantile(get(var.delt, tree.plots)[get(var.delt, tree.plots) > 0], probs = QUANT.DELTA.PROBS.POS)
@@ -133,7 +129,7 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel) {
   
   # Applying quantiles to a particular species
   if(ANALYSIS.PATHWAY != 3) {
-    tree.plots2 <- tree.plots %>% dplyr::select(State_Plot, all_of(c(var1, var.delt))) %>% 
+    tree.plots2 <- tree.plots %>% dplyr::select(puid, all_of(c(var1, var.delt))) %>% 
       mutate(var.quants = ifelse(get(var1) > quant.lims[2], 1, ifelse(get(var1) < quant.lims[1], -1, 0)),
              deltvar.quants = ifelse(get(var.delt) > quant.lims.delta[2], 1, ifelse(get(var.delt) < quant.lims.delta[1], -1, 0)),
              vq = case_match(var.quants, -1 ~ "Li", 0 ~ "Mi", 1 ~ "Hi"),
@@ -149,7 +145,7 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel) {
     
   } else {
     # For Analysis Pathway 3.  A different set-up - not using the 9 quantiles, but in effect 7 (for Site Classes). The plots will be much simpler.
-    tree.plots2 <- tree.plots %>% left_join(PlotDat %>% select(State_Plot, SITECLCD_plot), by = "State_Plot") %>% # Adding on the Site Class variable
+    tree.plots2 <- tree.plots %>% left_join(PlotDat %>% select(puid, SITECLCD_plot), by = "puid") %>% # Adding on the Site Class variable
       filter(is.na(SITECLCD_plot) == FALSE) %>%   # Removing any NA's in case they snuck in there.
       mutate(var.deltvar = factor(paste0("Class.", SITECLCD_plot)))
     
@@ -163,7 +159,7 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel) {
   # Joining tree data with quantile assignment, providing plot-level summary of the number of trees, number that died, and percent that died.
   # Growth data  
   # Overall data:
-  Growth.dat <- left_join(PlotDat, TreeG, by = "State_Plot") 
+  Growth.dat <- left_join(PlotDat, TreeG, by = "puid") 
   Growth.dat[is.na(Growth.dat)] <- 0
   
   # Cubic inches of growth by plot
@@ -178,8 +174,8 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel) {
   
   
   quant.out1 <- map(QUANT.LEVELS, quant.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
-  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD_plot")) %>%
-    dplyr::select(-c("STATECD", "PLOT_FIADB", "State_Plot", "STRATUM", "W_h", "SITECLCD_plot"))
+  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) %>%
+    dplyr::select(-c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum"))
   
   out.list <- list(spp.list = spp.list, spp.id = spp.id, growth.val = growth.val, growth.n.trees = growth.n.trees,
                    quant.out = quant.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
@@ -199,10 +195,11 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
   # Makes a list of all of the response tables and all-tree tables for the next step to operate on.
   
   extract.resp <- map(tree.dat , ~.[[resp.dat]]) 
-  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM","SITECLCD_plot")) # Combining the list into a single tibble.
+  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) # Combining the list into a single tibble.
+  #vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "puid", "W_h", "STRATUM","SITECLCD_plot")) # Combining the list into a single tibble.
   
   extract.all <- map(tree.dat , ~.[[tot.dat]]) 
-  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "PLOT_FIADB", "State_Plot", "W_h", "STRATUM", "SITECLCD_plot")) 
+  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) 
   
   
   # Now extracting the quantile category information for each species 
@@ -221,8 +218,8 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
     q2[, i, ] <- q2[, i, ] * i
   }
   quant.matrix <- apply(q2, c(1, 3), sum) %>%  # collapsing the quantile values into a single matrix
-    bind_cols(vals_dat %>% dplyr::select(State_Plot)) %>% # It does not matter whether vals_dat or all_dat, just want State_Plot
-    left_join(clim.dat, by =  "State_Plot")
+    bind_cols(vals_dat %>% dplyr::select(puid)) %>% # It does not matter whether vals_dat or all_dat, just want puid
+    left_join(clim.dat, by =  "puid")
   
   # Number of plots in each quantile
   quant.n <- map(1:length(extract.quant), function(x) apply(quant.array[, , x], 2, sum))
@@ -252,6 +249,8 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
   state.matrix <- (state.matrix / state.matrix)  # obtain 1s and nan's
   state.matrix <- apply(state.matrix, 2, function(x) {ifelse(is.nan(x) == TRUE, 0, x)}) # Change the nan to 0
   state.matrix <- state.matrix %>% cbind(vals_dat[, 1])
+  state.matrix <- data.frame(state.matrix)
+  colnames(state.matrix)[ncol(state.matrix)] <- "STATECD"
   
   state.list <- unique(vals_dat$STATECD) # 6 = California, 41 = Oregon, 53 = Washington
   
@@ -278,7 +277,7 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
   
   
   ### All data level ###
-  all.matrix <- quant.matrix[, 1:length(selected.spp)] #%>%
+  all.matrix <- quant.matrix[, 1:length(selected.spp)] 
   all.matrix <- apply(all.matrix, 2, function(x) ifelse(x > 0, 1, 0)) %>% 
     data.frame()
   all.array <- abind(all.matrix, all.matrix, along = 3)
@@ -309,8 +308,7 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
     state.n = state.n,
     all.n = all.n,
     quant.lims = extract.quant.lims,
-    quant.lims.delt = extract.delt.quant.lims,
-    tree.dat = Tree1.2)
+    quant.lims.delt = extract.delt.quant.lims)
   
   ## --- NOTE: This function used to save each file.  That's mothballed. --- ## 
   #  rds.name <- paste0(DATA.LOC, analysis.type, "_dat_", clim.var, ".rds")
@@ -333,18 +331,18 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
 fire.frac.dat.fcn <- function(tspp, treedat.sel, parsed.dat) {  # Tree species "X123", 
                                            # the tree data for analysis, and the files output
                                            # from parse.tree.clim.fcn.  
-  x <- treedat.sel %>% filter(SPCD == as.numeric(gsub("X", "", tspp)), INVYR > 2010) %>%
-    select(PLOT_FIADB, State_Plot, STATUSCD, AGENTCD) %>%
+  x <- treedat.sel %>% filter(SPCD %in% as.numeric(gsub("X", "", tspp))) %>%
+    select(puid, STATUSCD, AGENTCD, ntree.rep) %>%
     mutate(death_fire = ifelse(AGENTCD == 30, 1, 0),
            death_other = ifelse(STATUSCD == 2, 1, 0)) %>%
-    group_by(State_Plot) %>%
-    reframe(n_dead.fire = sum(death_fire),
-            n_dead.all = sum(death_other)) %>%
+    group_by(puid) %>%
+    reframe(n_dead.fire = sum(death_fire * ntree.rep),
+            n_dead.all = sum(death_other * ntree.rep)) %>%
     mutate(n_dead.fire = ifelse(is.na(n_dead.fire) == TRUE, 0, n_dead.fire))
   
   
-  y <- parsed.dat$quant.matrix %>% dplyr::select(all_of(tspp), State_Plot) %>%
-    left_join(x, by = "State_Plot") %>%
+  y <- parsed.dat$quant.matrix %>% dplyr::select(all_of(tspp), puid) %>%
+    left_join(x, by = "puid") %>%
     rename("Quants" := (!!tspp)) %>%
     filter(Quants > 0) %>%
     group_by(Quants) %>%
@@ -374,21 +372,33 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {     #dat_tot = data frame 
   Zt <- Yv <- R <- 0 #  rep(0,length(sppname))    # Mean difference in response for a given species: Zt = Mean value for total trees, 
   #Yv = mean value for/of trees of interest (mean # that died), R = ratio of the two.
   #for (i in 1:length(sppname)) {                         # i indexes species
-  col.spp <- grep(paste0("nd.", spp.sel1),  colnames(dat_tot))
+  col.spp <- grep(paste0("nd.", spp.sel1), colnames(dat_tot))
   col.name <- paste0("nd.", spp.sel1)
   
-  strat.vals <- table(dat_tot$STRATUM)/nrow(dat_tot)
-  data.frame(strat.vals = strat.vals, w_h = unique(dat_tot$W_h)) %>% mutate(diff = strat.vals - w_h, pct.diff = diff/strat.vals)
+  # Old slow code.  For understanding the data.table usage.
+#  Zt_i <- Yv_i <- rep(0, length(strata) )  # Weighted values for each strata
+#  for (h in 1:strat.num) {                  # h indexes strata
+#    w_h <- unique(dat_tot$w[dat_tot$stratum == strata[h]])
+#    n_h <- length(dat_tot$stratum[dat_tot$stratum == strata[h]] )    # Number of plots in stratum h 
+#    Yv_i[h] <- w_h * sum(get(col.name, dat_vals)[dat_vals$stratum == strata[h]]) / n_h 
+#    Zt_i[h] <- w_h * sum(get(col.name, dat_tot)[dat_tot$stratum == strata[h]]) / n_h     
+#  }
+#  Yv <- sum(Yv_i) 
+#  Zt <- sum(Zt_i) 
+#  R <- Yv / Zt
+
+  # New data.table way
+  dt_tot <- as.data.table(dat_tot)
+  dt_vals <- as.data.table(dat_vals)
   
+  tot_summary <- dt_tot[, .(w_h = w[1], n_h = .N, tot_sum = sum(get(col.name))), by = stratum]
+  vals_summary <- dt_vals[, .(vals_sum = sum(get(col.name))), by = stratum]
   
-  Zt_i <- Yv_i <- rep(0, strat.num)  # Weighted values for each strata
-  for (h in 1:strat.num) {                  # h indexes strata
-    n_h <- length(dat_tot$STRATUM[dat_tot$STRATUM == strat2$STRATUM[h]] )    # Number of plots in stratum h 
-    Zt_i[h] <- strat2$W_h[h] * sum(get(col.name, dat_tot)[dat_tot$STRATUM == strat2$STRATUM[h]]) / n_h     
-    Yv_i[h] <- strat2$W_h[h] * sum(get(col.name, dat_vals)[dat_vals$STRATUM == strat2$STRATUM[h]]) / n_h     
-  }
-  Zt <- sum(Zt_i) 
-  Yv <- sum(Yv_i) 
+  ests.out <- tot_summary[vals_summary, on = "stratum"]
+  ests.out[, `:=`(Zt_i = w_h * tot_sum / n_h, Yv_i = w_h * vals_sum / n_h)]
+  
+  Zt <- ests.out[, sum(Zt_i)]
+  Yv <- ests.out[, sum(Yv_i)]
   R <- Yv / Zt
   
   means <- list(Zt = Zt, Yv = Yv, R = R)
@@ -422,7 +432,7 @@ quant.est.spp.fcn <- function(spp.sel, d.all_use, d.vals_use, samp, category.n, 
   if (n_q < N.PLOT.LIM) { # If too few points, just enter NA
     q_bs.mean <- NA 
   } else {
-    q_bs.mean <- mean.q.fcn(dat_tot = d.all_use[samp, ], dat_vals = d.vals_use[samp, ], spp.sel = spp.sel)$R # Mean given the selected rows
+    q_bs.mean <- mean.q.fcn(dat_tot = d.all_use[samp$row.id, ], dat_vals = d.vals_use[samp$row.id, ], spp.sel1 = spp.sel)$R # Mean given the selected rows
   }
   return(q_bs.mean)
 }
@@ -434,8 +444,12 @@ bs.fcn <- function(iter, d.all_use, d.vals_use, category.n, q1, spp.use) { # Ite
   # First, sample the tables in use. This procedure obtains samples with replacement from each stratum and then combines the selected
   #  row numbers. 
   spp.use2 <- as.numeric(gsub("X", "", spp.use))
-  samp <- unlist(map(strata, function(x) sample(strata.num$val[strata.num$stratum == x], replace = TRUE)))
+
+  strata.num.dt <- as.data.table(strata.num) # Using a data.table and then data.table call because much faster than dplyr.
   
+  samp <- strata.num.dt[, .SD[sample(.N, .N, replace = TRUE)], by = stratum]
+  
+
   bs.output <- unlist(spp.use2 %>% map(\(x) quant.est.spp.fcn(x, d.all_use, d.vals_use, samp, category.n, q1)))  # For a given iteration, finding the mean value for a given quantile (domain)
   return(bs.output)
 }
@@ -446,13 +460,13 @@ q_mort.grow.fcn <- function(q1, vals.dat, all.dat, array.name, category.n, selec
   #   With this step complete, the values for that quantile can be calculated for all species.
   
   vals.use <- vals.dat %>% select(starts_with("nd.")) * array.name[, q1, ] 
-  dat.vals.use <- bind_cols(PlotDat[, 1:6], vals.use) 
+  dat.vals.use <- bind_cols(PlotDat, vals.use) 
   
   all.use <- all.dat %>% select(starts_with("nd.")) * array.name[, q1, ] 
-  dat.all.use <- bind_cols(PlotDat[, 1:6], all.use) 
+  dat.all.use <- bind_cols(PlotDat, all.use) 
   
   # Running the parallel portion of the function
-  furrr.out <- 1:BS.N %>% future_map(\(x) bs.fcn(iter = x, d.all_use = dat.all.use, d.vals_use = dat.vals.use, category.n, q1, spp.use = selected.spp), .options = furrr_options(seed = TRUE))
+  furrr.out <- 1:BS.N %>% future_map(\(x) bs.fcn(iter = x, d.all_use = dat.all.use, d.vals_use = dat.vals.use, category.n = category.n, q1 = q1, spp.use = selected.spp), .options = furrr_options(seed = TRUE))
   
   # Processing the results and returning quantiles/mean
   furrr.table <- matrix(unlist(furrr.out), ncol = length(selected.spp), byrow = TRUE)
@@ -493,7 +507,7 @@ q_mort.grow.fcn <- function(q1, vals.dat, all.dat, array.name, category.n, selec
 quant.dist.plt.fcn <- function(plot.spp, quant.matrix, var1, var.delt, quant.lims, n.plots.used, size.trees) {
   
   q_plot_spp <- quant.matrix %>% dplyr::select(all_of(plot.spp), all_of(var1), all_of(var.delt)) %>%
-    filter(get(all_of(plot.spp)) > 0) 
+    filter(get(plot.spp) > 0) 
   names(q_plot_spp)[1] <- "Quantile"
   
   

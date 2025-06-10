@@ -1,4 +1,6 @@
 values,label,filename
+pre_mean,"Actual evapotranspiration, mm",aet
+difference,"Change in actual evapotranspiration, mm",aet
 pre.vpdmin,"Minimum VPD, kPa",vpdmin
 delt.vpdmin,"Change in minimum VPD, kPa",vpdmin
 pre.vpdmax,"Maximum VPD, kPa",vpdmax
