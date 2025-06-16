@@ -188,7 +188,7 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
 
 
 ## This is a large function that takes species-specific data and creates arrays to assist with analyses.
-parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot.dat, selected.spp) {  
+parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot.dat, selected.spp, clim.dat) {  
   # tree.dat = prepped list of data, clim.var = which climate variable name, 
   #  analysis.type = "mort" or "grow", resp.dat = response data set (i.e., 
   # "died.out" or "growth.val"), tot.dat = total trees data set (i.e., "all.trees" or "growth.n.trees")
@@ -593,10 +593,9 @@ quant.map.fcn <- function(quant.matrix, spp.num, n.plots.used) {
 # -- Plots for ANALYSIS.PATHWAY 1 -- #
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
-pair.plts.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.label, 
+pair.plts.fcn <- function(sppnum.to.plot, var.filename, quant.table, var.label, var.delt.label, 
                           var1, var.delt, quant.matrix, quant.lims, quant.n){
   
-  plot.spp <- sppnum.to.plot
   plot.quant.dat <- quant.table %>% 
     filter(Species == sppnum.to.plot) %>%
     left_join(quant.level.table, by = c("Quantile" = "q.num"))
@@ -631,7 +630,7 @@ pair.plts.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.label
   p3 <- quant.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9) 
      
 
-  quant.table1 <- quant.table %>% filter(Species == plot.spp)
+  quant.table1 <- quant.table %>% filter(Species == sppnum.to.plot)
   
   # Code to prep for next two figures - helps in reducing the color palette.
   n_plots <- get(sppnum.to.plot, quant.n)
@@ -639,7 +638,7 @@ pair.plts.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.label
     left_join(tibble(Quantiles = plot.quant.dat$Quantiles, loc = 1:n_quant), by = "loc")
   
   # Plotting the scatterplot of points in quadrants:
-  plot.vals.plt <- quant.dist.plt.fcn(plot.spp = plot.spp, quant.matrix = quant.matrix, 
+  plot.vals.plt <- quant.dist.plt.fcn(plot.spp = sppnum.to.plot, quant.matrix = quant.matrix, 
                                       var1 = var1, var.delt = var.delt, quant.lims = quant.lims,
                                       n.plots.used = n_plots2, size.trees = "") 
   
@@ -665,9 +664,8 @@ pair.plts2.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.labe
                            quant.matrix.1, quant.matrix.2, quant.lims.1, quant.lims.2,
                            quant.n.1, quant.n.2){
   
-  plot.spp <- sppnum.to.plot
   plot.quant.dat <- quant.table %>% 
-    filter(Species == plot.spp) %>%
+    filter(Species == sppnum.to.plot) %>%
     left_join(quant.level.table, by = c("Quantile" = "q.num"))
   
   
@@ -705,11 +703,11 @@ pair.plts2.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.labe
   
   p_all <- plot_grid(p1, p2, p3, ncol = 1)
   
-  plot.vals.plt.1 <- quant.dist.plt.fcn(plot.spp = plot.spp, quant.matrix = quant.matrix.1, 
+  plot.vals.plt.1 <- quant.dist.plt.fcn(plot.spp = sppnum.to.plot, quant.matrix = quant.matrix.1, 
                                         var1 = var1, var.delt = var.delt, quant.lims = quant.lims.1,
                                         quant.n = quant.n.1, size.trees = "smaller diameter ") 
   
-  plot.vals.plt.2 <- quant.dist.plt.fcn(plot.spp = plot.spp, quant.matrix = quant.matrix.2, 
+  plot.vals.plt.2 <- quant.dist.plt.fcn(plot.spp = sppnum.to.plot, quant.matrix = quant.matrix.2, 
                                         var1 = var1, var.delt = var.delt, quant.lims = quant.lims.2,
                                         quant.n = quant.n.2, size.trees = "larger diameter ") 
   
@@ -732,9 +730,8 @@ pair.plts2.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.labe
 pair.plts3.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.label, 
                            var1, var.delt, quant.matrix, quant.n){
   
-  plot.spp <- sppnum.to.plot
   plot.siteclass.dat <- quant.table %>% 
-    filter(Species == plot.spp) 
+    filter(Species == sppnum.to.plot) 
   
   # Details for plotting
   virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_quant)  # Get colors for plotting
@@ -767,16 +764,16 @@ pair.plts3.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.labe
   ### --- Scatterplot of delta.var and var with site class = color ##
   classes.used <- plot.siteclass.dat$Quantile[is.na(plot.siteclass.dat$Means) == FALSE]
   
-  q_plot_spp <- quant.matrix %>% dplyr::select(all_of(plot.spp), all_of(var1), all_of(var.delt)) %>%
-    filter(get(all_of(plot.spp)) %in% classes.used) 
+  q_plot_spp <- quant.matrix %>% dplyr::select(all_of(sppnum.to.plot), all_of(var1), all_of(var.delt)) %>%
+    filter(get(all_of(sppnum.to.plot)) %in% classes.used) 
   names(q_plot_spp)[1] <- "SiteClass"
   
-  sppnum <- as.numeric(gsub("X", "", plot.spp))
+  sppnum <- as.numeric(gsub("X", "", sppnum.to.plot))
   
   # Common and Genus/species name for plot title
   com.name <- spp.names$COMMON_NAME[spp.names$SPCD == sppnum]
   g.s.name <- paste(spp.names$GENUS[spp.names$SPCD == sppnum], spp.names$SPECIES[spp.names$SPCD == sppnum])
-  fig.lab <- paste0("Plot conditions for ", com.name, ", ", g.s.name, ", ",  plot.spp)
+  fig.lab <- paste0("Plot conditions for ", com.name, ", ", g.s.name, ", ",  sppnum.to.plot)
   
   
   plot.vals.plt <- ggplot(q_plot_spp, aes(get(var1), get(var.delt), color = factor(SiteClass))) + 

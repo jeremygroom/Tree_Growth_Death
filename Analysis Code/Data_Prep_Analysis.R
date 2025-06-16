@@ -133,9 +133,9 @@ if(ANALYSIS.PATHWAY == 2) {
 
 
 # Combining data into arrays and such, preparing for analysis.
-arrays.aet.mort1 <- parse.tree.clim.fcn(tree.mort.dat, "aet", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
+arrays.aet.mort1 <- parse.tree.clim.fcn(tree.mort.dat, "aet", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
 
-arrays.aet.grow1 <- parse.tree.clim.fcn(tree.grow.dat, "aet", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
+arrays.aet.grow1 <- parse.tree.clim.fcn(tree.grow.dat, "aet", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
 
 
 if(ANALYSIS.PATHWAY == 2) {
@@ -246,7 +246,7 @@ for(j in 1:length(ANALYSIS.TYPE)) {
   # Analysis Pathway 1: no subgroups of size or site class
   if (ANALYSIS.PATHWAY == 1) {
     # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
-    map(SEL.SPP, pair.plts.fcn, quant.table = results$results1$quant.table, var.label = results$results1$var.label, 
+    map(SEL.SPP, pair.plts.fcn, var.filename = "aet", quant.table = results$results1$quant.table, var.label = results$results1$var.label, 
         var.delt.label = results$results1$var.delt.label, var1 = var1, var.delt = var.delt,
         quant.matrix = results$results1$quant.matrix, quant.lims = quant.lims, quant.n = quant.n)
   }
