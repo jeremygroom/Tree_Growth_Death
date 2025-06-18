@@ -39,8 +39,9 @@ source(paste0(CODE.LOC, "Functions.R"))
 # Working backwards: is the tree/plot data set ready to go? If so, let's unzip the CSV file and move ahead. 
 #   If not, do the SQLite databases for CA/OR/WA need data extracted?  Those datasets are then processed by the 
 # code to produce the tree/plot dataset.  
-if(file.exists(file.path(DATA.LOC, "Distilled_Tree_Data.zip"))) {
+if(all(file.exists(file.path(DATA.LOC, "Distilled_Tree_Data.zip")), file.exists(file.path(DATA.LOC, "N_Plots.csv")))) {
   tree.plt.data <- read_csv(unzip(paste0(DATA.LOC, "Distilled_Tree_Data.zip"), "Distilled_Tree_Data.csv")) # This unzips the folder in the parent directory.
+  plotN2 <- read_csv(file.path(DATA.LOC, "N_Plots.csv"), show_col_types = FALSE)
   file.remove("Distilled_Tree_Data.csv")
 } else {
   ## Some info (harvest, fire deaths for trees) was absent in the range-shift analysis.  We need to introduce it here. 
@@ -68,7 +69,7 @@ if (file.exists(paste0(DATA.LOC, "Climate_plot_results.rds")) == FALSE) {
   source(paste0(CODE.LOC, "Climate_AET_Preparation.R"))  # Data filtering for TREE occurs here as well. 
 }
 
-climate.data <- read_rds(paste0(DATA.LOC, "Climate_plot_results.rds")) # This unzips the folder in the parent directory.
+climate.data <- read_rds(paste0(DATA.LOC, "Climate_plot_results.rds")) 
 
 ### ==> Load the latitude/longitude data ===================================================
 # Bringing in Lat/Lon from earlier study. Needed to recreate State_Plot (above) for the join.  
@@ -109,10 +110,35 @@ n_quant <- if(ANALYSIS.PATHWAY != 3) length(QUANT.LEVELS) else 7
 PlotDat <- treedat.use %>% dplyr::select(STATECD, puid, ESTN_UNIT, STRATUMCD, w) %>% 
   distinct() %>%
   mutate(stratum = as.numeric(paste0(STRATUMCD, 0, ESTN_UNIT, 0, STATECD))) 
-
-
 #pd.check <- PlotDat %>% select(State_Plot) %>% distinct() # Yes, same number of rows
 
+
+# Investigating weights.  Do we use area weights (Wh) or plot weights (n_h/N)?
+# We do need to correct the number of plots per stratum so that the stratum-level mean 
+# can be calculated.
+
+plotN3 <- plotN2 %>% group_by(stratum) %>%
+  summarize(n_h.plts = n())
+  # Adding "n_h.plts" to data:
+PlotDat <- left_join(PlotDat, plotN3, by = c("stratum"))
+
+# tot.n <- sum(plotN3$n_h.plts)  # This is the total number of all plots in all strata. 
+#  Not used in the analysis (at this point).
+
+# Now just checking to see how Wh and n_h/N compare.
+#  plt.use <- PlotDat %>% group_by(stratum, w) %>%
+#  summarize(n.plts = n()) %>%
+#  left_join(plotN3, by = "stratum") %>%
+#  mutate(w.plts = n_h.plts / tot.n) 
+
+#  It looks like the fit between Wh and n_h/N is pretty tightly linear.  
+#   The fit is not quite 1:1.  It becomes noisy 
+#ggplot(plt.use, aes(w.plts, w)) + geom_point() +     
+#  geom_smooth(col = "orange", se = FALSE) +
+#  geom_smooth(method = "lm", col = "blue") +
+#    geom_abline(slope = 1, intercept = 0) + 
+# xlim(0, 0.0025) + ylim(0, 0.0025)
+  
 
 #### 3) Specialized data prep --------------------------------------------------------
 ## First the data are summarized by species and climate variable (clim.mort.resp.fcn, 

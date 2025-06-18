@@ -379,7 +379,7 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {     #dat_tot = data frame 
 #  Zt_i <- Yv_i <- rep(0, length(strata) )  # Weighted values for each strata
 #  for (h in 1:strat.num) {                  # h indexes strata
 #    w_h <- unique(dat_tot$w[dat_tot$stratum == strata[h]])
-#    n_h <- length(dat_tot$stratum[dat_tot$stratum == strata[h]] )    # Number of plots in stratum h 
+#    n_h <- unique(dat_tot$n_h.plts[dat_tot$stratum == strata[h]])    # Number of plots in stratum h 
 #    Yv_i[h] <- w_h * sum(get(col.name, dat_vals)[dat_vals$stratum == strata[h]]) / n_h 
 #    Zt_i[h] <- w_h * sum(get(col.name, dat_tot)[dat_tot$stratum == strata[h]]) / n_h     
 #  }
@@ -391,7 +391,7 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {     #dat_tot = data frame 
   dt_tot <- as.data.table(dat_tot)
   dt_vals <- as.data.table(dat_vals)
   
-  tot_summary <- dt_tot[, .(w_h = w[1], n_h = .N, tot_sum = sum(get(col.name))), by = stratum]
+  tot_summary <- dt_tot[, .(w_h = w[1], n_h = n_h.plts[1], tot_sum = sum(get(col.name))), by = stratum]
   vals_summary <- dt_vals[, .(vals_sum = sum(get(col.name))), by = stratum]
   
   ests.out <- tot_summary[vals_summary, on = "stratum"]
@@ -403,22 +403,6 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {     #dat_tot = data frame 
   
   means <- list(Zt = Zt, Yv = Yv, R = R)
   return(means)
-  
-  #    dat.use <- left_join(dat_tot %>% select(STATECD, PLOT_FIADB, STRATUM, W_h, eval(col.name)),
-  #                       dat_vals %>% select(STATECD, PLOT_FIADB, STRATUM, W_h, eval(col.name)), 
-  #                       by = c("STRATUM", "W_h", "PLOT_FIADB", "STATECD")) %>%
-  #    rename("all" := (!!paste0(col.name, ".x")),
-  #           "reduced" := (!!paste0(col.name, ".y"))) %>%
-  #    group_by(STRATUM, W_h) %>%
-  #    reframe(n_h = n(),
-  #            Zt_i = W_h * sum(all)/n_h,
-  #            Yv_i = W_h * sum(reduced)/n_h) %>% distinct()
-  #  
-  #  results.mean <- dat.use %>% group_by() %>%
-  #    reframe(Zt = sum(Zt_i),
-  #            Yv = sum(Yv_i),
-  #            R = Yv/Zt)
-  
 }
 
 
@@ -521,6 +505,7 @@ quant.dist.plt.fcn <- function(plot.spp, quant.matrix, var1, var.delt, quant.lim
   g.s.name <- paste(spp.names$GENUS[spp.names$SPCD == sppnum], spp.names$SPECIES[spp.names$SPCD == sppnum])
   
   # Need to isolate the correct colors if some quadrants are without plots:
+  virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_quant)  # Get colors for plotting
   scatter.virid.use <- virid.use[n.plots.used$loc[n.plots.used$n > 0]]
   
   fig.lab <- if(ANALYSIS.PATHWAY == 2) {

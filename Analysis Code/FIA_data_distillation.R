@@ -30,10 +30,22 @@ data <- PLOT %>%
   left_join(TREE, by = c('PLT_CN', 'PLOT', 'CONDID', 'STATECD')) %>%  
   ## Population tables
   left_join(POP_PLOT_STRATUM_ASSGN, by = c('PLT_CN')) %>% # Links PLT_CN to STRATUM_CN
-  filter(!is.na(STRATUM_CN), !is.na(DIA2)) %>%           # The joining of TREE to PLOT and COND introduced NAs into DIA2
   left_join(POP_STRATUM, by = c('STRATUM_CN' = 'CN', 'STATECD')) %>% # Links strata info to PLOT, ultimately
   left_join(POP_ESTN_UNIT, by = c('ESTN_UNIT_CN' = 'CN', 'STATECD')) %>%
-  left_join(POP_EVAL, by = c('EVAL_CN' = 'CN', 'STATECD'))
+  left_join(POP_EVAL, by = c('EVAL_CN' = 'CN', 'STATECD')) %>%
+  mutate(stratum = as.numeric(paste0(STRATUMCD, 0, ESTN_UNIT, 0, STATECD))) 
+
+
+# Detour: Obtaining all plots for use in determining plot-level weights (as opposed to area weights)
+plotN <- data %>% mutate(puid = paste(PLOT, STATECD, COUNTYCD, sep = "_")) %>%
+  filter(INTENSITY == "1", is.na(STRATUMCD) == FALSE) %>%
+  dplyr::select(puid, stratum, STATECD, ESTN_UNIT, STRATUMCD, INTENSITY, EVALID, END_INVYR) %>% 
+  distinct()
+  
+# Back to the tree-plot dataset: The joining of TREE to PLOT and COND introduced NAs into DIA2
+data <- data %>% 
+  filter(!is.na(STRATUM_CN), !is.na(DIA2))            
+  
 
 
 # Adding variable tAdj, which is the adjustment factor for partially unsampled plots.  Here the process treats 
@@ -151,9 +163,12 @@ tree.plt.data <- left_join(data, strata.w, by = c("STATECD", "ESTN_UNIT", "STRAT
 #dim(data %>% filter(is.na(w)))  # Check to verify all trees have weights
 # nrow(data) == dat.2.n   # Verify no trees lost
 
-write_csv(tree.plt.data, file.path(DATA.LOC, "Distilled_Tree_Data.csv"))
-# This is the zip file the rest of the code will operate with.
+# Plot weights: making sure the same EVALID is used in both data sets.
+plotN2 <- plotN %>% filter(is.na(END_INVYR) == FALSE, EVALID %in% unique(tree.plt.data$EVALID), STRATUMCD %in% tree.plt.data$STRATUMCD)
+write_csv(plotN2, file.path(DATA.LOC, "N_Plots.csv"))  # For plot-level weights.  <2MB, not zipping
 
+# The main data set. Big. Writing then zipping.
+write_csv(tree.plt.data, file.path(DATA.LOC, "Distilled_Tree_Data.csv"))
 zip(zipfile = file.path(DATA.LOC, "Distilled_Tree_Data.zip"), files = file.path(DATA.LOC, "Distilled_Tree_Data.csv"),
     flags = '-r9Xj' )  # This weird bit keeps the parent directory from being included in the zip folder
 
