@@ -89,8 +89,8 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   
   
   quant.out1 <- map(QUANT.LEVELS, quant.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
-  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) %>%
-    dplyr::select(-c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum"))
+  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts")) %>%
+    dplyr::select(-c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts"))
   
   out.list <- list(spp.list = spp.list, spp.id = spp.id, died.out = died.out, all.trees = all.trees, 
                    quant.out = quant.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
@@ -174,8 +174,8 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   
   
   quant.out1 <- map(QUANT.LEVELS, quant.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
-  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) %>%
-    dplyr::select(-c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum"))
+  quant.out2 <- reduce(quant.out1, left_join, by = c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) %>%
+    dplyr::select(-c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum"))
   
   out.list <- list(spp.list = spp.list, spp.id = spp.id, growth.val = growth.val, growth.n.trees = growth.n.trees,
                    quant.out = quant.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
@@ -334,21 +334,52 @@ fire.frac.dat.fcn <- function(tspp, treedat.sel, parsed.dat) {  # Tree species "
   x <- treedat.sel %>% filter(SPCD %in% as.numeric(gsub("X", "", tspp))) %>%
     select(puid, STATUSCD, AGENTCD, ntree.rep) %>%
     mutate(death_fire = ifelse(AGENTCD == 30, 1, 0),
-           death_other = ifelse(STATUSCD == 2, 1, 0)) %>%
+           death_insect = ifelse(AGENTCD == 10, 1, 0),
+           death_disease = ifelse(AGENTCD == 20, 1, 0),
+           death_animal = ifelse(AGENTCD == 40, 1, 0),
+           death_weather = ifelse(AGENTCD == 50, 1, 0),
+           death_vegetation = ifelse(AGENTCD == 60, 1, 0),
+           death_unknown = ifelse(AGENTCD == 70, 1, 0),
+           death_silviculture = ifelse(AGENTCD == 80, 1, 0),
+           death_all = ifelse(STATUSCD == 2, 1, 0),
+           n_all = 1) %>%
     group_by(puid) %>%
-    reframe(n_dead.fire = sum(death_fire * ntree.rep),
-            n_dead.all = sum(death_other * ntree.rep)) %>%
-    mutate(n_dead.fire = ifelse(is.na(n_dead.fire) == TRUE, 0, n_dead.fire))
-  
+    reframe(n_dead.fire = sum(death_fire * ntree.rep, na.rm = TRUE),
+            n_dead.insect = sum(death_insect * ntree.rep, na.rm = TRUE),
+            n_dead.disease = sum(death_disease * ntree.rep, na.rm = TRUE),
+            n_dead.animal = sum(death_animal * ntree.rep, na.rm = TRUE),
+            n_dead.weather = sum(death_weather * ntree.rep, na.rm = TRUE),
+            n_dead.vegetation = sum(death_vegetation * ntree.rep, na.rm = TRUE),
+            n_dead.unknown = sum(death_unknown * ntree.rep, na.rm = TRUE),
+            n_dead.silviculture = sum(death_silviculture * ntree.rep, na.rm = TRUE),
+            n_dead.all = sum(death_all * ntree.rep, na.rm = TRUE),
+            n_all = sum(n_all * ntree.rep, na.rm = TRUE)) 
   
   y <- parsed.dat$quant.matrix %>% dplyr::select(all_of(tspp), puid) %>%
     left_join(x, by = "puid") %>%
     rename("Quants" := (!!tspp)) %>%
     filter(Quants > 0) %>%
     group_by(Quants) %>%
-    reframe(tot.dead = sum(n_dead.all, na.rm = TRUE),
-            tot.burn = sum(n_dead.fire, na.rm = TRUE)) %>%
-    mutate(frac.burn = tot.burn/tot.dead,
+    reframe(tot = sum(n_all, na.rm = TRUE),
+            tot.dead = sum(n_dead.all, na.rm = TRUE),
+            tot.burn = sum(n_dead.fire, na.rm = TRUE),
+            tot.insect = sum(n_dead.insect, na.rm = TRUE),
+            tot.disease = sum(n_dead.disease, na.rm = TRUE),
+            tot.animal = sum(n_dead.animal, na.rm = TRUE),
+            tot.weather = sum(n_dead.weather, na.rm = TRUE),
+            tot.vegetation = sum(n_dead.vegetation, na.rm = TRUE),
+            tot.unknown = sum(n_dead.unknown, na.rm = TRUE),
+            tot.silviculture = sum(n_dead.silviculture, na.rm = TRUE),
+            ) %>%
+    mutate(frac.died = tot/tot.dead,
+           frac.burn = tot.burn/tot.dead,
+           frac.insect = tot.insect/tot.dead,
+           frac.disease = tot.disease/tot.dead,
+           frac.animal = tot.animal/tot.dead,
+           frac.weather = tot.weather/tot.dead,
+           frac.vegetation = tot.vegetation/tot.dead,
+           frac.unknown = tot.unknown/tot.dead,
+           frac.silviculture = tot.silviculture/tot.dead,
            spp = tspp)
   
   return(y)

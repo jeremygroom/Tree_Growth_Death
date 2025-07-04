@@ -170,10 +170,25 @@ if(ANALYSIS.PATHWAY == 2) {
 }
 
 
-## Fire mortality: what proportion died from fire?  This info is only generated for pathway 1 and mortality.
+## Fire mortality: what proportion died from fire (and other causes)?  This info is only generated for pathway 1 and mortality.
 if (ANALYSIS.PATHWAY == 1 & CALC.FIREPROP == TRUE) {
   fire.frac.table.fcn(tablename = "Fire_Prop_aet_mort.csv", tableloc = paste0(RESULTS1.LOC, "Mort_figs_aet/"), treedat = treedat.use, parseddat = arrays.aet.mort1)  
 }
+
+# Determining cause of death frequency for trees by species:
+death.prop <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_aet/Fire_Prop_aet_mort.csv"), show_col_types = FALSE) %>%
+  group_by(spp) %>%
+  reframe(
+    n = sum(tot),
+    n.dead = sum(tot.dead),
+    frac.fire = sum(tot.burn)/n.dead,
+    frac.insect.disease = sum(tot.insect)/n.dead + sum(tot.disease)/n.dead,
+    frac.animal = sum(tot.animal)/n.dead,
+    frac.vegetation = sum(tot.vegetation)/n.dead,
+    frac.unknown = sum(tot.unknown)/n.dead,
+    frac.silviculture = sum(tot.silviculture)/n.dead,
+  ) %>%
+  mutate(frac.dead = n.dead/n)
 
 
 
