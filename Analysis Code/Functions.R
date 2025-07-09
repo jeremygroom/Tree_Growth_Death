@@ -569,7 +569,7 @@ quant.dist.plt.fcn <- function(plot.spp, quant.matrix, var1, var.delt, quant.lim
 
 ### -- Mapping elements -- ###
 
-quant.map.fcn <- function(quant.matrix, spp.num, n.plots.used) {
+quant.map.fcn <- function(quant.matrix, spp.num, n.plots.used, virid.use) {
   
   map.dat.1 <- quant.matrix %>% 
     mutate(targ.spp = get(spp.num)) %>%
@@ -659,7 +659,7 @@ pair.plts.fcn <- function(sppnum.to.plot, var.filename, quant.table, var.label, 
                                       n.plots.used = n_plots2, size.trees = "") 
   
   # Plotting the map of plot locations:
-  quant.map <- quant.map.fcn(quant.matrix, spp.num = sppnum.to.plot, n.plots.used = n_plots2) 
+  quant.map <- quant.map.fcn(quant.matrix, spp.num = sppnum.to.plot, n.plots.used = n_plots2, virid.use = virid.use) 
   
   comb.plt <- ((p1/p2/p3 + plot_layout(axis_titles = "collect")) | plot.vals.plt | quant.map) #/ guide_area() + plot_layout(guides = 'collect', heights = c(10, 0.01)) 
   

@@ -1,8 +1,8 @@
 values,label,filename
-pre.cwd,"Climatic water deficit, mm",cwd
-delt.cwd,"Change in climatic water deficit, mm",cwd
-pre.aet,"Actual evapotranspiration, mm",aet
-delt.aet,"Change in actual evapotranspiration, mm",aet
+pre_mean,"Climatic water deficit, mm",cwd
+difference,"Change in climatic water deficit, mm",cwd
+pre_mean,"Actual evapotranspiration, mm",aet
+difference,"Change in actual evapotranspiration, mm",aet
 pre.vpdmin,"Minimum VPD, kPa",vpdmin
 delt.vpdmin,"Change in minimum VPD, kPa",vpdmin
 pre.vpdmax,"Maximum VPD, kPa",vpdmax

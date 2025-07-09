@@ -75,9 +75,10 @@ climate.data <- read_rds(paste0(DATA.LOC, "Climate_plot_results.rds"))
 # Bringing in Lat/Lon from earlier study. Needed to recreate State_Plot (above) for the join.  
 latlon <- read_csv(paste0(DATA.LOC, "PlotLatLon.csv")) %>% select(-n)
 
-# Selecting summer climate variable, adding the variable State_Plot from the Groom/Vicente analysis 
+# Selecting annual or summer climate variable, adding the variable State_Plot from the Groom/Vicente analysis 
 # to enable joining of lat/lon info.
-climate.use <- climate.data$summer_results %>% select (puid, pre_mean, difference) %>%
+climate.use <- climate.data[[grep(CLIM.SUMMARY, names(climate.data))]] %>% 
+  select (puid, pre_mean, difference) %>%
   rowwise() %>%
   mutate(plot = strsplit(puid, "_")[[1]][1], 
          state = strsplit(puid, "_")[[1]][2],
@@ -226,11 +227,13 @@ for(j in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
   for(k in 1:dataset.number) {
     
     
-    var1 <- paste0("pre.", CLIM.VAR.USE) #paste0("pre.", clim.var)
-    var.delt <- paste0("delt.", CLIM.VAR.USE)  #paste0("delt.", clim.var)
-    
     # Need climate names for files and axes.
-    clim.names <- read_csv(paste0(DATA.LOC, "ClimateNames.csv"), show_col_types = FALSE)
+    clim.names <- read_csv(paste0(DATA.LOC, "ClimateNames.csv"), show_col_types = FALSE) %>%
+      filter(filename == CLIM.VAR.USE)
+
+    var1 <- clim.names$values[grep("pre", clim.names$values)]
+    var.delt <- clim.names$values[grep("d", clim.names$values)]
+    
 
     var.label <- clim.names$label[clim.names$values == var1]
     #var.filename <- clim.names$filename[clim.names$values == var1]

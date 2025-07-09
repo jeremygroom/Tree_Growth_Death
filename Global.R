@@ -52,11 +52,12 @@ DBH.CUTPOINT <- 12      # DBH inches. Examine trees above & below this amount.
 SEL.SPP <- c("X15", "X17", "X19", "X93", "X108", "X117", "X351", "X361", "X631", "X818") # List of 10 species with overall mortality > 0.15 and number of plots > 500
 CLIM.VAR <- c("aet", "cwd", "vpdmin", "vpdmax", "temp", "precip")  # Climate variables under examination.
 CLIM.VAR.USE <- "cwd" # "aet" "pet"
+CLIM.SUMMARY <- "summer_results"# "annual_results"       Select annual or summer climate summaries.
 
 ANALYSIS.TYPE <- c("grow", "mort")
 
 
-VAR.DELTA.BOUNDARIES <- tibble(clim.var = CLIM.VAR, max.min = c(3, 3, 0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables
+VAR.DELTA.BOUNDARIES <- tibble(clim.var = CLIM.VAR, max.min = c(3, 5, 0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables
 
 
 QUANT.PROBS <- c(0.25, 0.75)  # First-visit climate variable values: Broken between these values into three parts.
