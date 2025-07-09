@@ -66,7 +66,7 @@ if(all(file.exists(file.path(DATA.LOC, "Distilled_Tree_Data.zip")), file.exists(
 
 ### ==> Load the climate data ===================================================
 if (file.exists(paste0(DATA.LOC, "Climate_plot_results.rds")) == FALSE) {
-  source(paste0(CODE.LOC, "Climate_AET_Preparation.R"))  # Data filtering for TREE occurs here as well. 
+  source(paste0(CODE.LOC, "Climate_Dat_Preparation.R"))  # Data filtering for TREE occurs here as well. 
 }
 
 climate.data <- read_rds(paste0(DATA.LOC, "Climate_plot_results.rds")) 
@@ -75,7 +75,7 @@ climate.data <- read_rds(paste0(DATA.LOC, "Climate_plot_results.rds"))
 # Bringing in Lat/Lon from earlier study. Needed to recreate State_Plot (above) for the join.  
 latlon <- read_csv(paste0(DATA.LOC, "PlotLatLon.csv")) %>% select(-n)
 
-# Selecting summer AET, adding the variable State_Plot from the Groom/Vicente analysis 
+# Selecting summer climate variable, adding the variable State_Plot from the Groom/Vicente analysis 
 # to enable joining of lat/lon info.
 climate.use <- climate.data$summer_results %>% select (puid, pre_mean, difference) %>%
   rowwise() %>%
@@ -144,39 +144,39 @@ PlotDat <- left_join(PlotDat, plotN3, by = c("stratum"))
 ## First the data are summarized by species and climate variable (clim.mort.resp.fcn, 
 #   clim.growth.resp.fcn).  Then the data are combined into arrays for 
 #    analysis (parse.tree.clim.fcn).
-tree.mort.dat <- map(sel.spp, clim.mort.resp.fcn, clim.var = "aet", treedat.sel = treedat.use, clim.dat = climate.use) 
+tree.mort.dat <- map(sel.spp, clim.mort.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use) 
 
 # Create lists of tree growth and number of trees that grew in each plot
-tree.grow.dat <- map(sel.spp, clim.growth.resp.fcn, clim.var = "aet", treedat.sel = treedat.use, clim.dat = climate.use) 
+tree.grow.dat <- map(sel.spp, clim.growth.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use) 
 
 # Analysis pathway # 2 additionally creates these for larger trees
 if(ANALYSIS.PATHWAY == 2) {
   
-  tree.mort.dat.aet2 <- map(sel.spp, clim.mort.resp.fcn, clim.var = "aet", treedat.sel = data.use.L) 
-  tree.grow.dat.aet2 <- map(sel.spp, clim.growth.resp.fcn, clim.var = "vpdmin", treedat.sel = data.use.L) 
+  tree.mort.dat2 <- map(sel.spp, clim.mort.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = data.use.L) 
+  tree.grow.dat2 <- map(sel.spp, clim.growth.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = data.use.L) 
   
 }
 
 
 # Combining data into arrays and such, preparing for analysis.
-arrays.aet.mort1 <- parse.tree.clim.fcn(tree.mort.dat, "aet", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
+arrays.mort1 <- parse.tree.clim.fcn(tree.mort.dat, clim.var = CLIM.VAR.USE, analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
 
-arrays.aet.grow1 <- parse.tree.clim.fcn(tree.grow.dat, "aet", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
+arrays.grow1 <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
 
 
 if(ANALYSIS.PATHWAY == 2) {
-  arrays.aet.mort2 <- parse.tree.clim.fcn(tree.mort.dat.aet2, "aet", analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
-  arrays.aet.grow2 <- parse.tree.clim.fcn(tree.grow.dat.aet2, "aet", analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
+  arrays.mort2 <- parse.tree.clim.fcn(tree.mort.dat.aet2, CLIM.VAR.USE, analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP)
+  arrays.grow2 <- parse.tree.clim.fcn(tree.grow.dat.aet2, CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP)
 }
 
 
 ## Fire mortality: what proportion died from fire (and other causes)?  This info is only generated for pathway 1 and mortality.
 if (ANALYSIS.PATHWAY == 1 & CALC.FIREPROP == TRUE) {
-  fire.frac.table.fcn(tablename = "Fire_Prop_aet_mort.csv", tableloc = paste0(RESULTS1.LOC, "Mort_figs_aet/"), treedat = treedat.use, parseddat = arrays.aet.mort1)  
+  fire.frac.table.fcn(tablename = "Fire_Prop_mort.csv", tableloc = paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/"), treedat = treedat.use, parseddat = arrays.mort1)  
 }
 
 # Determining cause of death frequency for trees by species:
-death.prop <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_aet/Fire_Prop_aet_mort.csv"), show_col_types = FALSE) %>%
+death.prop <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/Fire_Prop_mort.csv"), show_col_types = FALSE) %>%
   group_by(spp) %>%
   reframe(
     n = sum(tot),
@@ -215,8 +215,8 @@ tic()
 
 # Subscript i cycles through the climate variables. 
 #for (i in 1:length(CLIM.VAR)){
-i <- 1  # One climate variable at this time, 'aet'
-for(j in 1:length(ANALYSIS.TYPE)) {
+i <- 1  # One climate variable at this time (cwd)
+for(j in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
   
   # Setting up data set outputs, one for ANALYSIS.PATHWAY = 1, 3,
   #  two for ANALYSIS.PATHWAY 2.
@@ -226,18 +226,18 @@ for(j in 1:length(ANALYSIS.TYPE)) {
   for(k in 1:dataset.number) {
     
     
-    var1 <- "pre_mean" #paste0("pre.", clim.var)
-    var.delt <- "difference"  #paste0("delt.", clim.var)
+    var1 <- paste0("pre.", CLIM.VAR.USE) #paste0("pre.", clim.var)
+    var.delt <- paste0("delt.", CLIM.VAR.USE)  #paste0("delt.", clim.var)
     
     # Need climate names for files and axes.
     clim.names <- read_csv(paste0(DATA.LOC, "ClimateNames.csv"), show_col_types = FALSE)
-    
+
     var.label <- clim.names$label[clim.names$values == var1]
     #var.filename <- clim.names$filename[clim.names$values == var1]
     var.delt.label <- clim.names$label[clim.names$values == var.delt]
     
     # Obtaining the data to work with: Grabbing the list objects from above
-    mort.grow.dat <- get(paste0("arrays.", CLIM.VAR[i], ".", ANALYSIS.TYPE[j], k)) 
+    mort.grow.dat <- get(paste0("arrays.", ANALYSIS.TYPE[j], k)) 
     
     vals_dat <- mort.grow.dat$vals_dat
     all_dat <- mort.grow.dat$all_dat
@@ -287,7 +287,7 @@ for(j in 1:length(ANALYSIS.TYPE)) {
   # Analysis Pathway 1: no subgroups of size or site class
   if (ANALYSIS.PATHWAY == 1) {
     # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
-    map(SEL.SPP, pair.plts.fcn, var.filename = "aet", quant.table = results$results1$quant.table, var.label = results$results1$var.label, 
+    map(SEL.SPP, pair.plts.fcn, var.filename = CLIM.VAR.USE, quant.table = results$results1$quant.table, var.label = results$results1$var.label, 
         var.delt.label = results$results1$var.delt.label, var1 = var1, var.delt = var.delt,
         quant.matrix = results$results1$quant.matrix, quant.lims = quant.lims, quant.n = quant.n)
   }

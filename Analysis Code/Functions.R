@@ -195,11 +195,11 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
   # Makes a list of all of the response tables and all-tree tables for the next step to operate on.
   
   extract.resp <- map(tree.dat , ~.[[resp.dat]]) 
-  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) # Combining the list into a single tibble.
+  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts")) # Combining the list into a single tibble.
   #vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "puid", "W_h", "STRATUM","SITECLCD_plot")) # Combining the list into a single tibble.
   
   extract.all <- map(tree.dat , ~.[[tot.dat]]) 
-  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) 
+  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts")) 
   
   
   # Now extracting the quantile category information for each species 
