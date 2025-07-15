@@ -6,7 +6,7 @@ statelist <- c("CA", "WA", "OR")
 # This function will extract the zipped databases, reduce their tables, and provide the tables as a list.
 db.extract.fcn <- function(state, db.loc) {
   db.use <- dbConnect(RSQLite::SQLite(), unzip(paste0(db.loc, "SQLite_FIADB_", state, ".zip"), paste0("SQLite_FIADB_", state, ".db")))
-  plot <- dbReadTable(db.use, "PLOT", row.names = FALSE) %>% select(CN, STATECD, COUNTYCD, PLOT, PLOT_STATUS_CD,MACRO_BREAKPOINT_DIA,MEASYEAR, REMPER, LAT, LON, INTENSITY)
+  plot <- dbReadTable(db.use, "PLOT", row.names = FALSE) %>% select(CN, STATECD, COUNTYCD, PLOT, PLOT_STATUS_CD,MACRO_BREAKPOINT_DIA,MEASYEAR, REMPER, LAT, LON, ELEV, INTENSITY)
   tree <- dbReadTable(db.use, "TREE", row.names = FALSE) %>% select(PLT_CN, PLOT, STATECD, SUBP, CONDID, PREVCOND, TREE, PREV_TRE_CN, STATUSCD, DRYBIO_AG, CARBON_AG, TPA_UNADJ, 
                                                                     DIA, PREVDIA, SPCD, STANDING_DEAD_CD, PREV_STATUS_CD,AGENTCD, RECONCILECD, INVYR) %>%
     mutate(AGENTCD2 = ifelse(is.na(AGENTCD), 0, AGENTCD),

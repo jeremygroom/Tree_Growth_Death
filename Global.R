@@ -49,7 +49,8 @@ DBH.CUTPOINT <- 12      # DBH inches. Examine trees above & below this amount.
 
 ### Select spp for analysis
 #SEL.SPP <- c("X11", "X122", "X117", "X202", "X242", "X805", "X81", "X818", "X93") # Original list of 9 species I decided to focus upon
-SEL.SPP <- c("X15", "X17", "X19", "X93", "X108", "X117", "X351", "X361", "X631", "X818") # List of 10 species with overall mortality > 0.15 and number of plots > 500
+#SEL.SPP <- c("X15", "X17", "X19", "X93", "X108", "X117", "X351", "X361", "X631", "X818") # List of 10 species with overall mortality > 0.15 and number of plots > 500
+SEL.SPP <- c("X11", "X15", "X17", "X19", "X64", "X73", "X81", "X93", "X108", "X116", "X117", "X119", "X122", "X202", "X242", "X263", "X264", "X312", "X351", "X361", "X631", "X805", "X818") # Species w/ > 400 plots
 CLIM.VAR <- c("aet", "cwd", "vpdmin", "vpdmax", "temp", "precip")  # Climate variables under examination.
 CLIM.VAR.USE <- "cwd" # "aet" "pet"
 CLIM.SUMMARY <- "summer_results"# "annual_results"       Select annual or summer climate summaries.

@@ -11,7 +11,7 @@
 PLOT <- fia.tables$plot_vals
 COND <- fia.tables$cond_vals
 TREE <- fia.tables$tree_vals
-SCCM <- fia.tables$sccm_vals %>% dplyr::select(-CREATED_DATE) # From the table SUBP_COND_CHNG_MTRX, tracking changes in portions of subplots sampled.
+SCCM <- fia.tables$sccm_vals  # From the table SUBP_COND_CHNG_MTRX, tracking changes in portions of subplots sampled.
 POP_ESTN_UNIT <- fia.tables$peu_vals
 POP_EVAL <- fia.tables$pev_vals
 POP_EVAL_TYP <- fia.tables$pet_vals

@@ -86,9 +86,12 @@ climate.use <- climate.data[[grep(CLIM.SUMMARY, names(climate.data))]] %>%
   left_join(latlon, by = "State_Plot") %>%
   dplyr::select(-plot, -state, -State_Plot)
 
-data.use <- left_join(tree.plt.data, climate.use, by = "puid")
+data.use <- left_join(tree.plt.data %>% dplyr::select(-LAT, -LON), climate.use, by = "puid")
 dat.na <- data.use %>% filter(is.na(difference)) # 7 plots for which we don't have AET data
 data.use <- anti_join(data.use, dat.na)
+
+
+### -- examining species distributions and plot numbers --- ###
 
 
 
@@ -191,6 +194,7 @@ death.prop <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/Fire_P
   ) %>%
   mutate(frac.dead = n.dead/n)
 
+#write_csv(death.prop, "death.prop.csv")
 
 
 #### 4) Analysis and plotting  --------------------------------------------------------
