@@ -109,7 +109,7 @@ if (ANALYSIS.PATHWAY == 2) {
 #  like ANALYSIS.PATHWAY 1 or 3.  Large trees are treated separately (see below).
 treedat.use <- if(ANALYSIS.PATHWAY != 2) data.use else data.use.S
 
-n_quant <- if(ANALYSIS.PATHWAY != 3) length(QUANT.LEVELS) else 7
+n_domain <- if(ANALYSIS.PATHWAY != 3) length(DOMAIN.LEVELS) else 7
 
 PlotDat <- treedat.use %>% dplyr::select(STATECD, puid, ESTN_UNIT, STRATUMCD, w) %>% 
   distinct() %>%
@@ -217,6 +217,7 @@ dataset.number <- if(ANALYSIS.PATHWAY == 2) 2 else 1 # How many times to run thr
 
 tic() 
 # For ANALYSIS.PATHWAY == 1, one climate variable, and 16 dedicated cores, the analysis takes about 8 minutes.
+# With 6 domains and 23 species, 16 dedicated cores, 3.8 minutes
 
 # Subscript i cycles through the climate variables. 
 #for (i in 1:length(CLIM.VAR)){
@@ -248,12 +249,12 @@ for(j in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     
     vals_dat <- mort.grow.dat$vals_dat
     all_dat <- mort.grow.dat$all_dat
-    quant.array <- mort.grow.dat$quant.array
+    domain.array <- mort.grow.dat$domain.array
     state.array <- mort.grow.dat$state.array
     state.n <- mort.grow.dat$state.n
-    quant.matrix <- mort.grow.dat$quant.matrix
+    domain.matrix <- mort.grow.dat$domain.matrix
     centroid.array <- mort.grow.dat$centroid.array
-    quant.n <- mort.grow.dat$quant.n 
+    domain.n <- mort.grow.dat$domain.n 
     quant.lims <- mort.grow.dat$quant.lims
     quant.lims.delta <- mort.grow.dat$quant.lims.delt
     
@@ -279,24 +280,49 @@ for(j in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     
     
     ## Quantile estimates for mortality or growth, across select species.
-    quant.index <- 1:n_quant
-    all.quants <- quant.index %>% 
-      map(\(x) q_mort.grow.fcn(q1 = x, vals.dat = vals_dat, all.dat = all_dat, # Alternate mapping formulation, only advantage is clarity.
-                               array.name = quant.array, category.n = quant.n,
+    domain.index <- 1:n_domain
+    all.domains <- domain.index %>% 
+      map(\(x) d_mort.grow.fcn(d1 = x, vals.dat = vals_dat, all.dat = all_dat, # Alternate mapping formulation, only advantage is clarity.
+                               array.name = domain.array, category.n = domain.n,
                                selected.spp = SEL.SPP) )  
-    quant.table <- bind_rows(all.quants) %>% arrange(Species, Quantile)
     
-    results[[k]] <- list(quant.table = quant.table, var.label = var.label, var.delt.label = var.delt.label, 
-                         quant.matrix = quant.matrix, quant.lims = quant.lims, quant.n = quant.n) 
+    quants <- data.frame(t(apply(furrr.table, 2, function(x) quantile(x, probs = c(0.5, 0.025, 0.975), na.rm = TRUE))))
+    names(quants) <- c("Median", "LCI.95", "UCI.95")
+    quants$Means <- apply(furrr.table, 2, mean, na.rm = TRUE)
+    quants$n.plts <- as.vector(category.n[d1, selected.spp ])
+    quants$Species <- selected.spp
+    quants$Domain <- d1
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    domain.table <- bind_rows(all.domains) %>% arrange(Species, Domain)
+    
+    results[[k]] <- list(domain.table = domain.table, var.label = var.label, var.delt.label = var.delt.label, 
+                         domain.matrix = domain.matrix, quant.lims = quant.lims, domain.n = domain.n) 
+    
+    # Saving output for figure generation by Shiny:
+    domain.output.loc <-  paste0(RESULTS.LOC, switch(ANALYSIS.PATHWAY, "1" = "Quantile_Only/", "2" = "Size_Class/", "3" = "Site_Class/"), 
+                                 switch(ANALYSIS.TYPE[j], "mort" = "Mort", "grow" = "Growth"), 
+                                 "_figs_", CLIM.VAR.USE, "/")
+    
+    write_csv(domain.table, paste0(domain.output.loc, "Domain_Table.csv"))
+    write_csv(domain.matrix, paste0(domain.output.loc, "Domain_Matrix.csv"))
+    
     
   }   # end k 
   
   # Analysis Pathway 1: no subgroups of size or site class
   if (ANALYSIS.PATHWAY == 1) {
     # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
-    map(SEL.SPP, pair.plts.fcn, var.filename = CLIM.VAR.USE, quant.table = results$results1$quant.table, var.label = results$results1$var.label, 
+    map(SEL.SPP, pair.plts.fcn, var.filename = CLIM.VAR.USE, domain.table = results$results1$domain.table, var.label = results$results1$var.label, 
         var.delt.label = results$results1$var.delt.label, var1 = var1, var.delt = var.delt,
-        quant.matrix = results$results1$quant.matrix, quant.lims = quant.lims, quant.n = quant.n)
+        domain.matrix = results$results1$domain.matrix, quant.lims = quant.lims, domain.n = domain.n)
   }
   
   if (ANALYSIS.PATHWAY == 2) {

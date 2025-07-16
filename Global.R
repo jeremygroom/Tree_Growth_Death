@@ -60,10 +60,16 @@ ANALYSIS.TYPE <- c("grow", "mort")
 
 VAR.DELTA.BOUNDARIES <- tibble(clim.var = CLIM.VAR, max.min = c(3, 5, 0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables
 
-
+USE.QUANT.PROBS <- TRUE # TRUE = quantiles (defined in QUANT.PROBS) used to define initial climate variable breaks.
+THREE.CHANGE.CATEGORIES <- FALSE # TRUE = Delta climate variable (e.g., change in CWD) has 3 categories.  FALSE = 2 categories.
 QUANT.PROBS <- c(0.25, 0.75)  # First-visit climate variable values: Broken between these values into three parts.
+INIT.CLIM.BREAKS <- c(75, 125) # if USE.QUANT.PROBS are FALSE, these are the domain limits for the initial climate variable values.
 
-QUANT.LEVELS <- c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")
+if(THREE.CHANGE.CATEGORIES) {
+DOMAIN.LEVELS <- c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")
+} else {
+DOMAIN.LEVELS <- c("DL", "DM", "DH", "SL", "SM", "SH")
+}
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
 BS.N <- 200    # Bootstrap iteration number
  
@@ -78,8 +84,8 @@ sel.spp <- as.numeric(gsub("X", "", SEL.SPP))
 #strat.num <- dim(strat2)[1]
 
 
-n_quant <- length(QUANT.LEVELS)
-quant.level.table <- tibble(var.deltvar = factor(QUANT.LEVELS, level = QUANT.LEVELS), q.num = 1:length(QUANT.LEVELS))
+n_domain <- length(DOMAIN.LEVELS)
+domain.level.table <- tibble(var.deltvar = factor(DOMAIN.LEVELS, level = DOMAIN.LEVELS), q.num = 1:length(DOMAIN.LEVELS))
 
 # From the previous analysis (Groom and Monleon 2023)
 orig <- read_csv(paste0(DATA.LOC, "Occ_OriginalVisit2.csv")) %>%
