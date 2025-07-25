@@ -426,32 +426,29 @@ fire.frac.table.fcn <- function(tablename, tableloc, treedat, parseddat) {
 
 
 
+
+# Determine where to save results (data and plots)
+save.loc.fcn <- function(i){
+  paste0(RESULTS.LOC, "Quantile_Only/", 
+         switch(i, "1" = "Growth", "2" = "Mort"), 
+         "_figs_", CLIM.VAR.USE, "/")
+}
+
+
+
+
+
+
+
+
 ### ------ Mortality and growth estimation -------  ####
 
-#  This function is nested within domain.est.spp.fcn, which is in turn nested within bs.fcn and finally d_mort.grow.fcn.  It is called in DeadTree_Analysis
-# Find the estimates for mu_hat (the ratio estimator), Y_hat (numerator, thing we're interested in), and 
+#  This function is nested within calculate_domain_estimates.fcn, which is in turn nested within generate_bootstrap_array.fcn.  
+#  This function finds the estimates for mu_hat (the ratio estimator), Y_hat (numerator, thing we're interested in), and 
 #    X_Hat (denominator, density of things like total trees of a species). See Equation 6 and related.
-mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {     #dat_tot = data frame of species total for a domain (denominator). dat_vals = response data frame (numerator) for domain
-  
-  Zt <- Yv <- R <- 0 #  rep(0,length(sppname))    # Mean difference in response for a given species: Zt = Mean value for total trees, 
-  #Yv = mean value for/of trees of interest (mean # that died), R = ratio of the two.
-  #for (i in 1:length(sppname)) {                         # i indexes species
-  col.spp <- grep(paste0("nd.", spp.sel1), colnames(dat_tot))
+mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {
   col.name <- paste0("nd.", spp.sel1)
   
-  # Old slow code.  For understanding the data.table usage.
-  #  Zt_i <- Yv_i <- rep(0, length(strata) )  # Weighted values for each strata
-  #  for (h in 1:strat.num) {                  # h indexes strata
-  #    w_h <- unique(dat_tot$w[dat_tot$stratum == strata[h]])
-  #    n_h <- unique(dat_tot$n_h.plts[dat_tot$stratum == strata[h]])    # Number of plots in stratum h 
-  #    Yv_i[h] <- w_h * sum(get(col.name, dat_vals)[dat_vals$stratum == strata[h]]) / n_h 
-  #    Zt_i[h] <- w_h * sum(get(col.name, dat_tot)[dat_tot$stratum == strata[h]]) / n_h     
-  #  }
-  #  Yv <- sum(Yv_i) 
-  #  Zt <- sum(Zt_i) 
-  #  R <- Yv / Zt
-  
-  # New data.table way
   dt_tot <- as.data.table(dat_tot)
   dt_vals <- as.data.table(dat_vals)
   
@@ -461,6 +458,15 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {     #dat_tot = data frame 
   ests.out <- tot_summary[vals_summary, on = "stratum"]
   ests.out[, `:=`(Zt_i = w_h * tot_sum / n_h, Yv_i = w_h * vals_sum / n_h)]
   
+  # Old slow code.  For understanding the data.table usage.
+  #  Zt_i <- Yv_i <- rep(0, length(strata) )  # Weighted values for each strata
+  #  for (h in 1:strat.num) {                  # h indexes strata
+  #    w_h <- unique(dat_tot$w[dat_tot$stratum == strata[h]])
+  #    n_h <- unique(dat_tot$n_h.plts[dat_tot$stratum == strata[h]])    # Number of plots in stratum h 
+  #    Yv_i[h] <- w_h * sum(get(col.name, dat_vals)[dat_vals$stratum == strata[h]]) / n_h 
+  #    Zt_i[h] <- w_h * sum(get(col.name, dat_tot)[dat_tot$stratum == strata[h]]) / n_h     
+  #  }
+
   Zt <- ests.out[, sum(Zt_i)]
   Yv <- ests.out[, sum(Yv_i)]
   R <- Yv / Zt
@@ -470,68 +476,157 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {     #dat_tot = data frame 
 }
 
 
-### This function will find, for any species, the estimate for domain d1. Nested within bs.fcn and d_mort.grow.fcn.
-domain.est.spp.fcn <- function(spp.sel, d.all_use, d.vals_use, samp, category.n, d1) {
+# Calculate estimates for all species in a given domain using map
+calculate_domain_estimates.fcn <- function(samp, domain_data, domain_idx, selected.spp, domain.n) {
   
-  spp.id1 <- paste0("X", spp.sel)
-  n_q <- get(spp.id1, category.n)[d1]   # Are there fewer than N.PLOT.LIM? If so, we can skip the calcs.
+  d.all_use <- domain_data[[domain_idx]]$all
+  d.vals_use <- domain_data[[domain_idx]]$vals
   
-  # Means plus other metrics that are carried over into the calculation of the variance		
-  if (n_q < N.PLOT.LIM) { # If too few points, just enter NA
-    q_bs.mean <- NA 
-  } else {
-    q_bs.mean <- mean.q.fcn(dat_tot = d.all_use[samp$row.id, ], dat_vals = d.vals_use[samp$row.id, ], spp.sel1 = spp.sel)$R # Mean given the selected rows
-  }
-  return(q_bs.mean)
+  # Convert species names to numeric for domain.n lookup
+  spp.use.numeric <- as.numeric(gsub("X", "", selected.spp))
+  
+  # Use map to calculate estimates for all species
+  estimates <- spp.use.numeric %>% 
+    map_dbl(\(spp.sel) {
+      # Check if we have enough plots for this species in this domain. Otherwise returns NA.
+      spp.id1 <- paste0("X", spp.sel)
+      n_q <- get(spp.id1, domain.n)[domain_idx]
+      
+      if (n_q < N.PLOT.LIM) {
+        return(NA_real_)
+      } else {
+        return(mean.q.fcn(
+          dat_tot = d.all_use[samp$row.id, ],
+          dat_vals = d.vals_use[samp$row.id, ],
+          spp.sel1 = spp.sel
+        )$R)
+      }
+    })
+  
+  return(estimates)
 }
 
 
-# Bootstrap function for obtaining an estimate of the mean for a single iteration.  Nested within d_mort.grow.fcn.
-bs.fcn <- function(iter, d.all_use, d.vals_use, category.n, d1, spp.use) { # Iteration number, all of the relevant trees data, the tree values data (number dead, basal area growth)
-  
-  # First, sample the tables in use. This procedure obtains samples with replacement from each stratum and then combines the selected
-  #  row numbers. 
-  spp.use2 <- as.numeric(gsub("X", "", spp.use))
-  
-  strata.num.dt <- as.data.table(strata.num) # Using a data.table and then data.table call because much faster than dplyr.
-  
+# Generate bootstrap sample.  Each stratum is separately sampled by the stratum size.   
+generate_bootstrap_sample.fcn <- function() {
+  strata.num.dt <- as.data.table(strata.num)
   samp <- strata.num.dt[, .SD[sample(.N, .N, replace = TRUE)], by = stratum]
-  
-  
-  bs.output <- unlist(spp.use2 %>% map(\(x) domain.est.spp.fcn(x, d.all_use, d.vals_use, samp, category.n, d1)))  # For a given iteration, finding the mean value for a given domain
-  return(bs.output)
+  return(samp)
 }
 
-## Base function for finding the estimated means for mortality/growth for a given domain
-d_mort.grow.fcn <- function(d1, vals.dat, all.dat, array.name, category.n, selected.spp) {
-  # Multiplying all of the species dead values (or species total values) by the respective species masks for "LiLc".
-  #   With this step complete, the values for that domain can be calculated for all species.
+
+# Helper function to prepare data for all domains using map
+prepare_domain_data.fcn <- function(vals.dat, all.dat, domain.array, n_domains) {
+  1:n_domains %>% 
+    map(\(d) {
+      vals.use <- vals.dat %>% select(starts_with("nd.")) * domain.array[, d, ]
+      dat.vals.use <- bind_cols(PlotDat, vals.use)
+      
+      all.use <- all.dat %>% select(starts_with("nd.")) * domain.array[, d, ]
+      dat.all.use <- bind_cols(PlotDat, all.use)
+      
+      list(vals = dat.vals.use, all = dat.all.use)
+    })
+}
+
+
+# Main function to generate the bootstrap array using parallel processing
+generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain.n, selected.spp, n_iter) {
   
-  vals.use <- vals.dat %>% select(starts_with("nd.")) * array.name[, d1, ] 
-  dat.vals.use <- bind_cols(PlotDat, vals.use) 
+  n_species <- length(selected.spp)
+  n_domains <- if(ncol(domain.array) == 2) 1 else ncol(domain.array) # If == 2, then we are after
+  # single estimates for species.  One of the two domains is there to keep the array three dimensional.
   
-  all.use <- all.dat %>% select(starts_with("nd.")) * array.name[, d1, ] 
-  dat.all.use <- bind_cols(PlotDat, all.use) 
+  # Pre-process data for all domains
+  domain_data <- prepare_domain_data.fcn(vals.dat, all.dat, domain.array, n_domains)
   
-  # Running the parallel portion of the function
-  furrr.out <- 1:BS.N %>% future_map(\(x) bs.fcn(iter = x, d.all_use = dat.all.use, d.vals_use = dat.vals.use, category.n = category.n, d1 = d1, spp.use = selected.spp), .options = furrr_options(seed = TRUE))
+  # Run all bootstrap iterations in parallel
+  bootstrap_results <- 1:n_iter %>% 
+    future_map(\(iter) {
+      # Generate single bootstrap sample for this iteration
+      samp <- generate_bootstrap_sample.fcn()
+      
+      # Calculate estimates for all domains for this iteration
+      1:n_domains %>% 
+        map(\(d) calculate_domain_estimates.fcn(
+          samp = samp,
+          domain_data = domain_data,
+          domain_idx = d,
+          selected.spp = selected.spp,
+          domain.n = domain.n
+        )) %>%
+        do.call(rbind, .) # Combine domains into matrix
+    }, .options = furrr_options(seed = TRUE))
   
-  # Processing the results and returning quantiles/mean
-  furrr.table <- matrix(unlist(furrr.out), ncol = length(selected.spp), byrow = TRUE)
-  quants <- data.frame(t(apply(furrr.table, 2, function(x) quantile(x, probs = c(0.5, 0.025, 0.975), na.rm = TRUE))))
+  # Convert list of matrices to 3D array
+  bootstrap_array <- array(
+    data = unlist(bootstrap_results),
+    dim = c(n_domains, n_species, n_iter),
+    dimnames = list(
+      domain = 1:n_domains,
+      species = selected.spp,
+      iteration = 1:n_iter
+    )
+  )
+  
+  bootstrap_array2 <- aperm(bootstrap_array, perm = c(3, 2, 1))  
+  
+  return(bootstrap_array2)
+}
+
+
+
+## Functions for preparing plotting data
+
+# This function is used to find the quantiles of a bootstrap matrix. Used by both
+#  domain.sum.fcn and domain.diff.fcn.
+matrix.summ.fcn <- function(matrix.use, domain.id){
+  quants <- data.frame(t(apply(matrix.use, 2, function(x) quantile(x, probs = c(0.5, 0.025, 0.975), na.rm = TRUE))))
   names(quants) <- c("Median", "LCI.95", "UCI.95")
-  quants$Means <- apply(furrr.table, 2, mean, na.rm = TRUE)
-  quants$n.plts <- as.vector(category.n[d1, selected.spp ])
-  quants$Species <- selected.spp
-  quants$Domain <- d1
-  
+  quants$Means <- apply(matrix.use, 2, mean, na.rm = TRUE)
+  quants$n.plts <- unlist(as.vector(domain.n[domain.id, SEL.SPP ]))
+  quants$Species <- SEL.SPP
+  quants$Domain <- domain.id
   return(quants)
 }
 
+# Used in summarizing individual domains
+domain.sum.fcn <- function(results.array, domain.num) {
+  matrix_use <- results.array[, , domain.num]
+  matrix.summ.fcn(matrix_use, domain.num)
+}
+
+# Used to summarize differences in two domains
+domain.diff.fcn <- function(start.dom, sub.dom, results.array) {
+  start.matrix <- results.array[, , domain.level.table$q.num[domain.level.table$var.deltvar == start.dom]]
+  sub.matrix <- results.array[, , domain.level.table$q.num[domain.level.table$var.deltvar == sub.dom]]
+  
+  result.matrix <- start.matrix - sub.matrix
+  matrix.summ.fcn(result.matrix, paste(start.dom, "-", sub.dom))
+}
 
 
-
-
+# This function binds differenced matrices for the creation of plots. Only used by 6-domain analysis.
+diff.fig.prep.fcn <- function(diff.table, diff.levels){ 
+  diff2.table <- diff.table %>%
+    left_join(spp.names.fig, by = "Species") %>%
+    select(-n.plts) %>%
+    mutate(Domain = factor(Domain, levels = diff.levels),
+           species_label = paste(GENUS, SPECIES), 
+           significant = LCI.95 > 0 | UCI.95 < 0,
+           y.offset = case_when(
+             as.numeric(Domain) == 1 ~ 0.15,
+             as.numeric(Domain) == 2 ~ 0, 
+             as.numeric(Domain) == 3 ~ -0.15)
+    ) %>%
+    filter(is.na(significant) == FALSE) %>%
+    # Order species by their position in the original species file
+    arrange(match(Species, spp.names.fig$Species))
+  
+  diff2.table$species_label <- factor(diff2.table$species_label, 
+                                      levels = rev(unique(diff2.table$species_label)))
+  return(diff2.table)
+}
 
 
 
@@ -540,6 +635,65 @@ d_mort.grow.fcn <- function(d1, vals.dat, all.dat, array.name, category.n, selec
 
 
 #### Graphical output functions -----------------------------------------------
+
+
+## This plot provides the 
+diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
+  
+  ggplot(diff.dat, aes(y = as.numeric(species_label) + y.offset)) + 
+    geom_vline(xintercept = 0, linewidth = 0.5) + 
+    geom_segment(aes(x = LCI.95, xend = UCI.95, 
+                     y = as.numeric(species_label) + y.offset, 
+                     yend = as.numeric(species_label) + y.offset,
+                     color = Domain), 
+                 linewidth = 0.8) + 
+    geom_point(aes(x = Means, y = as.numeric(species_label) + y.offset,
+                   fill = ifelse(significant, "black", "white"),
+                   color = Domain),
+               size = 2, shape = 21, stroke = 0.8) +
+    #scale_y_continuous(breaks = 1:length(levels(DvS2$species_label)),
+    #                    labels = levels(DvS2$species_label)) +
+    scale_y_continuous(breaks = 1:length(levels(diff.dat$species_label)),
+                       labels = levels(diff.dat$species_label)) +
+    scale_color_viridis(discrete = TRUE, name = "Domain", option = "B", begin = 0.2, end = 0.6) +
+    scale_fill_identity() + 
+    labs(x = NULL, y = NULL, title = fig.title) +
+    theme_bw() + 
+    theme(axis.text.y = element_text(size = 10, face = "italic"),
+          legend.position = "inside",
+          legend.position.inside = c(if(lab.right) 0.8 else 0.2, 0.95),
+          legend.background = element_rect(fill = "white", color = "gray80"),
+          legend.title = element_text(size = 9),
+          legend.text = element_text(size = 8),
+          legend.key.size = unit(0.4, "cm"))  + 
+    {if(remove.y) {
+      theme(axis.text.y = element_blank())
+    }}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -572,10 +726,7 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
   virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
   scatter.virid.use <- virid.use[n.plots.used$loc[n.plots.used$n > 0]]
   
-  fig.lab <- if(ANALYSIS.PATHWAY == 2) {
-    paste0("Plot conditions for ", size.trees, com.name, ",\n", g.s.name, ", ",  plot.spp)
-  } else {
-    paste0("Plot conditions for ", size.trees, com.name, ", ", g.s.name, ", ",  plot.spp)}
+  fig.lab <- paste0("Plot conditions for ", size.trees, com.name, ", ", g.s.name, ", ",  plot.spp)
   
   plot.vals.plt <- ggplot(q_plot_spp, aes(get(var1), get(var.delt), color = factor(Domain))) + 
     geom_point() + 
@@ -595,6 +746,10 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
   
   return(plot.vals.plt)
 }
+
+
+
+
 
 
 
@@ -642,27 +797,29 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use) {
 # -- Plots for ANALYSIS.PATHWAY 1 -- #
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
-pair.plts.fcn <- function(sppnum.to.plot, var.filename, domain.table, var.label, var.delt.label, 
-                          var1, var.delt, domain.matrix, quant.lims, domain.n){
+pair.plts.fcn <- function(sppnum.to.plot, var.filename, use.dat, domain.matrix,
+                          quant.lims, domain.n, k){
   
-  plot.domain.dat <- domain.table %>% 
+  use.dat2 <- use.dat %>% filter(Species == sppnum.to.plot)
+  
+  
+  plot.domain.dat <- use.dat %>% 
     filter(Species == sppnum.to.plot) %>%
     left_join(domain.level.table, by = c("Domain" = "q.num"))
-  
-  
+
   # Details for plotting
   virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
   
-  qt.max <- ceiling(max(plot.domain.dat$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
+  qt.max <- ceiling(max(use.dat2$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
   
   
   # Create a grid of plots to match bivariate plot
-  q.g.p.labs <- paste0(plot.domain.dat$var.deltvar, ", n = ", as.numeric(plot.domain.dat$n.plts)) # Labels for the domain grid plot
+  q.g.p.labs <- paste0(DOMAIN.LEVELS, ", n = ", as.numeric(use.dat2$n.plts)) # Labels for the domain grid plot
   
-  ylabs <- if (j == 1) "Mean Growth (inches^2)" else "Mean Annual Mortality Rate"
+  ylabs <- if (k == 1) "Mean Growth (inches^2)" else "Mean Annual Mortality Rate"
   
   domain.grid.plt.fcn <- function(domains, domain.index) {
-    ggplot(data = plot.domain.dat %>% filter(Domain %in% domain.index), aes(factor(Domain), Means, fill = factor(Domain))) + 
+    ggplot(data = use.dat2 %>% filter(Domain %in% domain.index), aes(factor(Domain), Means, fill = factor(Domain))) + 
       geom_col() + 
       geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.1) + 
       scale_fill_manual(values = virid.use[domain.index]) + 
@@ -686,8 +843,6 @@ pair.plts.fcn <- function(sppnum.to.plot, var.filename, domain.table, var.label,
   }
   
   
-  domain.table1 <- domain.table %>% filter(Species == sppnum.to.plot)
-  
   # Code to prep for next two figures - helps in reducing the color palette.
   n_plots <- get(sppnum.to.plot, domain.n)
   n_plots2 <- tibble(loc = 1:n_domain, n = n_plots) %>%
@@ -706,163 +861,10 @@ pair.plts.fcn <- function(sppnum.to.plot, var.filename, domain.table, var.label,
   } else if(n_domain == 6) {
     comb.plt <- ((p1/p2 + plot_layout(axis_titles = "collect")) | plot.vals.plt | domain.map) #/ guide_area() + plot_layout(guides = 'collect', heights = c(10, 0.01)) 
   }
-  #ggsave(paste0(RESULTS.LOC, "Mort_figs_", var.filename, "/",sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
-  ggsave(paste0(RESULTS.LOC, switch(ANALYSIS.PATHWAY, "1" = "Quantile_Only/", "2" = "Size_Class/", "3" = "Site_Class/"), 
-                switch(ANALYSIS.TYPE[j], "mort" = "Mort", "grow" = "Growth"), 
-                "_figs_", var.filename, "/", sppnum.to.plot, "_plots.png"), 
+
+  ggsave(paste0(save.loc.fcn(k), sppnum.to.plot, "_plots.png"), 
          comb.plt, device = "png", width = 7, height = 5, units = "in")
 }
 
 
-
-# -- Plots for ANALYSIS.PATHWAY 2 -- #
-
-## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
-
-pair.plts2.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.label, var1, var.delt,
-                           quant.matrix.1, quant.matrix.2, quant.lims.1, quant.lims.2,
-                           quant.n.1, quant.n.2){
-  
-  plot.quant.dat <- quant.table %>% 
-    filter(Species == sppnum.to.plot) %>%
-    left_join(quant.level.table, by = c("Quantile" = "q.num"))
-  
-  
-  # Details for plotting
-  virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
-  
-  qt.max <- ceiling(max(plot.quant.dat$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
-  
-  
-  quant.grid.plt.fcn <- function(quants, quant.index) {
-    
-    num.labs <- plot.quant.dat %>% filter(Quantile %in% quant.index) %>%
-      mutate(loc = 0.8 * LCI.95,
-             lab = as.numeric(n.plts)) %>%
-      arrange(Quantile, smaller_larger)
-    
-    
-    ggplot(data = plot.quant.dat %>% filter(Quantile %in% quant.index), aes(Quantile, Means, fill = factor(smaller_larger), color = factor(Quantile))) + 
-      geom_col(position = "dodge", width = 0.75, linewidth = 2) + 
-      geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.2, position = position_dodge(width = 0.75), color = 'black') + 
-      geom_text(data = num.labs, aes(label = lab, x = Quantile, y = loc), position = position_dodge(width = 0.75), color = "black", size = 2) +
-      scale_color_manual(values = virid.use[quant.index]) + 
-      scale_fill_manual(values = c("#C1CDCD", "#838B8B")) +
-      scale_y_continuous(limits = c(0, qt.max)) +
-      scale_x_continuous(labels = quants, breaks = quant.index) +
-      theme_bw() +
-      theme(legend.position = "none") + 
-      labs(x = NULL, y = "Mean") +
-      theme(text = element_text(size = 7))
-  }
-  
-  if(n_domain == 9){
-    p1 <- quant.grid.plt.fcn(c("LiHc", "MiHc", "HiHc"), 1:3) 
-    p2 <- quant.grid.plt.fcn(c("LiMc", "MiMc", "HiMc"), 4:6) 
-    p3 <- quant.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9) 
-    p_all <- plot_grid(p1, p2, p3, ncol = 1)
-  } else if(n_domain == 6) {
-    p1 <- quant.grid.plt.fcn(c("DL", "DM", "DH"), 1:3) 
-    p2 <- quant.grid.plt.fcn(c("SL", "SM", "SH"), 4:6) 
-    p_all <- plot_grid(p1, p2, ncol = 1)
-  }
-  
-  
-  
-  
-  
-  plot.vals.plt.1 <- quant.dist.plt.fcn(plot.spp = sppnum.to.plot, quant.matrix = quant.matrix.1, 
-                                        var1 = var1, var.delt = var.delt, quant.lims = quant.lims.1,
-                                        quant.n = quant.n.1, size.trees = "smaller diameter ") 
-  
-  plot.vals.plt.2 <- quant.dist.plt.fcn(plot.spp = sppnum.to.plot, quant.matrix = quant.matrix.2, 
-                                        var1 = var1, var.delt = var.delt, quant.lims = quant.lims.2,
-                                        quant.n = quant.n.2, size.trees = "larger diameter ") 
-  
-  comb.plt <- p_all +(plot.vals.plt.1 + plot.vals.plt.2 + plot_layout(ncol = 1)) + plot_layout( widths = c(1, 1.2))
-  
-  #ggsave(paste0(RESULTS.LOC, "Mort_figs_", var.filename, "/",sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
-  ggsave(paste0(RESULTS.LOC, switch(ANALYSIS.PATHWAY, "1" = "Quantile_Only/", "2" = "Size_Class/", "3" = "Site_Class/"), 
-                switch(ANALYSIS.TYPE[j], "mort" = "Mort", "grow" = "Growth"), 
-                "_figs_", var.filename, "/", sppnum.to.plot, "_plots.png"), 
-         comb.plt, device = "png", width = 7, height = 5, units = "in")
-  
-}
-
-
-
-
-# -- Plots for ANALYSIS.PATHWAY 3 -- #
-
-## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
-pair.plts3.fcn <- function(sppnum.to.plot, quant.table, var.label, var.delt.label, 
-                           var1, var.delt, quant.matrix, quant.n){
-  
-  plot.siteclass.dat <- quant.table %>% 
-    filter(Species == sppnum.to.plot) 
-  
-  # Details for plotting
-  virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
-  
-  qt.max <- ceiling(max(plot.siteclass.dat$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
-  
-  
-  # Create a grid of plots to match bivariate plot
-  #q.g.p.labs <- paste0("n = ", as.numeric(plot.siteclass.dat$n.plts)) # Text for plot number
-  
-  num.labs <- plot.siteclass.dat %>% filter(Quantile %in% quant.index) %>%
-    mutate(loc = (qt.max / 30) + UCI.95,
-           lab = paste0("n = ", as.numeric(n.plts)))
-  
-  ### --- Plotting Site Class
-  
-  siteclass.plt <- ggplot(plot.siteclass.dat, aes(factor(Quantile), Means, fill = factor(Quantile))) + 
-    geom_col() + 
-    geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.1) + 
-    geom_text(data = num.labs, aes(label = lab, x = Quantile, y = loc), color = "black", size = 2) +
-    scale_fill_manual(values = virid.use[quant.index]) + 
-    scale_y_continuous(limits = c(0, qt.max)) +
-    #scale_x_discrete(labels = q.g.p.labs[quant.index]) +
-    theme_bw() +
-    theme(legend.position = "none") + 
-    labs(x = "Site Class", y = "Mean") +
-    theme(text = element_text(size = 7))
-  
-  
-  ### --- Scatterplot of delta.var and var with site class = color ##
-  classes.used <- plot.siteclass.dat$Quantile[is.na(plot.siteclass.dat$Means) == FALSE]
-  
-  q_plot_spp <- quant.matrix %>% dplyr::select(all_of(sppnum.to.plot), all_of(var1), all_of(var.delt)) %>%
-    filter(get(all_of(sppnum.to.plot)) %in% classes.used) 
-  names(q_plot_spp)[1] <- "SiteClass"
-  
-  sppnum <- as.numeric(gsub("X", "", sppnum.to.plot))
-  
-  # Common and Genus/species name for plot title
-  com.name <- spp.names$COMMON_NAME[spp.names$SPCD == sppnum]
-  g.s.name <- paste(spp.names$GENUS[spp.names$SPCD == sppnum], spp.names$SPECIES[spp.names$SPCD == sppnum])
-  fig.lab <- paste0("Plot conditions for ", com.name, ", ", g.s.name, ", ",  sppnum.to.plot)
-  
-  
-  plot.vals.plt <- ggplot(q_plot_spp, aes(get(var1), get(var.delt), color = factor(SiteClass))) + 
-    geom_point() + 
-    stat_ellipse(linewidth = 1) +  # Radius = level = 0.95 (default), type = "t" (default) = t-dist, 
-    geom_hline(yintercept = 0) +
-    theme_bw() + 
-    scale_color_manual(values = virid.use[classes.used], name = "Site Classes", 
-                       labels = gsub(".", " ", DOMAIN.LEVELS[classes.used], fixed = TRUE)) + 
-    labs(title = fig.lab,
-         x = var.label, y = var.delt.label) +
-    theme(text = element_text(size = 7))
-  
-  
-  # Now combining the two plots:
-  comb.plt <- siteclass.plt + plot.vals.plt + plot_layout(widths = c(1, 1.3))
-  
-  #ggsave(paste0(RESULTS.LOC, "Mort_figs_", var.filename, "/",sppnum.to.plot, "_plots.png"), comb.plt, device = "png", width = 7, height = 4, units = "in")
-  ggsave(paste0(RESULTS.LOC, switch(ANALYSIS.PATHWAY, "1" = "Quantile_Only/", "2" = "Size_Class/", "3" = "Site_Class/"), 
-                switch(ANALYSIS.TYPE[j], "mort" = "Mort", "grow" = "Growth"), 
-                "_figs_", var.filename, "/", sppnum.to.plot, "_plots.png"), 
-         comb.plt, device = "png", width = 7, height = 5, units = "in")
-}
 

@@ -23,7 +23,7 @@ library(tictoc)  # For development, timing routines.
 # Code controls:
 CALC.FIREPROP <- TRUE   # Set this to TRUE if wanting to calculate or recalculate
                           # the proportion of dead trees killed by fire by quantile.
-RUN.STATES <- FALSE # Should ANALYSIS.PATHWAY 1 find mortality estimates by state?
+RUN.STATES <- TRUE # Should ANALYSIS.PATHWAY 1 find mortality estimates by state?
 
 # File locations:
 DATA.LOC <- "Data/"

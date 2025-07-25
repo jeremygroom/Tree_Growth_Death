@@ -1,0 +1,182 @@
+---
+title: "Tree growth, mortality, and climatic stress in west-coast states, USA"
+author:
+  - name: "Jeremiah D. Groom"
+    affiliations:
+      - name: "Groom Analytics LLC"
+        address: "1975 SE Crystal Lake Dr., Unit 173"
+        city: "Corvallis"
+        state: "OR"
+        postal-code: "97333"
+    orcid: "0000-0002-0110-1036"
+    email: "jeremy@groomanalytics.com"
+  - name: "Bryce Frank"
+    affiliations:
+      - name: "USDA Forest Service"
+        department: "Pacific Northwest Field Station"
+        address: "3625 93rd Ave SW"
+        city: "Olympia"
+        state: "WA"
+        postal-code: "98512"
+abstract: |
+  Your abstract goes here. This should be a concise summary of your research question, methods, key findings, and implications. Keep it within journal word limits (typically 150-300 words).
+keywords: [keyword1, keyword2, keyword3, keyword4]
+date: today
+format:
+  docx:
+    reference-doc: template_use2.docx 
+    fig-width: 6
+    fig-height: 4
+    fig-dpi: 300
+    toc: false
+    number-sections: true
+    highlight-style: github
+execute:
+  echo: false
+  warning: false
+  message: false
+  cache: true
+---
+
+```{r setup, include = FALSE}
+
+
+# Set global chunk options
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 6,
+  fig.height = 4,
+  dpi = 300
+)
+```
+
+```{r libraries}
+
+# Load required R libraries
+library(tidyverse)    # Data manipulation and visualization
+library(here)         # File path management
+library(knitr)        # Document generation
+library(kableExtra)   # Enhanced table formatting
+library(ggplot2)      # Advanced plotting
+library(dplyr)        # Data manipulation
+library(readr)        # Data import
+library(scales)       # Scale functions for visualization
+library(patchwork)    # Combining plots
+library(flextable)    # Professional tables for Word output
+
+
+
+```
+
+```{r constants}
+
+# Define any custom functions
+format_p_value <- function(p) {
+  case_when(
+    p < 0.001 ~ "< 0.001",
+    p < 0.01 ~ sprintf("= %.3f", p),
+    TRUE ~ sprintf("= %.2f", p)
+  )
+}
+```
+
+```{r load-data}
+source("Global.R")
+
+spp.names.use <- spp.names %>% dplyr::select()
+
+```
+
+
+```{r table-creation}
+# State mortality
+s.m.1 <- 
+
+
+
+```
+
+
+
+
+# Introduction
+
+Your introduction should provide background context, review relevant literature, identify gaps in current knowledge, and clearly state your research objectives and hypotheses.
+
+## Background and Rationale
+
+Provide the scientific background and rationale for your study. Cite relevant literature using the format [@author2023] for in-text citations.
+
+## Study Objectives
+
+Clearly state your primary and secondary objectives or research questions.
+
+# Methods
+
+## Study Design
+
+Describe your study design, including the overall approach and methodology.
+
+## Participants
+
+Describe your study population, inclusion/exclusion criteria, and recruitment methods.
+
+## Data Collection
+
+Detail your data collection procedures, instruments used, and any quality control measures.
+
+## Statistical Analysis
+
+Describe your statistical analysis plan, including software used, significance levels, and specific tests performed.
+
+# Results
+
+
+
+Describe your main findings here, referencing 
+
+
+
+```{r statistical-tests}
+```
+
+The analysis revealed a significant difference between groups , with a mean difference of  units.
+
+# Discussion
+
+## Main Findings
+
+Summarize your key findings and their interpretation in the context of existing literature.
+
+## Limitations
+
+Acknowledge study limitations and their potential impact on your findings.
+
+## Implications and Future Directions
+
+Discuss the implications of your findings for theory, practice, and future research.
+
+# Conclusion
+
+Provide a concise summary of your main findings and their significance.
+
+# Acknowledgments
+
+Acknowledge funding sources, collaborators, and others who contributed to the work.
+
+# References
+
+::: {#refs}
+:::
+
+# Supplementary Material
+
+```{r supplementary-table}
+```
+
+```{r supplementary-figure}
+
+```

@@ -82,6 +82,10 @@ ggplot(data = map.dat.1, aes(x = LON, y = LAT)) +
 cwd.plt.startcwd <- cwd.map.fcn('pre_mean', title.txt = "FIA plot initial CWD values (10-yr mean prior to first visit)", lab.use = "Initial Climatic\nWater Deficit")
 cwd.plt.deltcwd <- cwd.map.fcn('difference', title.txt = "FIA plot 10-year difference in CWD values", lab.use = "Climatic Water\nDeficit Change")
 
+cwd.maps <- plot_grid(cwd.plt.startcwd, cwd.plt.deltcwd, nrow = 1)
+ggsave("CWD_map.png", cwd.maps, device = "png")
+
+
 #Elevation and change in Climatic Water Deficit
 ggplot(map.dat.1, aes(ELEV, difference)) + 
   geom_bin2d(bins = 70) +
@@ -109,4 +113,77 @@ data.use %>% filter(SPCD == spp.x) %>%
 plts.yr <- map(spp.consid, plts.yr.fcn)
 plts.yr.all <- reduce(plts.yr, left_join, by = "INVYR")
 # Yes, aside from 2011 (which is a spill-over year) there is balance.  Roughly the same number of plots are sampled per year.  
+
+
+
+
+
+# Investigating CWD over time
+# Starting with summer_means from Climate_Dat_Preparation
+
+
+summer_means %>% filter(is.na(mean) == FALSE)
+
+ggplot(summer_means %>% filter(puid == "10094_41_57"), aes(year, mean)) + geom_line()
+
+#ggplot(summer_means, aes(year, mean)) + geom_hex() + theme_bw() + geom_smooth(method = "lm")
+
+# Trying all 47k plots with geom_path and alpha transparency
+tic()
+g_alpha <- ggplot(summer_means, aes(year, mean, group = puid)) + geom_path(alpha = 0.01)
+ggsave("g_alpha.png", g_alpha, dev = "png")
+toc()
+
+
+# Let's sample 1k plots...
+samp_puid <- sample(unique(summer_means$puid), 1000, replace = FALSE) 
+s2 <- summer_means %>% filter(puid %in% samp_puid)
+
+g_alpha2 <- ggplot(s2, aes(year, mean, group = puid)) + geom_path(alpha = 0.03) + theme_bw()
+ggsave("g_alpha_1k.png", g_alpha2, dev = "png")
+
+
+# I'm seeing that during some years CWD goes down sharply for a lot of plots, but goes up for others.  
+# I could.... plot by year, plot by starting CWD (0 to 100, 100 to 175, 175 and above), etc.  
+# I am tempted to see which plots geographically are in each category.  
+
+
+#I think we may want to rerun this material for all plots with elevation and lat/lon
+
+puid_use <- unique(tree.plt.data$puid)
+
+s3 <- summer_means %>% filter(puid %in% puid_use) %>%
+  left_join(latlon_puid, by = "puid") %>%
+  group_by(puid) %>% 
+  mutate(delta = mean - lag(mean)) %>%
+  ungroup()
+
+samp_puid2 <-  sample(unique(s3$puid), 1000, replace = FALSE) 
+s4 <- s3 %>% filter(puid %in% samp_puid2)
+
+g_alpha_s3 <- ggplot(s3, aes(year, mean, group = puid)) + geom_path(alpha = 0.01)
+ggsave("g_alpha_s3.png", g_alpha_s3, dev = "png")
+
+ggplot(s4, aes(year, mean, group = puid)) + geom_path(alpha = 0.03) + theme_bw()
+
+
+
+# How does the change in CWD vary by year?
+
+ggplot(s3 %>% filter(year > 1990), aes(year, delta, group = year)) + geom_violin()
+
+
+
+g_line_violin <- ggplot(s3, aes(year, mean, group = puid)) + 
+  geom_path(alpha = 0.01) + 
+  geom_violin(data = s3 %>% filter(year > 1990), aes(year, delta, group = year), fill = "blue")
+
+ggsave("g_s3_line_violin.png", g_line_violin, dev = "png")
+
+
+g_line_delta <- ggplot(s4, aes(year, delta, group = puid)) + geom_path(alpha = 0.01) + theme_bw()
+ggsave("g_delta_s4.png", g_line_delta, dev = "png")
+
+
+
 
