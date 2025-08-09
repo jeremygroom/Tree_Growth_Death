@@ -3,7 +3,8 @@
 # --> Run Data_Prep_Analysis.R up through data.use (around line 91)
 
 ### -- Number of plots per species -- ###
-
+## This bit of code is for determining which species to investigate based on plot number.  
+#  In this case, 400 plots is used as a breakpoint.
 n.spp.plts <- data.use %>% select(SPCD, puid) %>%
   distinct() %>%
   group_by(SPCD) %>%

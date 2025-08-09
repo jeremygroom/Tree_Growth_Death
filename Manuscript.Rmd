@@ -1,0 +1,268 @@
+---
+title: "Tree growth, mortality, and climatic stress in west-coast states, USA"
+author:
+  - name: "Jeremiah D. Groom"
+    affiliations:
+      - name: "Groom Analytics LLC"
+        address: "1975 SE Crystal Lake Dr., Unit 173"
+        city: "Corvallis"
+        state: "OR"
+        postal-code: "97333"
+    orcid: "0000-0002-0110-1036"
+    email: "jeremy@groomanalytics.com"
+  - name: "Bryce Frank"
+    affiliations:
+      - name: "USDA Forest Service"
+        department: "Pacific Northwest Field Station"
+        address: "3625 93rd Ave SW"
+        city: "Olympia"
+        state: "WA"
+        postal-code: "98512"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  officedown::rdocx_document:
+    reference_docx: "template_use2.docx"
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+
+library(kableExtra)   # Enhanced table formatting
+library(scales)       # Scale functions for visualization
+library(flextable)    # Professional tables for Word output
+library(officedown)
+library(officer)
+library(rvg)
+#devtools::install_github("adletaw/captioner")
+library(captioner) # For figure captions.
+
+```
+
+
+```{r other_settings}
+fp <- fp_par(
+  text.align = "center", 
+  padding.bottom = 20, padding.top = 120, 
+  border.bottom = fp_border())
+
+ft <- fp_text(shading.color='#EFEFEF', bold = TRUE)
+```
+
+
+```{r constants}
+
+source("Global.R")
+source(paste0(CODE.LOC, "Functions.R"))
+
+# Define any custom functions
+format_p_value <- function(p) {
+  case_when(
+    p < 0.001 ~ "< 0.001",
+    p < 0.01 ~ sprintf("= %.3f", p),
+    TRUE ~ sprintf("= %.2f", p)
+  )
+}
+
+
+set_flextable_defaults(
+  font.family = "Times New Roman",
+  font.size = 11,
+  theme_fun = "theme_vanilla"
+)
+
+centeredP <- fp_par(text.align = "center")
+
+```
+
+```{r load-data}
+# Some general analysis info + plots
+analysis.stats <- read_rds(paste0(RESULTS.OTHER, "analysis.stats.RDS"))
+
+# Species scientific names
+spp.names.use <- analysis.stats$gym.angio.dat
+
+# Growth data for species overall and states
+grow.state <- read_csv(paste0(RESULTS1.LOC, "Growth_figs_", CLIM.VAR.USE, "/State_Growth_", CLIM.VAR.USE, ".csv"))
+grow.all <- read_csv(paste0(RESULTS1.LOC, "Growth_figs_", CLIM.VAR.USE, "/All_Growth_", CLIM.VAR.USE, ".csv"))
+
+# Growth data for species overall and states
+mort.state <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/State_Mortality_", CLIM.VAR.USE, ".csv"))
+mort.all <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/All_Mortality_", CLIM.VAR.USE, ".csv"))
+
+```
+
+```{r table-creation}
+# State growth
+s.g.dat <- state.table.fcn(grow.state, grow.all, 1)
+
+growth.ft <- flextable(s.g.dat) %>%
+  fontsize(size = 9, part = "body") %>%
+  fontsize(size = 10, part = "header") %>%
+  line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
+  theme_zebra(
+    odd_header = "#FFFFFF",   # White background for all
+    even_header = "#FFFFFF",
+    odd_body = "#FFFFFF",     
+    even_body = "#FFFFFF"     
+  ) %>%
+  set_table_properties(layout = "autofit", width = 0) 
+  
+max.grow.spp <- maxmin.fcn(grow.all, "Means", "LCI.95", "UCI.95", extreme = "max", cm2 = TRUE)
+min.grow.spp <- maxmin.fcn(grow.all, "Means", "LCI.95", "UCI.95", extreme = "min", cm2 = TRUE)
+
+
+# State mortality
+s.m.dat <- state.table.fcn(mort.state, mort.all, 2)
+
+mort.ft <- flextable(s.m.dat) %>%
+  fontsize(size = 9, part = "body") %>%
+  fontsize(size = 10, part = "header") %>%
+  line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
+  theme_zebra(
+    odd_header = "#FFFFFF",   # White background for all
+    even_header = "#FFFFFF",  
+    odd_body = "#FFFFFF",     
+    even_body = "#FFFFFF"     
+  ) %>%
+  set_table_properties(layout = "autofit", width = 0) 
+
+max.mort.spp <- maxmin.fcn(mort.all, "Means", "LCI.95", "UCI.95", extreme = "max", cm2 = FALSE, digits = 2)
+min.mort.spp <- maxmin.fcn(mort.all, "Means", "LCI.95", "UCI.95", extreme = "min", cm2 = FALSE, digits = 2)
+
+
+```
+
+
+```{r set_captions}
+
+# 
+fig_nums <- captioner::captioner(prefix = "Figure")
+tab_nums <- captioner::captioner(prefix = "Table")
+
+
+f.ref <- function(x) {
+ stringr::str_extract(fig_nums(x), "[^:]*")
+}
+
+t.ref <- function(x)  {
+  stringr::str_extract(tab_nums(x), "[^:]*")
+}
+
+tab.tbl_growth <- tab_nums(name = "tbl_growth", 
+                        caption = "Decadal growth estimates by state and overall for analysis species. Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 plots.")
+
+tab.tbl_mort <- tab_nums(name = "tbl_mort", 
+                        caption = "Decadal mortality estimates by state and overall for analysis species. Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 plots.")
+
+fig.cwdmap_cap <- fig_nums(name = "fig_cwdmap", 
+                        caption = "Fuzzed FIA plot locations displayed with initial visit climatic water deficit (CWD) values (A) and CWD change between visits (C) for the U.S. states, north to south, of Washington, Oregon, and California (see inset map B for the location of these states within the USA).")
+
+fig.domains <- fig_nums(name = "fig_domains",
+                        caption = "Decadal (A) growth and (B) mortality domain estimates for *Abies lasiocarpa*.  The six domains are defined as FIA plots that fall [A]bove or [B]elow the CWD change threshold with [L]ow, [M]edium, or [H]igh initial CWD values (see text for details). E.g., 'AL' is Above CWD change threshold, Low initial CWD value. The distribution of plot CWD change and initial values (C) is presented as well, with the blue horizontal line at a change in CWD of 5 mm representing the change threshold and the green vertical lines representing the quantile boundaries between Low, Medium, and High initial CWD values." )
+
+fig.diff_grow <- fig_nums(name = "fig_diffgrow", 
+                          caption = paste0("Differences in mean growth rates (cm\u00B2/decade) between domains by species.  Domain abbreviations are described in the legend for ",
+                                           f.ref("fig_domains"), 
+                                           ". See each column legend for the key of domain differences.  Mean domain differences (circles) with 95% CIs (bars) that do not intersect zero are filled."))
+
+fig.diff_mort <- fig_nums(name = "fig_diffmort", 
+                          caption = paste0("Differences in mean decadal mortality rates between domains by species.  Domain abbreviations are described in the legend for ",
+                                           f.ref("fig_domains"), 
+                                           ". See each column legend for the key of domain differences.  Mean domain differences (circles) with 95% CIs (bars) that do not intersect zero are filled."))
+
+
+```
+
+
+# Abstract
+
+# Introduction
+
+# Methods
+
+# Results
+
+Our study tracked the fate of `r comma(analysis.stats$tree.num)` trees from `r length(sel.spp)` in `r comma(analysis.stats$plot.num)` plots that were visited twice by FIA crews.  Of the `r length(sel.spp)` species, `r analysis.stats$n.gym.spp` are gymnosperms.  Overall growth rates for species varied between `r min.grow.spp$mean` (*`r min.grow.spp$spp`*) and `r max.grow.spp$mean` (*`r max.grow.spp$spp`*, `r t.ref("tbl_growth")`) cm$^2$/decade.  Decadal mean mortality rates varied between `r min.mort.spp$mean` (*`r min.mort.spp$spp`*) and `r max.mort.spp$mean` (*`r max.mort.spp$spp`*, `r t.ref("tbl_mort")`). Growth and mortality rates differed among states (Tables `r tab_nums("tbl_growth", display = "num")` and `r tab_nums("tbl_mort", display = "num")`).
+
+Forested plot 10-year differences in CWD do not visually coincide with initial CWD values (`r f.ref("fig_cwdmap")`) although most plots increased in their CWD values to some degree; `r analysis.stats$cwd.lt0.pct`% of plots decreased in mean CWD values between visits.  Individual species quantiles for CWD / delta CWD. DO I want to include some sort of quantile-thing for the range of delta-CWD for species?  Then cite the dashboard.  
+
+# Discussion
+
+The initial CWD values coincide fairly well with mean annual precipitation [NOAA Climate.gov](https://www.climate.gov/news-features/featured-images/new-maps-annual-average-temperature-and-precipitation-us-climate). 
+
+# Conclusion
+
+# Acknowledgments
+
+# References
+
+::: {#refs}
+:::
+
+
+
+
+<!---BLOCK_LANDSCAPE_START--->
+
+
+
+```{r tbl-growth, tab.cap=tab.tbl_growth}
+
+#tab_num <- run_autonum(seq_id = "Table", pre_label = "Table ", post_label = ": ", bkm = "tbl-growth")
+#block_caption(label = "Decadal growth estimates by state and overall for analysis species. Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 plots.", style = "caption", autonum = tab_num)
+
+growth.ft 
+
+```
+
+
+```{r tbl-mort, tab.cap = tab.tbl_mort}
+#tab_num <- run_autonum(seq_id = "Table", pre_label = "Table ", post_label = ": ", bkm = "tbl-mortality")
+#block_caption(label = "Decadal mortality estimates by state and overall for analysis species. Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 #plots.", style = "caption", autonum = tab_num)
+
+mort.ft 
+
+```
+
+<!---BLOCK_LANDSCAPE_STOP--->
+
+
+
+```{r mapfig, fig.height = 7,  fig.dpi=300, fig.cap=fig.cwdmap_cap, fig.cap.pre="", fig.cap.sep=""}
+
+# Output from Manuscript_information.R
+knitr::include_graphics(paste0(RESULTS.OTHER, "cwd_maps_figure.png"))
+
+```
+
+
+```{r domainsfig, fig.width = 6,  fig.dpi=300, fig.cap=fig.domains, fig.cap.pre="", fig.cap.sep=""}
+
+# Output from Manuscript_information.R
+knitr::include_graphics(paste0(RESULTS.OTHER, "Example_spp_figure.png"))
+
+```
+
+
+```{r diff_grow_fig, fig.height = 6, width = 6, fig.dpi=300, fig.cap=fig.diff_grow, fig.cap.pre="", fig.cap.sep=""}
+
+# Output from Manuscript_information.R
+knitr::include_graphics(paste0(RESULTS1.LOC, "/Growth_figs_cwd/Growth_Panel_Plot.png"))
+
+```
+
+
+```{r diff_mort_fig, fig.height = 6, width = 6, fig.dpi=300, fig.cap=fig.diff_mort, fig.cap.pre="", fig.cap.sep=""}
+
+# Output from Manuscript_information.R
+knitr::include_graphics(paste0(RESULTS1.LOC, "/Mort_figs_cwd/Mort_Panel_Plot.png"))
+
+```
+
+

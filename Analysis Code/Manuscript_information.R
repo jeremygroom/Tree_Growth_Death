@@ -1,0 +1,303 @@
+## This code provides inforamtion summaries for the manuscript and generates 
+#   non-estimate figures and (maybe) tables.
+#   The file Data_Prep_Analysis.R sources this code.  
+#   The file Manuscript.Rmd will open and use its outputs.
+
+
+### Q: How many trees did we track? How many plots?
+tree.num <- dim(tree.plt.data %>% filter(SPCD %in% sel.spp))[1]
+plot.num <- dim(PlotDat)[1]
+
+## Number of Gymnosperms?  Which ones?
+gym.angio.dat <- spp.names %>% filter(SPCD %in% sel.spp) %>%
+  mutate(sci_name = paste(GENUS, SPECIES),
+         SpeciesCode = paste0("X", SPCD)) %>%
+  dplyr::select(SpeciesCode, SPCD, COMMON_NAME, SPECIES_SYMBOL, SFTWD_HRDWD, sci_name)
+n.gym.spp <- length(gym.angio.dat$SPCD[gym.angio.dat$SFTWD_HRDWD == "S"])
+
+
+### Q: What percentage of change in CWD is negative & positive?
+# Quantiles of data below different thresholds
+n.cwd <- nrow(climate.use)
+n.zero <- nrow(climate.use %>% filter(difference < 0))
+n.min.3 <- nrow(climate.use %>% filter(difference < -3))
+
+cwd.lt.0.pct <- round(n.zero/n.cwd, 3) * 100 #Percent CWD diff < 0  =  8%
+cwd.lt.min3.pct <- n.min.3/n.cwd #Percent CWD diff < -3  = 0.6% (This is useful for the mapping)
+
+
+
+analysis.stats <- list(tree.num = tree.num,
+                       plot.num = plot.num,
+                       cwd.lt0.pct = cwd.lt.0.pct,
+                       gym.angio.dat = gym.angio.dat,
+                       n.gym.spp = n.gym.spp) 
+
+write_rds(analysis.stats, paste0(RESULTS.OTHER, "analysis.stats.RDS"))
+
+
+
+
+##### Figure: Example growth, mortality and CWD scatterplot -----------------------
+domain.figs <- list()
+for(k in 1:2){
+  plt.dat <- readRDS(paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS"))
+  plt.dat2 <- plt.dat$domain.summaries
+  
+  sppnum.to.plot <- "X81"
+  mort.grow.dat <- get(paste0("arrays.", ANALYSIS.TYPE[k])) 
+  
+  domain.matrix <- mort.grow.dat$domain.matrix
+  domain.n <- mort.grow.dat$domain.n 
+  quant.lims <- mort.grow.dat$quant.lims
+  quant.lims.delta <- mort.grow.dat$quant.lims.delt
+  
+  
+  use.dat2 <- plt.dat2 %>% filter(Species == sppnum.to.plot)
+  
+  plot.domain.dat <- plt.dat2 %>% 
+    filter(Species == sppnum.to.plot) %>%
+    left_join(domain.level.table, by = c("Domain" = "q.num"))
+  
+  # Details for plotting
+  virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
+  
+  qt.max <- ceiling(max(use.dat2$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
+  
+  # Create a grid of plots to match bivariate plot
+  q.g.p.labs <- paste0(DOMAIN.LEVELS, ", n = ", as.numeric(use.dat2$n.plts)) # Labels for the domain grid plot
+  
+  ylabs <- if (k == 1) "Mean Growth (cm\u00B2/decade)" else "Mean Decadal Mortality Rate"
+  
+  text.size <- 9
+  
+  p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3) 
+  p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6) 
+  #p_all <- plot_grid(p1, p2, ncol = 1)
+  list1 <- list(p1 = p1, p2 = p2)
+  fig.letter <- switch(k, "A", "B")
+  domain.figs[[paste0("p1_", k)]] <- p1 + annotate("text", x = 0.65 , y = qt.max * 0.95, label = fig.letter, parse = TRUE, size = 6) + theme(text = element_text(size = text.size))
+  domain.figs[[paste0("p2_", k)]] <- p2 + theme(text = element_text(size = text.size))
+  
+  
+  # Plotting the scatterplot of points in quadrants; only doing so for Mortality.
+  if(k == 2) {
+    # Code to prep for scatterplot figure - helps in reducing the color palette.
+    n_plots <- get(sppnum.to.plot, domain.n)
+    n_plots2 <- tibble(loc = 1:n_domain, n = n_plots) %>%
+      left_join(tibble(Domain = plot.domain.dat$Domains, loc = 1:n_domain), by = "loc")
+    
+    
+    plot.vals.plt <- domain.dist.plt.fcn(plot.spp = sppnum.to.plot, domain.matrix = domain.matrix, 
+                                         var1 = var1, var.delt = var.delt, quant.lims = quant.lims,
+                                         n.plots.used = n_plots2, size.trees = "") 
+    
+    q_plot_spp <- domain.matrix %>% dplyr::select(all_of(sppnum.to.plot), all_of(var1), all_of(var.delt)) %>%
+      filter(get(plot.spp) > 0) 
+    pts.max.y <- ceiling(layer_scales(plot.vals.plt)$y$range$range[2] * 10) / 10 # Extracts max Y extent of ggplot
+    
+    #ceiling(max(use.dat2$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
+    
+    
+    range.x <- range(q_plot_spp$pre_mean, na.rm = TRUE)
+    pts.min.x <- min(q_plot_spp$pre_mean) + 0.065 * (range.x[2] - range.x[1]) 
+    
+    plot.vals.plt <- plot.vals.plt + 
+      labs(title = NULL) + 
+      annotate("text", x = pts.min.x , y = pts.max.y, label = "C", parse = TRUE, size = 6) +
+      theme(text = element_text(size = text.size))
+    
+    plot.vals.plt.no_legend <- plot.vals.plt + theme(legend.position = 'none')
+  }
+  
+}
+
+p1_1 <- domain.figs$p1_1
+p1_2 <- domain.figs$p1_2
+p2_1 <- domain.figs$p2_1
+p2_2 <- domain.figs$p2_2 
+
+comb.plt <- ((p1_1/p2_1 + plot_layout(axis_titles = "collect")) | (p1_2/p2_2 + plot_layout(axis_titles = "collect")) | plot.vals.plt.no_legend ) #/ guide_area() + plot_layout(guides = 'collect', heights = c(10, 0.01)) 
+
+comb.plt.legend <- get_legend(plot.vals.plt)
+
+comb.plt <- plot_grid(comb.plt, comb.plt.legend, ncol = 1, rel_heights = c(1, 0.03))
+
+
+ggsave(paste0(RESULTS.OTHER, "Example_spp_figure.png"), comb.plt, device = 'png',
+       width = 8, height = 6, dpi = 300, units = "in", bg = "white")
+
+
+
+
+
+
+##### Figure: Map of plots displaying initial and delta CWD -----------------------
+us_states <- st_as_sf(maps::map("state", plot = FALSE, fill = TRUE))
+west_states <- us_states[us_states$ID %in% c("california", "oregon", "washington"), ]
+
+# Transform to a suitable projection for the west coast (e.g., NAD83 / California Albers)
+west_states_proj <- st_transform(west_states, crs = 3310)
+
+# Prepare climate data
+map.dat.1 <- climate.use %>%
+  filter(is.na(difference) == FALSE,
+         difference >= -3) %>% 
+  ungroup()
+
+# Convert climate data to sf object and transform to same projection
+climate_sf <- st_as_sf(map.dat.1, coords = c("LON", "LAT"), crs = 4326)
+climate_sf_proj <- st_transform(climate_sf, crs = 3310)
+
+# Extract coordinates in projected system
+coords_proj <- st_coordinates(climate_sf_proj)
+climate_proj_df <- climate_sf_proj %>%
+  st_drop_geometry() %>%
+  bind_cols(data.frame(X = coords_proj[,1], Y = coords_proj[,2]))
+
+# Get bounding box for the map extent
+bbox <- st_bbox(west_states_proj)
+x_range <- c(bbox["xmin"] - 50000, bbox["xmax"] + 50000)
+y_range <- c(bbox["ymin"] - 50000, bbox["ymax"] + 50000)
+
+# Create inset map of US with west states highlighted
+us_states_full <- st_as_sf(maps::map("state", plot = FALSE, fill = TRUE))
+# Transform to Albers Equal Area for US
+us_states_albers <- st_transform(us_states_full, crs = 5070)
+west_states_albers <- us_states_albers[us_states_albers$ID %in% c("california", "oregon", "washington"), ]
+
+inset_map <- ggplot() +
+  geom_sf(data = us_states_albers, fill = "white", color = "gray60", size = 0.3) +
+  geom_sf(data = west_states_albers, fill = "gray60", color = "black", size = 0.5) +
+  theme_void() +
+  theme(panel.background = element_rect(fill = "lightblue", color = "black", linewidth = 0.5),
+        plot.background = element_rect(fill = "white", color = "black", linewidth = 0.5))
+
+# Enhanced mapping function
+cwd.map.fcn <- function(var.use, title.txt, lab.use, add_extras = FALSE) {
+  p <- ggplot() +
+    # Add state boundaries
+    geom_sf(data = west_states_proj, fill = "transparent", color = "black", size = 0.8) +
+    # Add climate data points
+    geom_point(data = climate_proj_df, 
+               aes(x = X, y = Y, color = get(var.use)), 
+               size = 0.8, alpha = 0.8) +
+    scale_color_viridis_c(option = "H", begin = 0.1, end = 0.9, 
+                          name = lab.use,
+                          guide = guide_colorbar(
+                            title.position = "top",
+                            title.hjust = 0.5,
+                            barwidth = 8,
+                            barheight = 0.8,
+                            frame.colour = "black",
+                            ticks.colour = "black"
+                          )) +
+    coord_sf(xlim = x_range, ylim = y_range, expand = FALSE) +
+    theme_void() +
+    theme(
+      panel.border = element_rect(colour = "black", fill = NA, linesize = 0.8),
+      legend.position = "bottom",
+      legend.box.margin = margin(t = -5, b = 5),
+      legend.title = element_text(size = 10, face = "bold"),
+      legend.text = element_text(size = 9),
+      plot.title = element_text(size = 12, face = "bold", hjust = 0.5, margin = margin(b = 10)),
+      plot.margin = margin(0, 0, 0, 0)
+    ) +
+    labs(title = title.txt)
+  
+  # Add extras to the first subplot
+  if (add_extras) {
+    # Add north arrow
+    p <- p + annotation_north_arrow(
+      location = "bl", 
+      which_north = "true",
+      pad_x = unit(0.4, "npc"),
+      pad_y = unit(0.02, "npc"),
+      style = north_arrow_fancy_orienteering(
+        fill = c("white", "black"),
+        line_col = "black",
+        text_size = 8
+      ),
+      height = unit(1.2, "cm"),
+      width = unit(1.2, "cm")
+    )
+    
+    # Add scale bar
+    p <- p + annotation_scale(
+      location = "bl",
+      width_hint = 0.25,
+      pad_x = unit(0.02, "npc"),
+      pad_y = unit(0.02, "npc"),
+      style = "ticks",
+      line_col = "black",
+      text_col = "black",
+      height = unit(0.3, "cm")
+    )
+    
+    # Add inset map
+    p <- p + annotation_custom(
+      ggplotGrob(inset_map),
+      xmin = x_range[1] + 0.5 * diff(x_range),
+      xmax = x_range[1] + 0.97 * diff(x_range),
+      ymin = y_range[1] + 0.37 * diff(y_range),
+      ymax = y_range[1] + 0.55 * diff(y_range)
+    )
+  }
+  
+  return(p)
+}
+
+# Create the two subplots
+cwd.plt.startcwd <- cwd.map.fcn(
+  'pre_mean', 
+  title.txt = NULL, 
+  lab.use = "Initial Climatic Water Deficit (mm)",
+  add_extras = TRUE
+) + 
+  annotate("text", x = 0.05 * (x_range[2] - x_range[1]) + x_range[1], 
+           y = 0.97 * (y_range[2] - y_range[1]) + y_range[1],
+           label = "bold(A)", parse = TRUE, size = 6) +
+  annotate("text", x = 0.54 * (x_range[2] - x_range[1]) + x_range[1], 
+           y = 0.415 * (y_range[2] - y_range[1]) + y_range[1],
+           label = "bold(B)", parse = TRUE, size = 6)
+
+
+cwd.plt.deltcwd <- cwd.map.fcn(
+  'difference', 
+  title.txt = NULL, 
+  lab.use = "Climatic Water Deficit Change (mm)"
+) + 
+  annotate("text", x = 0.05 * (x_range[2] - x_range[1]) + x_range[1], 
+           y = 0.97 * (y_range[2] - y_range[1]) + y_range[1],
+           label = "bold(C)", parse = TRUE, size = 6)
+
+# Combine the plots
+cwd.maps <- plot_grid(
+  cwd.plt.startcwd, 
+  cwd.plt.deltcwd, 
+  nrow = 1, 
+  align = "hv"
+) + 
+  plot.margin = unit(c(0, 0, 0, 0), "null")
+
+
+cwd.maps <- ggdraw() +
+  draw_plot(cwd.plt.startcwd, x = 0, y = 0, width = 0.55, height = 1) +
+  draw_plot(cwd.plt.deltcwd, x = 0.45, y = 0, width = 0.45, height = 1) 
+  
+
+# Print the final figure
+print(cwd.maps)
+
+# Saving a png of the figure and a RDS version as well. The MS relies on the RDS.
+ggsave(paste0(RESULTS.OTHER, "cwd_maps_figure.jpg"), cwd.maps, device = 'jpg',
+       width = 6, height = 8.81, dpi = 300, units = "in",
+       bg = "white")
+
+ms.figures.other <- list(cwd.maps = cwd.maps)
+  
+write_rds(ms.figures.other, paste0(RESULTS.OTHER, "ms.figures.other.RDS"))
+
+
+
+

@@ -56,7 +56,7 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
   
   # Finding and saving domain summaries
   state.domain.summaries <- state.domain.index %>% 
-    map(\(d) domain.sum.fcn(state.bootstrap_results, d)) %>%
+    map(\(d) domain.sum.fcn(state.bootstrap_results, d, domain_n =state.n)) %>%
     do.call(rbind, .) %>%
     mutate(State = case_match(Domain, 1 ~ "CA", 2 ~ "WA", 3 ~ "OR")) %>%
     arrange(Species, Domain)
@@ -74,7 +74,7 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
     n_iter = BS.N
   )
   
-  all.species.summaries <- domain.sum.fcn(all.bootstrap_results, 1)
+  all.species.summaries <- domain.sum.fcn(all.bootstrap_results, 1, domain_n =all.n)
   
   # Writing values for species across states to another file
   write_csv(all.species.summaries, file = paste0(save.loc.fcn(k), "All_", g.m.labels[k], "_", CLIM.VAR.USE, ".csv"))

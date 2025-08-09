@@ -2,19 +2,19 @@
 
 
 ##### ---- Libraries ---- #####
-library(tidyverse)
 library(readr)
 library(viridis)
 library(cowplot)
 library(patchwork)
 library(readxl)
-library(data.table)
-library(abind) # for combining matrices into arrays
-
+library(tidyverse)
+library(here)         # File path management
 library(furrr)
 library(parallel)
-library(RSQLite) # For obtaining SQLite FIA databases
-library(tictoc)  # For development, timing routines.
+# Generation of maps
+library(sf)
+library(ggspatial)
+library(maps)
 
 
 
@@ -30,8 +30,7 @@ DATA.LOC <- "Data/"
 CODE.LOC <- "Analysis Code/"
 RESULTS.LOC <- "Results/"
 RESULTS1.LOC <- "Results/Quantile_Only/"  # For ANALYSIS.PATHWAY 1
-RESULTS2.LOC <- "Results/Size_Class/"  # For ANALYSIS.PATHWAY 2
-RESULTS3.LOC <- "Results/Site_Class/"  # For ANALYSIS.PATHWAY 3
+RESULTS.OTHER <- "Results/Other_Results/"  # For summaries, maps, etc.
 
 
 
@@ -68,7 +67,7 @@ INIT.CLIM.BREAKS <- c(75, 125) # if USE.QUANT.PROBS are FALSE, these are the dom
 if(THREE.CHANGE.CATEGORIES) {
 DOMAIN.LEVELS <- c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")
 } else {
-DOMAIN.LEVELS <- c("DL", "DM", "DH", "SL", "SM", "SH")
+DOMAIN.LEVELS <- c("AL", "AM", "AH", "BL", "BM", "BH") # Above/Below threshold and Low/Medium/High
 }
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
 BS.N <- 200    # Bootstrap iteration number
@@ -97,7 +96,8 @@ orig <- read_csv(paste0(DATA.LOC, "Occ_OriginalVisit2.csv")) %>%
 spp.list <- as.numeric(gsub("X", "", names(orig)[(ncol(orig) - (length(grep("X", names(orig))) - 1)):ncol(orig)]))
 spp.id <- names(orig)[(ncol(orig) - (length(grep("X", names(orig))) - 1)):ncol(orig)]
 
-spp.names <- read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx")) %>% filter(SPCD %in% spp.list)
+spp.names <- readxl::read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx")) %>% dplyr::filter(SPCD %in% spp.list)
+
 
 ## Items for parallel computing
 n.cores <- round(detectCores() * 0.75, 0) # Number of cores, package "parallel".  Using 75% of the available cores, rounded.

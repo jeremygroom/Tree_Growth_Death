@@ -31,7 +31,12 @@
 source("Global.R")
 source(paste0(CODE.LOC, "Functions.R"))
 
-
+library(furrr)
+library(parallel)
+library(RSQLite) # For obtaining SQLite FIA databases
+library(tictoc)  # For development, timing routines.
+library(data.table)
+library(abind) # for combining matrices into arrays
 #### 2) Base data prep --------------------------------------------------------
 # These are the base data sets that will be transformed by the analysis types.
 
@@ -119,7 +124,7 @@ PlotDat <- left_join(PlotDat, plotN3, by = c("stratum"))
 # Now just checking to see how Wh and n_h/N compare.
 #  plt.use <- PlotDat %>% group_by(stratum, w) %>%
 #  summarize(n.plts = n()) %>%
-#  left_join(plotN3, by = "stratum") %>%
+#  left_join(plotN3, by = "Stratum") %>%
 #  mutate(w.plts = n_h.plts / tot.n) 
 
 #  It looks like the fit between Wh and n_h/N is pretty tightly linear.  
@@ -135,10 +140,10 @@ PlotDat <- left_join(PlotDat, plotN3, by = c("stratum"))
 ## First the data are summarized by species and climate variable (clim.mort.resp.fcn, 
 #   clim.growth.resp.fcn).  Then the data are combined into arrays for 
 #    analysis (parse.tree.clim.fcn).
-tree.mort.dat <- map(sel.spp, clim.mort.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use) 
+tree.mort.dat <- purrr::map(sel.spp, clim.mort.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use) 
 
 # Create lists of tree growth and number of trees that grew in each plot
-tree.grow.dat <- map(sel.spp, clim.growth.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use) 
+tree.grow.dat <- purrr::map(sel.spp, clim.growth.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use) 
 
 
 # Combining data into arrays and such, preparing for analysis.
@@ -181,12 +186,10 @@ if(RUN.STATES == TRUE) {
 }
 
 
+
+
+
 # The remaining code breaks up the analyses by type (mortality, growth) and climate variable (AET).
-# If ANALYSIS.PATHWAY is 2 then the process is run twice, once for each size class. 
-#  The plotting functions are located at the end of the process, with each ANALYSIS.PATHWAY
-#  having a distinct function.
-
-
 
 tic() 
 # For ANALYSIS.PATHWAY == 1, one climate variable, and 16 dedicated cores, the analysis takes about 8 minutes.
@@ -221,6 +224,10 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     quant.lims <- mort.grow.dat$quant.lims
     quant.lims.delta <- mort.grow.dat$quant.lims.delt
     
+    # The quant.spp is a data frame of the change quantiles.  This is for 
+    #  reporting purposes (sent over to Manuscript_information.R)
+    quants.spp <- quant.lims %>%
+        map_dfr(~ data.frame(q25 = .["25%"], q75 = .["75%"]), .id = "species")
     
     
     ## First, adjusting the species list
@@ -259,11 +266,11 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     
     # Finding and saving domain summaries
     domain.summaries <- domain.index %>% 
-      map(\(d) domain.sum.fcn(bootstrap_results, d)) %>%
+      purrr::map(\(d) domain.sum.fcn(bootstrap_results, d, domain_n = domain.n)) %>%
       do.call(rbind, .) %>%
       arrange(Species, Domain)
     
-    saveRDS(list(bootstrap_results = bootstrap_results, domain.summaries = domain.summaries), file = paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS"))
+    saveRDS(list(bootstrap_results = bootstrap_results, domain.summaries = domain.summaries, quants.spp = quants.spp), file = paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS"))
     
     ## The code in this section is dedicated to preparing data files for plotting the differences in six-domain results.
     ## This process has two steps: first, the domain matrix pairs are subtracted from one another 
@@ -272,25 +279,25 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     #  prepped for inclusion.  
     if(n_domain == 6) {
       
-    # Drier vs. Stable domains
-    D.vec <- c("DL", "DM", "DH")
-    S.vec <- c("SL", "SM", "SH")
+    # Domains compared: Above vs. Below threshold 
+    A.vec <- c("AL", "AM", "AH")
+    B.vec <- c("BL", "BM", "BH")
     
-    DvS <- bind_rows(map2(D.vec, S.vec, domain.diff.fcn, results.array = bootstrap_results)) %>%
+    AvB <- bind_rows(map2(A.vec, B.vec, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
       arrange(Species, Domain)
     
-    # Drier, Low/Med/High comparisons
-    D_LMH.vec1 <- c("DH", "DM", "DH")
-    D_LMH.vec2 <- c("DL", "DL", "DM")
+    # Domains compared: Above threshold, Low/Med/High comparisons
+    A_LMH.vec1 <- c("AH", "AM", "AH")
+    A_LMH.vec2 <- c("AL", "AL", "AM")
     
-    D_LMH <- bind_rows(map2(D_LMH.vec1, D_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results)) %>%
+    A_LMH <- bind_rows(map2(A_LMH.vec1, A_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
       arrange(Species, Domain)
     
-    # Stable, Low/Med/High comparisons
-    S_LMH.vec1 <- c("SH", "SM", "SH")
-    S_LMH.vec2 <- c("SL", "SL", "SM")
+    # Domains compared: Below threshold, Low/Med/High comparisons
+    B_LMH.vec1 <- c("BH", "BM", "BH")
+    B_LMH.vec2 <- c("BL", "BL", "BM")
     
-    S_LMH <- bind_rows(map2(S_LMH.vec1, S_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results)) %>%
+    B_LMH <- bind_rows(map2(B_LMH.vec1, B_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
       arrange(Species, Domain)
     
     spp.names.fig <- spp.names %>% select(SPCD, GENUS, SPECIES) %>% 
@@ -298,13 +305,13 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
       select(-SPCD)
     
     
-    DvS2 <- diff.fig.prep.fcn(DvS, diff.levels = c("DL - SL", "DM - SM", "DH - SH"))
-    D_LMH2 <- diff.fig.prep.fcn(D_LMH, diff.levels = c("DH - DL", "DH - DM", "DM - DL"))
-    S_LMH2 <- diff.fig.prep.fcn(S_LMH, diff.levels = c("SH - SL", "SH - SM", "SM - SL"))
+    AvB2 <- diff.fig.prep.fcn(AvB, diff.levels = c("AL - BL", "AM - BM", "AH - BH"))
+    A_LMH2 <- diff.fig.prep.fcn(A_LMH, diff.levels = c("AH - AL", "AH - AM", "AM - AL"))
+    B_LMH2 <- diff.fig.prep.fcn(B_LMH, diff.levels = c("BH - BL", "BH - BM", "BM - BL"))
     
     
-    saveRDS(list(DvS = DvS, D_LMH = D_LMH, S_LMH = S_LMH, 
-                 DvS2 = DvS2, D_LMH2 = D_LMH2, S_LMH2 = S_LMH2, 
+    saveRDS(list(AvB = AvB, A_LMH = A_LMH, B_LMH = B_LMH, 
+                 AvB2 = AvB2, A_LMH2 = A_LMH2, B_LMH2 = B_LMH2, 
                  spp.names.fig = spp.names.fig), 
             file = paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
     
@@ -316,34 +323,42 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
 toc()
 
 
+### Summary information: generated at this point to capture changes in RMD output files.
+if(RUN.SUMMARY == TRUE) {
+  source(paste0(CODE.LOC, "Manuscript_information.R"))
+}
+
+
+
 # Plotting the multi-species panels
 
 if(n_domain == 6) {
   for(k in 1:2){ # 1 = growth, 2 = mortality
     
-plt.dat <- readRDS(paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
-
-DvS2 <- plt.dat$DvS2
-D_LMH2 <- plt.dat$D_LMH2
-S_LMH2 <- plt.dat$S_LMH2
-
-xlab.use <- switch(k, "1" = "Annual Growth Rate (in2/yr)", "2" = "Annual Mortality Rate")
-filename.use <- switch(k, "1" = "Growth_", "2" = "Mort_")
-
-p1 <- diff.panel.fcn(DvS2, remove.y = FALSE, fig.title = "Dry vs. Stable", lab.right = FALSE)
-p2 <- diff.panel.fcn(D_LMH2, remove.y = TRUE, fig.title = "Dry, High/Med/Low", lab.right = FALSE)
-p3 <- diff.panel.fcn(S_LMH2, remove.y = TRUE, fig.title = "Stable, High/Med/Low", lab.right = TRUE)
-
-grand.x.lab <- ggdraw() + draw_label(xlab.use, x = 0.6, y = 0.5) + theme_bw() + theme(rect = element_blank())
-
-diff.plt <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(0.9, 0.5, 0.5)) 
-
-diff.plt2 <- plot_grid(diff.plt, grand.x.lab, 
-                       ncol = 1, 
-                       rel_heights = c(1, 0.03)) 
-
-ggsave(paste0(save.loc.fcn(k), filename.use, "Panel_Plot.png"), plot = diff.plt2, device = "png", width = 10, height = 10, units = 'in')
-}
+    plt.dat <- readRDS(paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
+    
+    AvB2 <- cm2.fcn(k, results.table = plt.dat$AvB2)
+    A_LMH2 <- cm2.fcn(k, results.table = plt.dat$A_LMH2)
+    B_LMH2 <- cm2.fcn(k, results.table = plt.dat$B_LMH2)
+    
+    
+    xlab.use <- switch(k, "1" = "Difference in Domain Growth Rates (cm\u00B2/decade)", "2" = "Difference in Domain Decadal Mortality Rate")  #  "Annual Growth Rate (in2/yr)"
+    filename.use <- switch(k, "1" = "Growth_", "2" = "Mort_")
+    
+    p1 <- diff.panel.fcn(AvB2, remove.y = FALSE, fig.title = "Above vs. Below Threshold", lab.right = FALSE)
+    p2 <- diff.panel.fcn(A_LMH2, remove.y = TRUE, fig.title = "Above Threshold, High/Med/Low", lab.right = FALSE)
+    p3 <- diff.panel.fcn(B_LMH2, remove.y = TRUE, fig.title = "Below Threshold, High/Med/Low", lab.right = TRUE)
+    
+    grand.x.lab <- ggdraw() + draw_label(xlab.use, x = 0.6, y = 0.5, size = 13) + theme_bw() + theme(rect = element_blank())
+    
+    diff.plt <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(0.9, 0.5, 0.5)) 
+    
+    diff.plt2 <- plot_grid(diff.plt, grand.x.lab, 
+                           ncol = 1, 
+                           rel_heights = c(1, 0.03)) 
+    
+    ggsave(paste0(save.loc.fcn(k), filename.use, "Panel_Plot.png"), plot = diff.plt2, device = "png", width = 10, height = 10, units = 'in')
+  }
 }
 
 
@@ -363,15 +378,9 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
   
     
     # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
-    map(SEL.SPP, pair.plts.fcn, use.dat = plt.dat2, domain.matrix = domain.matrix,
+    purrr::map(SEL.SPP, pair.plts.fcn, use.dat = plt.dat2, domain.matrix = domain.matrix,
                  quant.lims = quant.lims, domain.n = domain.n, k = k)
 }
-
-
-
-
-
-
 
 
 

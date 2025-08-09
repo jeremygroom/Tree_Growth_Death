@@ -8,10 +8,11 @@
 domain.divide.fcn <- function(domain.level, spcd2, tree.plots2, PlotDat) {
   domain.name <- paste0(domain.level, ".",  spcd2)
   domain.died.out <- left_join(PlotDat, tree.plots2 %>% 
-                                dplyr::select(puid, var.deltvar) %>% # var.deltvar defined in clim.tree.resp.fcn, "LiHc" etc.
-                                filter(var.deltvar == domain.level), by = "puid") %>%
+                                 dplyr::select(puid, var.deltvar) %>% # var.deltvar defined in clim.tree.resp.fcn, "LiHc" etc.
+                                 filter(var.deltvar == domain.level), by = "puid") %>%
     mutate(var.deltvar = ifelse(is.na(var.deltvar), 0, 1)) %>%
     rename(!!domain.name := var.deltvar) 
+  return(domain.died.out)
 }
 
 
@@ -58,7 +59,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
         mutate(., var.quants = ifelse(!!sym(var1) > quant.lims[2], 1, ifelse(!!sym(var1) < quant.lims[1], -1, 0)),
                deltvar.quants = ifelse(!!sym(var.delt) > quant.lims.delta, 1, 0),
                vq = case_match(var.quants, -1 ~ "L", 0 ~ "M", 1 ~ "H"),
-               dvq = case_match(deltvar.quants, 0 ~ "S", 1 ~ "D"),
+               dvq = case_match(deltvar.quants, 0 ~ "B", 1 ~ "A"),
                var.deltvar = factor(paste0(dvq, vq), levels = DOMAIN.LEVELS))
       } else {
         values$errorMessage <- "Error: Expecting 6 or 9 estimation domains. Check Global.R:DOMAIN.LEVELS and Functions.R:clim.mort.resp.fcn."
@@ -91,12 +92,14 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   Tree3 <- left_join(Tree2, tree.plots2, by = "puid") %>%
     group_by(puid) %>% #, var.deltvar, get(var1), get(var.delt)) %>%  # This will assign the names `get(var1)` and `get(var.delt)`, which are cleaned up below
     reframe(n.trees = sum(ntree.rep),
-            n.died.yr = sum(ntree.rep[STATUSCD == 2])/mean(REMPER),
-            pct.died.yr = n.died.yr / n.trees)
+            #n.died.yr = sum(ntree.rep[STATUSCD == 2])/mean(REMPER),  # Annual mortality rate
+            n.died.dcd = 10 * sum(ntree.rep[STATUSCD == 2])/mean(REMPER), # Decadal mortality rate
+            #pct.died.yr = n.died.yr / n.trees)
+            pct.died.dcd = n.died.dcd / n.trees)
   
   # Separate out a data set for those that died
-  died.out <- left_join(PlotDat, Tree3 %>% dplyr::select(puid, n.died.yr), by = "puid") %>%
-    rename(!!return.col := n.died.yr)
+  died.out <- left_join(PlotDat, Tree3 %>% dplyr::select(puid, n.died.dcd), by = "puid") %>%
+    rename(!!return.col := n.died.dcd)
   died.out[is.na(died.out)] <- 0
   
   # Data set for all trees, alive and died
@@ -105,7 +108,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   all.trees[is.na(all.trees)] <- 0
   
   
-  domain.out1 <- map(DOMAIN.LEVELS, domain.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
+  domain.out1 <- purrr::map(DOMAIN.LEVELS, domain.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
   domain.out2 <- reduce(domain.out1, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts")) %>%
     dplyr::select(-c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts"))
   
@@ -129,7 +132,9 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   # For basal area growth/tree
   TreeG <- Tree.spp %>%
     # Amount of tree growth per year since the previous visit, multiplied by the number of trees per acre the tree represents. 
-    mutate(BA_Growth = ntree.rep * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)/REMPER) %>%
+    #mutate(BA_Growth = ntree.rep * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)/REMPER) %>%
+    # Amount of tree growth per decade since the previous visit, multiplied by the number of trees per acre the tree represents. 
+    mutate(BA_Growth = ntree.rep * 10 * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)/REMPER) %>%
     group_by(puid) %>%
     #Goal: sum(change in BA/REMPER)/Total # trees
     reframe(n_g.trees = sum(ntree.rep),
@@ -162,7 +167,7 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
         mutate(., var.quants = ifelse(!!sym(var1) > quant.lims[2], 1, ifelse(!!sym(var1) < quant.lims[1], -1, 0)),
                deltvar.quants = ifelse(!!sym(var.delt) > quant.lims.delta, 1, 0),
                vq = case_match(var.quants, -1 ~ "L", 0 ~ "M", 1 ~ "H"),
-               dvq = case_match(deltvar.quants, 0 ~ "S", 1 ~ "D"),
+               dvq = case_match(deltvar.quants, 0 ~ "B", 1 ~ "A"),
                var.deltvar = factor(paste0(dvq, vq), levels = DOMAIN.LEVELS))
       } else {
         values$errorMessage <- "Error: Expecting 6 or 9 estimation domains. Check Global.R:DOMAIN.LEVELS and Functions.R:clim.mort.resp.fcn."
@@ -206,7 +211,7 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
     rename(!!return.col := n_g.trees) 
   
   
-  domain.out1 <- map(DOMAIN.LEVELS, domain.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
+  domain.out1 <- purrr::map(DOMAIN.LEVELS, domain.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
   domain.out2 <- reduce(domain.out1, left_join, by = c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) %>%
     dplyr::select(-c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum"))
   
@@ -227,21 +232,21 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
   # "died.out" or "growth.val"), tot.dat = total trees data set (i.e., "all.trees" or "growth.n.trees")
   # Makes a list of all of the response tables and all-tree tables for the next step to operate on.
   
-  extract.resp <- map(tree.dat , ~.[[resp.dat]]) 
+  extract.resp <- purrr::map(tree.dat , ~.[[resp.dat]]) 
   vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts")) # Combining the list into a single tibble.
   #vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "puid", "W_h", "STRATUM","SITECLCD_plot")) # Combining the list into a single tibble.
   
-  extract.all <- map(tree.dat , ~.[[tot.dat]]) 
+  extract.all <- purrr::map(tree.dat , ~.[[tot.dat]]) 
   all_dat <- reduce(extract.all, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts")) 
   
   
   # Now extracting the domain category information for each species 
-  extract.domain <- map(tree.dat , ~.[["domain.out"]]) 
+  extract.domain <- purrr::map(tree.dat , ~.[["domain.out"]]) 
   # Creating a 3D array out of the domain info (plots x domains x spp)
   domain.array <- array(unlist(extract.domain), dim = c(nrow(extract.domain[[1]]), ncol(extract.domain[[1]]), length(extract.domain)), 
-                       dimnames = list(c(1:nrow(extract.domain[[1]])),
-                                       DOMAIN.LEVELS, 
-                                       selected.spp))
+                        dimnames = list(c(1:nrow(extract.domain[[1]])),
+                                        DOMAIN.LEVELS, 
+                                        selected.spp))
   
   # Matrix of domain values for each species' plots joined with climate data
   # The values for plots with trees of a species are given the ID number for their respective quantile (e.g., i = 9 has plot values of 0 or 9).
@@ -255,20 +260,20 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
     left_join(clim.dat, by =  "puid")
   
   # Number of plots in each domain
-  domain.n <- map(1:length(extract.domain), function(x) apply(domain.array[, , x], 2, sum))
+  domain.n <- purrr::map(1:length(extract.domain), function(x) apply(domain.array[, , x], 2, sum))
   domain.n <- bind_cols(domain.n)
   names(domain.n) <- selected.spp
   
-  extract.quant.lims <- map(tree.dat, ~.[["quant.lims"]]) 
+  extract.quant.lims <- purrr::map(tree.dat, ~.[["quant.lims"]]) 
   names(extract.quant.lims) <- selected.spp
   
-  extract.delt.quant.lims <- map(tree.dat, ~.[["quant.lims.delta"]]) 
+  extract.delt.quant.lims <- purrr::map(tree.dat, ~.[["quant.lims.delta"]]) 
   names(extract.delt.quant.lims) <- selected.spp
   
   
   # Now extracting the centroid information for each domain/species)
   if(ANALYSIS.PATHWAY != 3) {
-    extract.centroid <- map(tree.dat, ~.[["cent.loc"]]) 
+    extract.centroid <- purrr::map(tree.dat, ~.[["cent.loc"]]) 
     centroid.array <- array(unlist(extract.centroid), dim = c(nrow(extract.centroid[[1]]), ncol(extract.centroid[[1]]), length(extract.centroid)), 
                             dimnames = list(DOMAIN.LEVELS, 
                                             c("var.deltvar", "end.x", "end.y"),
@@ -294,7 +299,7 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
     return(q.matrix2)
   }
   
-  extract.state <- map(state.list, state.array.fcn, state.matrix)
+  extract.state <- purrr::map(state.list, state.array.fcn, state.matrix)
   # Creating a 3D array out of the domain info (plots x domains x spp)
   state.array <- array(unlist(extract.state), dim = c(nrow(extract.state[[1]]), ncol(extract.state[[1]]), length(state.list)),
                        dimnames = list(c(1:nrow(extract.state[[1]])),
@@ -303,7 +308,7 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
   state.array <- aperm(state.array, c(1, 3, 2))  # Changing the order of the dimensions to match those for domains 
   
   # Obtaining the number of plots per state.
-  state.n.extract <- map(1:3, function(x) apply(extract.state[[x]], 2, sum)) #sum plots by state.
+  state.n.extract <- purrr::map(1:3, function(x) apply(extract.state[[x]], 2, sum)) #sum plots by state.
   state.n <- reduce(state.n.extract, bind_rows) %>%  # Combine state data into a tibble.
     mutate(state = state.list)
   
@@ -419,7 +424,7 @@ fire.frac.dat.fcn <- function(tspp, treedat.sel, parsed.dat) {  # Tree species "
 }
 
 fire.frac.table.fcn <- function(tablename, tableloc, treedat, parseddat) {
-  fire.frac.dat <- map(SEL.SPP, fire.frac.dat.fcn, treedat.sel  = treedat, parsed.dat = parseddat)
+  fire.frac.dat <- purrr::map(SEL.SPP, fire.frac.dat.fcn, treedat.sel  = treedat, parsed.dat = parseddat)
   fire.frac.dat2 <- rbindlist(fire.frac.dat) %>% data.frame()   # data.table function
   fwrite(fire.frac.dat2, file = paste0(tableloc, tablename))    # data.table csv write function
 }
@@ -466,7 +471,7 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {
   #    Yv_i[h] <- w_h * sum(get(col.name, dat_vals)[dat_vals$stratum == strata[h]]) / n_h 
   #    Zt_i[h] <- w_h * sum(get(col.name, dat_tot)[dat_tot$stratum == strata[h]]) / n_h     
   #  }
-
+  
   Zt <- ests.out[, sum(Zt_i)]
   Yv <- ests.out[, sum(Yv_i)]
   R <- Yv / Zt
@@ -518,7 +523,7 @@ generate_bootstrap_sample.fcn <- function() {
 # Helper function to prepare data for all domains using map
 prepare_domain_data.fcn <- function(vals.dat, all.dat, domain.array, n_domains) {
   1:n_domains %>% 
-    map(\(d) {
+    purrr::map(\(d) {
       vals.use <- vals.dat %>% select(starts_with("nd.")) * domain.array[, d, ]
       dat.vals.use <- bind_cols(PlotDat, vals.use)
       
@@ -548,7 +553,7 @@ generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain
       
       # Calculate estimates for all domains for this iteration
       1:n_domains %>% 
-        map(\(d) calculate_domain_estimates.fcn(
+        purrr::map(\(d) calculate_domain_estimates.fcn(
           samp = samp,
           domain_data = domain_data,
           domain_idx = d,
@@ -580,29 +585,29 @@ generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain
 
 # This function is used to find the quantiles of a bootstrap matrix. Used by both
 #  domain.sum.fcn and domain.diff.fcn.
-matrix.summ.fcn <- function(matrix.use, domain.id){
+matrix.summ.fcn <- function(matrix.use, domain.id, domain_n){
   quants <- data.frame(t(apply(matrix.use, 2, function(x) quantile(x, probs = c(0.5, 0.025, 0.975), na.rm = TRUE))))
   names(quants) <- c("Median", "LCI.95", "UCI.95")
   quants$Means <- apply(matrix.use, 2, mean, na.rm = TRUE)
-  quants$n.plts <- unlist(as.vector(domain.n[domain.id, SEL.SPP ]))
+  quants$n.plts <- unlist(as.vector(domain_n[domain.id, SEL.SPP ]))
   quants$Species <- SEL.SPP
   quants$Domain <- domain.id
   return(quants)
 }
 
 # Used in summarizing individual domains
-domain.sum.fcn <- function(results.array, domain.num) {
+domain.sum.fcn <- function(results.array, domain.num, domain_n) {
   matrix_use <- results.array[, , domain.num]
-  matrix.summ.fcn(matrix_use, domain.num)
+  matrix.summ.fcn(matrix_use, domain.num, domain_n)
 }
 
 # Used to summarize differences in two domains
-domain.diff.fcn <- function(start.dom, sub.dom, results.array) {
+domain.diff.fcn <- function(start.dom, sub.dom, results.array, domain_n) {
   start.matrix <- results.array[, , domain.level.table$q.num[domain.level.table$var.deltvar == start.dom]]
   sub.matrix <- results.array[, , domain.level.table$q.num[domain.level.table$var.deltvar == sub.dom]]
   
   result.matrix <- start.matrix - sub.matrix
-  matrix.summ.fcn(result.matrix, paste(start.dom, "-", sub.dom))
+  matrix.summ.fcn(result.matrix, paste(start.dom, "-", sub.dom), domain_n)
 }
 
 
@@ -617,7 +622,8 @@ diff.fig.prep.fcn <- function(diff.table, diff.levels){
            y.offset = case_when(
              as.numeric(Domain) == 1 ~ 0.15,
              as.numeric(Domain) == 2 ~ 0, 
-             as.numeric(Domain) == 3 ~ -0.15)
+             as.numeric(Domain) == 3 ~ -0.15,
+             .default = 0)
     ) %>%
     filter(is.na(significant) == FALSE) %>%
     # Order species by their position in the original species file
@@ -635,6 +641,18 @@ diff.fig.prep.fcn <- function(diff.table, diff.levels){
 
 
 #### Graphical output functions -----------------------------------------------
+
+## Used in preparing the differenced plot, changing in^2 for Growth to cm^2
+cm2.fcn <- function(k, results.table){
+  if(k == 1){
+    cols_sqrd <- which(names(results.table) %in% c("Median", "LCI.95", "UCI.95", "Means"))
+    tx <- results.table %>% mutate(across(all_of(cols_sqrd), ~ .x * 6.4516))
+    return(tx)
+  } else {
+    return(results.table)
+  }
+}
+
 
 
 ## This plot provides the 
@@ -665,6 +683,7 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
           legend.background = element_rect(fill = "white", color = "gray80"),
           legend.title = element_text(size = 9),
           legend.text = element_text(size = 8),
+          title = element_text(size = 10),
           legend.key.size = unit(0.4, "cm"))  + 
     {if(remove.y) {
       theme(axis.text.y = element_blank())
@@ -695,7 +714,20 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
 
 
 
-
+### Plot of domain estimates for Growth or Mortality ###
+## Used in pair.plts.fcn below.
+domain.grid.plt.fcn <- function(domains, domain.index) {
+  ggplot(data = use.dat2 %>% filter(Domain %in% domain.index), aes(factor(Domain), Means, fill = factor(Domain))) + 
+    geom_col() + 
+    geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.1) + 
+    scale_fill_manual(values = virid.use[domain.index]) + 
+    scale_y_continuous(limits = c(0, qt.max)) +
+    scale_x_discrete(labels = q.g.p.labs[domain.index]) +
+    theme_bw() +
+    theme(legend.position = "none") + 
+    labs(x = NULL, y = ylabs) +
+    theme(text = element_text(size = 7))
+}
 
 
 
@@ -796,6 +828,10 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use) {
 
 # -- Plots for ANALYSIS.PATHWAY 1 -- #
 
+
+
+
+
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
 pair.plts.fcn <- function(sppnum.to.plot, var.filename, use.dat, domain.matrix,
                           quant.lims, domain.n, k){
@@ -806,7 +842,7 @@ pair.plts.fcn <- function(sppnum.to.plot, var.filename, use.dat, domain.matrix,
   plot.domain.dat <- use.dat %>% 
     filter(Species == sppnum.to.plot) %>%
     left_join(domain.level.table, by = c("Domain" = "q.num"))
-
+  
   # Details for plotting
   virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
   
@@ -818,18 +854,7 @@ pair.plts.fcn <- function(sppnum.to.plot, var.filename, use.dat, domain.matrix,
   
   ylabs <- if (k == 1) "Mean Growth (inches^2)" else "Mean Annual Mortality Rate"
   
-  domain.grid.plt.fcn <- function(domains, domain.index) {
-    ggplot(data = use.dat2 %>% filter(Domain %in% domain.index), aes(factor(Domain), Means, fill = factor(Domain))) + 
-      geom_col() + 
-      geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.1) + 
-      scale_fill_manual(values = virid.use[domain.index]) + 
-      scale_y_continuous(limits = c(0, qt.max)) +
-      scale_x_discrete(labels = q.g.p.labs[domain.index]) +
-      theme_bw() +
-      theme(legend.position = "none") + 
-      labs(x = NULL, y = ylabs) +
-      theme(text = element_text(size = 7))
-  }
+  
   # These will be arranged in a plot below
   if(n_domain == 9){
     p1 <- domain.grid.plt.fcn(c("LiHc", "MiHc", "HiHc"), 1:3) 
@@ -850,8 +875,8 @@ pair.plts.fcn <- function(sppnum.to.plot, var.filename, use.dat, domain.matrix,
   
   # Plotting the scatterplot of points in quadrants:
   plot.vals.plt <- domain.dist.plt.fcn(plot.spp = sppnum.to.plot, domain.matrix = domain.matrix, 
-                                      var1 = var1, var.delt = var.delt, quant.lims = quant.lims,
-                                      n.plots.used = n_plots2, size.trees = "") 
+                                       var1 = var1, var.delt = var.delt, quant.lims = quant.lims,
+                                       n.plots.used = n_plots2, size.trees = "") 
   
   # Plotting the map of plot locations:
   domain.map <- domain.map.fcn(domain.matrix, spp.num = sppnum.to.plot, n.plots.used = n_plots2, virid.use = virid.use) 
@@ -861,10 +886,122 @@ pair.plts.fcn <- function(sppnum.to.plot, var.filename, use.dat, domain.matrix,
   } else if(n_domain == 6) {
     comb.plt <- ((p1/p2 + plot_layout(axis_titles = "collect")) | plot.vals.plt | domain.map) #/ guide_area() + plot_layout(guides = 'collect', heights = c(10, 0.01)) 
   }
-
+  
   ggsave(paste0(save.loc.fcn(k), sppnum.to.plot, "_plots.png"), 
          comb.plt, device = "png", width = 7, height = 5, units = "in")
 }
+
+
+
+
+
+#### Manuscript RMarkdown functions ------------------------------
+
+# Prepping data for the state mortality and growth plots
+state.table.fcn <- function(state.dat, all.dat, sig.places) {
+  s.1 <- dplyr::left_join(spp.names.use, state.dat, by = c("SpeciesCode" = "Species")) %>%
+    dplyr::filter(is.na(n.plts) == FALSE) %>%
+    dplyr::mutate(across(where(is.numeric), ~ sprintf(paste0("%.", sig.places, "f"), .x)),
+                  n.plts = as.integer(n.plts),
+                  results = case_when(
+                    is.na(Median) ~ "", 
+                    grepl("NA", paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")")) ~ "",
+                    !is.na(Median) ~ paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")")
+                  ))%>%
+    dplyr::mutate(results = case_when(is.na(Median) ~ "", 
+                                      Median == "NA" ~ "",
+                                      !is.na(Median) ~ paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")"))) %>%
+    dplyr::select(sci_name, State, results) %>%
+    tidyr::pivot_wider(names_from = State, values_from = results) %>%
+    dplyr::rename("California" = "CA", "Washington" = "WA", "Oregon" = "OR") %>%
+    relocate("Oregon", .after = "California")# %>%
+  
+  s.2 <- dplyr::left_join(spp.names.use, all.dat, by = c("SpeciesCode" = "Species")) %>%
+    dplyr::filter(is.na(n.plts) == FALSE) %>%
+    dplyr::mutate(across(where(is.numeric), ~ sprintf(paste0("%.", sig.places, "f"), .x)),
+                  n.plts = as.integer(n.plts),
+                  results = case_when(
+                    is.na(Median) ~ "", 
+                    grepl("NA", paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")")) ~ "",
+                    !is.na(Median) ~ paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")")
+                  )) %>%
+    dplyr::select(sci_name, results) %>%
+    dplyr::rename("All" = "results")
+  
+  
+  s.3 <- dplyr::left_join(s.1, s.2, by = "sci_name") %>%
+    rename("Species Name" = "sci_name")
+  #tidyr::replace_na(list(California = "", Washington = "", Oregon = "")) %>%
+  #dplyr::filter(All != "", !grep("NA", All))
+  
+  return(s.3)
+}
+
+
+# This function allows tables and species to be searched for maximum and minimum
+#  mean values and report on the species, mean, and 95% CI.
+maxmin.fcn <- function(table1, mean_col, lower_ci_col, upper_ci_col, 
+                       species_col = "Species", extreme = "max", 
+                       digits = 1,
+                       cm2 = FALSE) {   # Should results be transformed to cm2 (growth)?
+  
+  table2 <- table1 %>% left_join(spp.names.use, by = c("Species" = "SpeciesCode"))
+  
+  required_cols <- c(mean_col, lower_ci_col, upper_ci_col, species_col)
+  missing_cols <- required_cols[!required_cols %in% names(table2)]
+  
+  # Remove rows with missing values in key columns
+  complete_data <- table2[complete.cases(table2[, required_cols]), ]
+  
+  if (nrow(complete_data) == 0) {
+    stop("No complete cases found in the data")
+  }
+  
+  # Find the species with extreme value
+  mean_values <- complete_data[[mean_col]]
+  
+  if (extreme == "max") {
+    target_idx <- which.max(mean_values)
+  } else {
+    target_idx <- which.min(mean_values)
+  }
+  
+  # Extract the values for the target species
+  target_species <- complete_data$sci_name[target_idx]
+  target_mean <- complete_data[[mean_col]][target_idx]
+  target_lower <- complete_data[[lower_ci_col]][target_idx]
+  target_upper <- complete_data[[upper_ci_col]][target_idx]
+  
+  if(cm2 == FALSE) {
+    cm2.use <- 1
+  } else {
+    cm2.use <- 6.4516
+  }
+  
+  # Format the result
+  maxmin_output <- list(spp = target_species,
+                        mean = round(target_mean * cm2.use, digits),
+                        mean.ci = sprintf("%.*f (%.*f, %.*f)", 
+                                          digits, target_mean * cm2.use,
+                                          digits, target_lower * cm2.use, 
+                                          digits, target_upper * cm2.use),
+                        # Add this new element:
+                        mean.ci.spp = sprintf("%.*f (%.*f, %.*f; %s)", 
+                                              digits, target_mean * cm2.use,
+                                              digits, target_lower * cm2.use, 
+                                              digits, target_upper * cm2.use,
+                                              target_species),
+                        mean.spp = sprintf("%.*f (%s)",
+                                           digits, target_mean * cm2.use,
+                                           target_species)
+  )
+  
+  return(maxmin_output)
+}
+
+
+
+
 
 
 
