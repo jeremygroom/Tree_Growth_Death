@@ -28,7 +28,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   # For alive/dead tree assessments
   Tree2 <- treedat.sel %>% 
     filter(SPCD == spcd) %>%
-    dplyr::select(puid, REMPER, TREE, STATUSCD, ntree.rep) %>% distinct()
+    dplyr::select(puid, REMPER, SUBP, TREE, STATUSCD, ntree.rep)
   
   tree.plots <- clim.dat %>% filter(puid %in% Tree2$puid) %>% 
     dplyr::select(puid, all_of(var1), all_of(var.delt))
@@ -47,8 +47,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   }
   
   # Applying quantiles to a particular species
-  if(ANALYSIS.PATHWAY != 3) {
-    tree.plots2 <- tree.plots %>% dplyr::select(puid, all_of(c(var1, var.delt))) %>% 
+  tree.plots2 <- tree.plots %>% dplyr::select(puid, all_of(c(var1, var.delt))) %>% 
       {if (n_domain == 9) {
         mutate(., var.quants = ifelse(!!sym(var1) > quant.lims[2], 1, ifelse(!!sym(var1) < quant.lims[1], -1, 0)),
                deltvar.quants = ifelse(!!sym(var.delt) > quant.lims.delta[2], 1, ifelse(!!sym(var.delt) < quant.lims.delta[1], -1, 0)),
@@ -61,11 +60,9 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
                vq = case_match(var.quants, -1 ~ "L", 0 ~ "M", 1 ~ "H"),
                dvq = case_match(deltvar.quants, 0 ~ "B", 1 ~ "A"),
                var.deltvar = factor(paste0(dvq, vq), levels = DOMAIN.LEVELS))
-      } else {
-        values$errorMessage <- "Error: Expecting 6 or 9 estimation domains. Check Global.R:DOMAIN.LEVELS and Functions.R:clim.mort.resp.fcn."
-        return(.)
       }}
-    
+        
+    # Not currently used, but available    
     # For centroid calcluation
     dat.cent <- tree.plots2 %>% group_by(var.deltvar) %>% # Quartile centers, good for finding centroids in each quadrant
       reframe(end.x = mean(get(var1)),        # Referred to as "end" because of distance measurements from the main centroid to each of the outer (end) centroids.
@@ -73,18 +70,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
       right_join(domain.level.table %>% select(-q.num), by = "var.deltvar") %>%
       arrange(var.deltvar)
     
-  } else {
-    # For Analysis Pathway 3.  A different set-up - not using the 9 domains, but in effect 7 (for Site Classes). The plots will be much simpler.
-    tree.plots2 <- tree.plots %>% left_join(PlotDat %>% select(puid, SITECLCD_plot), by = "puid") %>% # Adding on the Site Class variable
-      filter(is.na(SITECLCD_plot) == FALSE) %>%   # Removing any NA's in case they snuck in there.
-      mutate(var.deltvar = factor(paste0("Class.", SITECLCD_plot)))
-    
-    dat.cent <- NULL # Don't need those.
-    
-    DOMAIN.LEVELS <- levels(tree.plots2$var.deltvar) # Renaming the DOMAIN.LEVELS away from "LiHc" and such
-  }
-  
-  
+   
   
   # Joining tree data with domain assignment, providing plot-level summary of the number of trees, number that died, and percent that died.
   
@@ -522,7 +508,10 @@ calculate_domain_estimates.fcn <- function(samp, domain_data, domain_idx, select
 # Generate bootstrap sample.  Each stratum is separately sampled by the stratum size.   
 generate_bootstrap_sample.fcn <- function() {
   strata.num.dt <- as.data.table(strata.num)
-  samp <- strata.num.dt[, .SD[sample(.N, .N, replace = TRUE)], by = stratum]
+  
+  #samp <- strata.num.dt[, .SD[sample(.N, .N, replace = TRUE)], by = stratum] # If we want to sample within strata
+  samp <- strata.num.dt[, .SD[sample(.N, .N, replace = TRUE)],]  # Sampling all plots regardless of strata
+  
   return(samp)
 }
 

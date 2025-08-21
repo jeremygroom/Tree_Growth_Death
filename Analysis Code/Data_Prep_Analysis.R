@@ -180,11 +180,12 @@ death.prop <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/Fire_P
 
 # If desired, the analysis will obtain mortality estimates for the selected species
 #  by state and overall. These values can be used to evaluate species for inclusion in the
-#  main analysis
+#  main analysis.  200 iterations, 16 cores = 4 minutes
+tic()
 if(RUN.STATES == TRUE) {
   source(paste0(CODE.LOC, "Overall_Mort_Est.R"))
 }
-
+toc()
 
 
 
@@ -358,15 +359,15 @@ if(n_domain == 6) {
     ggsave(paste0(save.loc.fcn(k), filename.use, "Panel_Plot.png"), plot = diff.plt2, device = "png", width = 10, height = 10, units = 'in')
   }
 }
-domain.index %>% 
-  purrr::map(\(d) domain.sum.fcn(bootstrap_results, d, domain_n = domain.n))
 
-  # Analysis Pathway 1: no subgroups of size or site class
+
+
+# Analysis Pathway 1: no subgroups of size or site class
 for(k in 1:2){ # 1 = growth, 2 = mortality
   plt.dat <- readRDS(paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS"))
   plt.dat2 <- plt.dat$domain.summaries
   
-
+  
   mort.grow.dat <- get(paste0("arrays.", ANALYSIS.TYPE[k])) 
   
   domain.matrix <- mort.grow.dat$domain.matrix
@@ -375,10 +376,10 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
   quant.lims.delta <- mort.grow.dat$quant.lims.delt
   
   
-    
-    # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
-    SEL.SPP %>% purrr::map(\(s) pair.plts.fcn(sppnum.to.plot = s, use.dat = plt.dat2, domain.matrix = domain.matrix,
-                 quant.lims = quant.lims, domain.n = domain.n, k = k))
+  
+  # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
+  SEL.SPP %>% purrr::map(\(s) pair.plts.fcn(sppnum.to.plot = s, use.dat = plt.dat2, domain.matrix = domain.matrix,
+                                            quant.lims = quant.lims, domain.n = domain.n, k = k))
 }
 
 

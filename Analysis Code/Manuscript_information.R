@@ -7,6 +7,7 @@
 ### Q: How many trees did we track? How many plots?
 tree.num <- dim(tree.plt.data %>% filter(SPCD %in% sel.spp))[1]
 plot.num <- dim(PlotDat)[1]
+strat.num <- length(unique(PlotDat$stratum))
 
 ## Q: What percentage of plots with 9, 10, and 11 yr remeasure?
 remeas <- tree.plt.data %>% dplyr::select(puid, REMPER) %>% distinct() %>% mutate(REMPER2 = round(REMPER, digits = 0))
@@ -55,6 +56,7 @@ diff.cwd.95max <- which(diff.cwd.stats$q95 == max(diff.cwd.stats$q95))
 
 analysis.stats <- list(tree.num = tree.num,
                        plot.num = plot.num,
+                       strat.num = strat.num,
                        pct.remeas = pct.remeas,
                        cwd.lt0.pct = cwd.lt.0.pct,
                        cwd.gt0.pct = cwd.gt.0.pct,
@@ -111,8 +113,8 @@ for(k in 1:2){
   
   text.size <- 9
   
-  p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3) 
-  p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6) 
+  p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs) 
+  p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs) 
   #p_all <- plot_grid(p1, p2, ncol = 1)
   list1 <- list(p1 = p1, p2 = p2)
   fig.letter <- switch(k, "A", "B")
