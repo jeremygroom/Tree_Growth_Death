@@ -16,7 +16,7 @@ db.extract.fcn <- function(state, db.loc) {
            !is.na(PREV_STATUS_CD),   # Remove entries where no previous STATUSCD
            PREV_STATUS_CD != 2,     # Remove entries where tree previously found dead (dead --> dead)
            STATUSCD != 0,           # Remove entries where tree is not presently in sample
-           AGENTCD2 != 80,
+           AGENTCD2 != 80,          # Silvicultural practices
            PREVDIA >= 5,             # Remove microplot trees that became ingrowth.
            DIA2 == 0 | DIA2 >= 5     # Keep DIA = NA in case the tree burned and died, no DIA.  Remove the small trees.
     )
@@ -45,40 +45,40 @@ db.extract.fcn <- function(state, db.loc) {
 }
 
 
-all.states <- map(statelist, db.extract.fcn, db.loc = SQL.LOC)  # Appling the function to all three states
+all.states <- purrr::map(statelist, db.extract.fcn, db.loc = SQL.LOC)  # Appling the function to all three states
 
-extract.plots <- map(all.states , ~.[["plot"]])   # Binding by rows all of the plot data across states
+extract.plots <- purrr::map(all.states , ~.[["plot"]])   # Binding by rows all of the plot data across states
 plot_vals <- bind_rows(extract.plots)
 
-extract.trees <- map(all.states , ~.[["tree"]]) 
+extract.trees <- purrr::map(all.states , ~.[["tree"]]) 
 tree_vals <- bind_rows(extract.trees)
 
-extract.cond <- map(all.states , ~.[["cond"]]) 
+extract.cond <- purrr::map(all.states , ~.[["cond"]]) 
 cond_vals <- bind_rows(extract.cond)
 
-extract.sccm <- map(all.states , ~.[["sccm"]]) 
+extract.sccm <- purrr::map(all.states , ~.[["sccm"]]) 
 sccm_vals <- bind_rows(extract.sccm)
 
-extract.peu <- map(all.states , ~.[["peu"]]) 
+extract.peu <- purrr::map(all.states , ~.[["peu"]]) 
 peu_vals <- bind_rows(extract.peu)
 
-extract.pev <- map(all.states , ~.[["pev"]]) 
+extract.pev <- purrr::map(all.states , ~.[["pev"]]) 
 pev_vals <- bind_rows(extract.pev)
 
-extract.peg <- map(all.states , ~.[["peg"]]) 
+extract.peg <- purrr::map(all.states , ~.[["peg"]]) 
 peg_vals <- bind_rows(extract.peg)
 
-extract.pet <- map(all.states , ~.[["pet"]]) 
+extract.pet <- purrr::map(all.states , ~.[["pet"]]) 
 pet_vals <- bind_rows(extract.pet)
 
-extract.ppsa <- map(all.states , ~.[["ppsa"]]) 
+extract.ppsa <- purrr::map(all.states , ~.[["ppsa"]]) 
 #extract.ppsa <- lapply(extract.ppsa, function(df) {
 #  df$MODIFIED_DATE <- as.character(df$MODIFIED_DATE)  # Needed consistency in column type. Differed across states.
 #  return(df) 
 #})
 ppsa_vals <- bind_rows(extract.ppsa)
 
-extract.popstrm <- map(all.states , ~.[["popstrm"]]) 
+extract.popstrm <- purrr::map(all.states , ~.[["popstrm"]]) 
 popstrm_vals <- bind_rows(extract.popstrm)
 
 

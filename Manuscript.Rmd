@@ -84,16 +84,41 @@ centeredP <- fp_par(text.align = "center")
 # Some general analysis info + plots
 analysis.stats <- read_rds(paste0(RESULTS.OTHER, "analysis.stats.RDS"))
 
+# Percent of plots sampled with REMPER = 9, 10, and 11 years (rounded)
+pct.remeas <- as.vector(analysis.stats$pct.remeas)
+
 # Species scientific names
 spp.names.use <- analysis.stats$gym.angio.dat
 
-# Growth data for species overall and states
+# Growth data for species overall, states, differences
 grow.state <- read_csv(paste0(RESULTS1.LOC, "Growth_figs_", CLIM.VAR.USE, "/State_Growth_", CLIM.VAR.USE, ".csv"))
 grow.all <- read_csv(paste0(RESULTS1.LOC, "Growth_figs_", CLIM.VAR.USE, "/All_Growth_", CLIM.VAR.USE, ".csv"))
+grow.diff <- read_rds(paste0(save.loc.fcn(1), "Processed_6Domain_Data.RDS"))
 
-# Growth data for species overall and states
+# Mortality data for species overall and states
 mort.state <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/State_Mortality_", CLIM.VAR.USE, ".csv"))
 mort.all <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/All_Mortality_", CLIM.VAR.USE, ".csv"))
+mort.diff <- read_rds(paste0(save.loc.fcn(2), "Processed_6Domain_Data.RDS"))
+
+
+# Significant findings, Growth
+grow.n <- nrow(grow.diff$AvB2)
+
+grow.AvB.sig <- length(grow.diff$AvB2$significant[grow.diff$AvB2$significant == TRUE])
+grow.AvB.signeg <- length(grow.diff$AvB2$significant[grow.diff$AvB2$significant == TRUE & grow.diff$AvB2$Means < 0])
+grow.A.sig <- length(grow.diff$A_LMH2$significant[grow.diff$A_LMH2$significant == TRUE])
+grow.A.signeg <- length(grow.diff$A_LMH2$significant[grow.diff$A_LMH2$significant == TRUE & grow.diff$A_LMH2$Means < 0])
+grow.B.sig <- length(grow.diff$B_LMH2$significant[grow.diff$B_LMH2$significant == TRUE])
+grow.B.signeg <- length(grow.diff$B_LMH2$significant[grow.diff$B_LMH2$significant == TRUE & grow.diff$B_LMH2$Means < 0])
+
+
+# Significant findings, Mort
+mort.AvB.sig <- length(mort.diff$AvB2$significant[mort.diff$AvB2$significant == TRUE])
+mort.AvB.signeg <- length(mort.diff$AvB2$significant[mort.diff$AvB2$significant == TRUE & mort.diff$AvB2$Means < 0])
+mort.A.sig <- length(mort.diff$A_LMH2$significant[mort.diff$A_LMH2$significant == TRUE])
+mort.A.signeg <- length(mort.diff$A_LMH2$significant[mort.diff$A_LMH2$significant == TRUE & mort.diff$A_LMH2$Means < 0])
+mort.B.sig <- length(mort.diff$B_LMH2$significant[mort.diff$B_LMH2$significant == TRUE])
+mort.B.signeg <- length(mort.diff$B_LMH2$significant[mort.diff$B_LMH2$significant == TRUE & mort.diff$B_LMH2$Means < 0])
 
 ```
 
@@ -104,6 +129,7 @@ s.g.dat <- state.table.fcn(grow.state, grow.all, 1)
 growth.ft <- flextable(s.g.dat) %>%
   fontsize(size = 9, part = "body") %>%
   fontsize(size = 10, part = "header") %>%
+    italic(j = 1, part = "body") %>%
   line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
   theme_zebra(
     odd_header = "#FFFFFF",   # White background for all
@@ -123,6 +149,7 @@ s.m.dat <- state.table.fcn(mort.state, mort.all, 2)
 mort.ft <- flextable(s.m.dat) %>%
   fontsize(size = 9, part = "body") %>%
   fontsize(size = 10, part = "header") %>%
+  italic(j = 1, part = "body") %>%
   line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
   theme_zebra(
     odd_header = "#FFFFFF",   # White background for all
@@ -135,6 +162,17 @@ mort.ft <- flextable(s.m.dat) %>%
 max.mort.spp <- maxmin.fcn(mort.all, "Means", "LCI.95", "UCI.95", extreme = "max", cm2 = FALSE, digits = 2)
 min.mort.spp <- maxmin.fcn(mort.all, "Means", "LCI.95", "UCI.95", extreme = "min", cm2 = FALSE, digits = 2)
 
+
+# CWD amounts
+min.mean.init <- analysis.stats$init.cwd.stats$Mean[analysis.stats$init.cwd.min.mean]
+min.mean.init.spp <- analysis.stats$init.cwd.stats$Species[analysis.stats$init.cwd.min.mean]
+max.mean.init <- analysis.stats$init.cwd.stats$Mean[analysis.stats$init.cwd.max.mean]
+max.mean.init.spp <- analysis.stats$init.cwd.stats$Species[analysis.stats$init.cwd.max.mean]
+
+max.q95.diff <- analysis.stats$diff.cwd.stats$q95[analysis.stats$diff.cwd.95max]
+max.q95.diff.spp <- analysis.stats$diff.cwd.stats$Species[analysis.stats$diff.cwd.95max]
+max.range.diff <- analysis.stats$diff.cwd.90range.max
+max.q95.diff.spp <- analysis.stats$diff.cwd.stats$Species[analysis.stats$diff.cwd.95max]
 
 ```
 
@@ -169,12 +207,12 @@ fig.domains <- fig_nums(name = "fig_domains",
 fig.diff_grow <- fig_nums(name = "fig_diffgrow", 
                           caption = paste0("Differences in mean growth rates (cm\u00B2/decade) between domains by species.  Domain abbreviations are described in the legend for ",
                                            f.ref("fig_domains"), 
-                                           ". See each column legend for the key of domain differences.  Mean domain differences (circles) with 95% CIs (bars) that do not intersect zero are filled."))
+                                           ". See each column legend for the key of domain differences.  Mean domain differences (circles) with 95% CIs (bars) that do not intersect zero are filled. Species above the dashed line are coniferous; those below are deciduous."))
 
 fig.diff_mort <- fig_nums(name = "fig_diffmort", 
                           caption = paste0("Differences in mean decadal mortality rates between domains by species.  Domain abbreviations are described in the legend for ",
                                            f.ref("fig_domains"), 
-                                           ". See each column legend for the key of domain differences.  Mean domain differences (circles) with 95% CIs (bars) that do not intersect zero are filled."))
+                                           ". See each column legend for the key of domain differences.  Mean domain differences (circles) with 95% CIs (bars) that do not intersect zero are filled. Species above the dashed line are coniferous; those below are deciduous."))
 
 
 ```
@@ -184,13 +222,52 @@ fig.diff_mort <- fig_nums(name = "fig_diffmort",
 
 # Introduction
 
-# Methods
+# Methods  
+
+## FIA data  
+
+We used U.S. National Forest Inventory datasets for our analyses of forestland in California, Oregon, and Washington, USA.  Forestland is defined as an area of 4,050 m$^2$ that is at least 10 percent stocked or potentially stocked with tree species, excluding urban and agricultural land uses (Reams et al., 2005).  Additionally, as our study relied on plot revisit data, we only examined plots that were considered forestland during both visits.  
+
+FIA plots consist of four points where all trees with stem diameters greater than or equal to 12.7 cm (for most species measured at 1.37 m above the ground) were tallied in a 7.32 m radius circular subplot (total area 672.5 m$^2$) with additional trees sampled in an annulus around each subplot (macroplot) around each subplot, with a total radius of 18 m from the center point and a total area of 1012 m$^2$.  We did not include data from FIA microplots.  Bechtold and Scott (2005) provide plot design details and measurement protocols.   
+
+Since 2000, FIA plots have been selected via a spatially balanced probability sample (McRoberts 2005, Reams et al., 2005) with a target plot density of one ground plot every 24 km$^2$. Some regions and ownerships intensify the plot density; we excluded these additional plots to simplify stratification estimation, relying on [601] FIA-defined strata and using the density of FIA Phase 1 sampling points within and across strata to determine strata weights.     
+
+Plots in the three states are sampled every 10 years with a target of 1/10 of plots sampled in a panel every year (Thompson 2015). Our analysis depends on examining the fate and growth of trees from two sequential visits (referred to as the first and second plot visit), ideally from a complete sample panel remeasure.  We obtained our FIA data from the USDA FIA DataMart web portal (https://research.fs.usda.gov/products/dataandtools/fia-datamart; downloaded May 5, 2025).  They included plot data sampled from 2001 to 2023. Our total sample size was [12500] forested plots (Figure 1).   
+
+Individual trees within plots were retained in the analysis if they were alive at the initial visit and met the stem diameter criterion during that visit (i.e., plot ingrowth was not included).  The growth analysis additionally restricted trees considered to those that were alive at both visits.  The mortality analysis excluded trees killed through silvicultural practices.  Both analyses excluded trees that shrank in diameter, physically moved due to landslides or other event, were erroneously tallied at either visit, were missed due to data collection procedural changes, or existed at any time in a nonsampled area.  We used only FIA plots sampled specifically for tree mortality and growth.    
+
+## Climate data
+
+We obtained plot-level CWD data from ClimateNA (Wang et al. 2016) for June, July, and August (summer months) between 1980 and 2023 (Bryce: I just averaged the CWD values for these months.  It wasn’t available seasonally, was it? Also, can you provide more info on how CWD is calculated?  I know it is PET-AET, but I’m not sure how to interpret a monthly/seasonal value). Latitude and longitude were based on FIA-fuzzed coordinates (citation?  Bryce – should we tighten this up by running the analysis on non-fuzzed coordinates?).  We found the 20-year mean of summer CWD values for each plot prior to and including the first visit.  We refer this this value as the “initial CWD value”. We then found the mean of summer CWD values between visits and including the second visit year.  The difference between this second value and initial CWD value is the “CWD change value” (maybe ‘difference’ really is a better, less loaded term).  Both the initial CWD and CWD change values are mapped in Figure 1.  
+
+## Analysis
+Estimation approach: Following Section 4.3.4 in Scott et al. (2005) we obtained point estimates of species growth and mortality using a ratio estimators (Eqn 4.16).  For mortality, the numerator is the sum of stratum-weighted means of trees per plot of a given species that died in plots.  The number of sampled trees in each plot is expanded by the area sampled (subplot or macroplot area) adjusted by the proportion of the plot area available for sampling and the number of years between visits.    The denominator is similar but is calculated as the sum of stratum-weighted means of all trees per plot of a given species.    
+
+The numerator of species-specific growth estimates is the sum of stratum-weighted means of the increase in basal area (cm$^2$) per plot while the denominator is the same as was used for the mortality estimate. This produces a point estimate for a species’ mean growth.  Mortality and growth values were standardized to a decadal period.  
+
+The analysis finds species growth and mortality estimates for six domains based on CWD values (Figure 2C).   The initial CWD values are divided into three quantiles: values below the first quartile (Low), between the first and third quartiles (Medium), and above the third quartile (High).  These initial CWD value divisions allowed for species-specific assessments.  For all species we defined an arbitrary boundary of 5 mm to define plots with a greater change in CWD (Above [the boundary]) and those with less CWD change (Below).  This was done because species did not differ greatly in CWD change (Table S2).  The category Below includes CWD changes that are negative (i.e., mean CWD was larger prior to the initial visit than between visits).  We also report species mortality and growth estimates for all plots across and within Oregon, Washington, and California irrespective of CWD values.  We limited the number of species examined to those with more than 400 plots.  We report domain estimates for all CWD-based domains with 10 or more plots.    
+
+We obtained empirical means and 95% confidence intervals via bootstrap. For every species we sampled plots with replacement from within each of the strata and obtained point estimates.  For each domain we calculated a mean and upper and lower 95% CIs with the 2.5% and 97.5% quantiles from 1000 sampling iterations.  This approach allows for nonsymmetrical CIs around a mean and prevents CIs from including negative values.  We estimated differences between pairs of CWD domains by subtracting within-iteration domain point estimates.    
+[permutation analysis]
+
+
 
 # Results
 
-Our study tracked the fate of `r comma(analysis.stats$tree.num)` trees from `r length(sel.spp)` in `r comma(analysis.stats$plot.num)` plots that were visited twice by FIA crews.  Of the `r length(sel.spp)` species, `r analysis.stats$n.gym.spp` are gymnosperms.  Overall growth rates for species varied between `r min.grow.spp$mean` (*`r min.grow.spp$spp`*) and `r max.grow.spp$mean` (*`r max.grow.spp$spp`*, `r t.ref("tbl_growth")`) cm$^2$/decade.  Decadal mean mortality rates varied between `r min.mort.spp$mean` (*`r min.mort.spp$spp`*) and `r max.mort.spp$mean` (*`r max.mort.spp$spp`*, `r t.ref("tbl_mort")`). Growth and mortality rates differed among states (Tables `r tab_nums("tbl_growth", display = "num")` and `r tab_nums("tbl_mort", display = "num")`).
+Our study tracked the fate of `r comma(analysis.stats$tree.num)` trees from `r length(sel.spp)` in `r comma(analysis.stats$plot.num)` plots that were visited twice by FIA crews. The two visits for `r pct.remeas[2]`% of plots were 10 years apart(`r pct.remeas[1]`% were 9 years, `r pct.remeas[3]`% were 11 years). Of the `r length(sel.spp)` species, `r analysis.stats$n.gym.spp` are gymnosperms.  Overall growth rates for species varied between `r min.grow.spp$mean` (*`r min.grow.spp$spp`*) and `r max.grow.spp$mean` (*`r max.grow.spp$spp`*, `r t.ref("tbl_growth")`) cm$^2$/decade.  Decadal mean mortality rates varied between `r min.mort.spp$mean` (*`r min.mort.spp$spp`*) and `r max.mort.spp$mean` (*`r max.mort.spp$spp`*, `r t.ref("tbl_mort")`). Growth and mortality rates differed among states (Tables `r tab_nums("tbl_growth", display = "num")` and `r tab_nums("tbl_mort", display = "num")`).
 
-Forested plot 10-year differences in CWD do not visually coincide with initial CWD values (`r f.ref("fig_cwdmap")`) although most plots increased in their CWD values to some degree; `r analysis.stats$cwd.lt0.pct`% of plots decreased in mean CWD values between visits.  Individual species quantiles for CWD / delta CWD. DO I want to include some sort of quantile-thing for the range of delta-CWD for species?  Then cite the dashboard.  
+Forested plot 10-year differences in CWD do not visually coincide with initial CWD values (Figure `r fig_nums("fig_cwdmap", display = "num")`); however, `r analysis.stats$cwd.gt0.pct`% of plots increased in their CWD values to some degree during that time period. Tree species exhibited a variety of initial-visit CWD ranges, with means ranging from `r min.mean.init` (*`r min.mean.init.spp`*) to `r max.mean.init` (*`r max.mean.init.spp`*; Table S1).  The CWD difference tended to be comparatively small, with a maximum 95th percentile value of `r max.q95.diff` (*`r max.q95.diff.spp`*, Table S2). The distribution of individual species plot domain values for CWD and change in CWD can be explored on the dashboard(). 
+
+The confidence intervals for 10-year mortality and growth rate domains did not necessarily follow the same patterns nor did all confidence intervals for a species' mortality or growth estimates overlap (e.g., Figures `r fig_nums("fig_domains", display = "num")`A and `r fig_nums("fig_domains", display = "num")`B). The relationship between initial CWD values and plot-level change in CWD were not reliably linear (e.g., Figure `r fig_nums("fig_domains", display = "num")`C) and varied by species (see dashboard).    
+
+We examined differences in 10-year growth estimates among domains (Figure `r fig_nums("fig_diffgrow", display = "num")`).  The column "Above vs. Below Threshold" compares the domains above the CWD change threshold with those below it (e.g., for *Abies lasiocarpa*, subtracting the estimates for columns BL, BM, and BH from AL, AM, AH, respectively; Figure `r fig_nums("fig_domains", display = "num")`A).  There were `r grow.AvB.sig` estimates out of `r grow.n` which had 95% CIs that did not overlap with zero; `r grow.AvB.signeg` of these were negative. Negative estimates indicate that the growth rate was greater for a species in plots below the change estimates.   
+
+The second column of Figure `r fig_nums("fig_diffgrow", display = "num")` shows the differences in growth estimates AH - AL, AH - AM, and AM - AL for each species; effectively, the top row of domains shown in Figure `r fig_nums("fig_domains", display = "num")`A.  `r grow.A.sig` comparisons had 95% CIs that did not include 0, of which `r grow.A.signeg` were negative.  Negative values indicate that a lower-valued initial CWD domain had a greater growth rate than a higher-valued domain.  The third column displays the same domain differences but for the bottom row of domains shown in `r fig_nums("fig_domains", display = "num")`A.  `r grow.B.sig` comparisons had 95% CIs that did not include 0, of which `r grow.B.signeg` were negative. Like the second column, negative differences indicate lower initial-value CWD domains had higher growth than higher domains.  
+
+We examined mortality estimates in a similar fashion.  The first column in Figure `r fig_nums("fig_diffmort", display = "num")` has `r mort.AvB.sig` comparisons with 95% CIs that do not overlap zero, `r mort.AvB.sig - mort.AvB.signeg` of which are positive, indicating mortality is greater for those species in one or more of the above-threshold CWD change domains.  The middle column had `r mort.A.sig` "significant" comparisons, `r mort.A.signeg` of which were negative (for the above-threshold change CWD domains, there was more mortality for lower initial-value CWD domains).  The right column had `r mort.B.sig` "significant" comparisons, `r mort.B.signeg` of which were negative (for the below-threshold change CWD domains, there was more mortality for lower initial-value CWD domains).   
+
+
+
 
 # Discussion
 
@@ -203,6 +280,8 @@ The initial CWD values coincide fairly well with mean annual precipitation [NOAA
 # References
 
 ::: {#refs}
+Wang, T., Hamann, A. Spittlehouse, D.L. and Carroll, C. 2016. Locally downscaled and spatially customizable climate data for historical and future periods for North America. PLoS One 11: e0156720
+
 :::
 
 
@@ -214,17 +293,12 @@ The initial CWD values coincide fairly well with mean annual precipitation [NOAA
 
 ```{r tbl-growth, tab.cap=tab.tbl_growth}
 
-#tab_num <- run_autonum(seq_id = "Table", pre_label = "Table ", post_label = ": ", bkm = "tbl-growth")
-#block_caption(label = "Decadal growth estimates by state and overall for analysis species. Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 plots.", style = "caption", autonum = tab_num)
-
 growth.ft 
 
 ```
 
 
 ```{r tbl-mort, tab.cap = tab.tbl_mort}
-#tab_num <- run_autonum(seq_id = "Table", pre_label = "Table ", post_label = ": ", bkm = "tbl-mortality")
-#block_caption(label = "Decadal mortality estimates by state and overall for analysis species. Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 #plots.", style = "caption", autonum = tab_num)
 
 mort.ft 
 

@@ -25,9 +25,7 @@ date: today
 format:
   docx:
     reference-doc: template_use2.docx 
-    fig-width: 6
-    fig-height: 4
-    fig-dpi: 300
+    prefer-html: false
     toc: false
     number-sections: true
     highlight-style: github
@@ -55,23 +53,17 @@ knitr::opts_chunk$set(
 
 ```{r libraries}
 
-# Load required R libraries
-library(tidyverse)    # Data manipulation and visualization
-library(here)         # File path management
-library(knitr)        # Document generation
 library(kableExtra)   # Enhanced table formatting
-library(ggplot2)      # Advanced plotting
-library(dplyr)        # Data manipulation
-library(readr)        # Data import
 library(scales)       # Scale functions for visualization
-library(patchwork)    # Combining plots
 library(flextable)    # Professional tables for Word output
-
+#library(officer)
 
 
 ```
 
 ```{r constants}
+
+source("Global.R")
 
 # Define any custom functions
 format_p_value <- function(p) {
@@ -81,25 +73,87 @@ format_p_value <- function(p) {
     TRUE ~ sprintf("= %.2f", p)
   )
 }
+
+
+library(flextable)
+set_flextable_defaults(
+  font.family = "Times",
+  font.size = 11,
+  theme_fun = "theme_vanilla"
+)
+
 ```
 
 ```{r load-data}
-source("Global.R")
 
-spp.names.use <- spp.names %>% dplyr::select()
+# Species scientific names
+spp.names.use <- spp.names %>% dplyr::select(SPCD, GENUS, SPECIES) %>%
+  mutate(SpeciesCode = paste0("X", SPCD), 
+         SciName = paste(GENUS, SPECIES)) %>%
+  dplyr::select(SpeciesCode, SciName)
 
+# Growth data for species overall and states
+grow.state <- read_csv(paste0(RESULTS1.LOC, "Growth_figs_", CLIM.VAR.USE, "/State_Growth_", CLIM.VAR.USE, ".csv"))
+grow.all <- read_csv(paste0(RESULTS1.LOC, "Growth_figs_", CLIM.VAR.USE, "/All_Growth_", CLIM.VAR.USE, ".csv"))
+
+#class(grow.state)
+#class(grow.all)
 ```
 
 
 ```{r table-creation}
+# State growth
+s.g.1 <- dplyr::left_join(spp.names.use, grow.state, by = c("SpeciesCode" = "Species")) %>%
+  dplyr::mutate_if(is.numeric, round, 2) %>% 
+  dplyr::mutate(results = case_when(is.na(Median) ~ "", 
+                              !is.na(Median) ~ paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")"))) %>%
+  dplyr::select(SciName, State, results) %>%
+  tidyr::pivot_wider(names_from = State, values_from = results) %>%
+  dplyr::select(-`NA`) %>%
+  dplyr::rename("California" = "CA", "Washington" = "WA", "Oregon" = "OR")
+  
+s.g.2 <- dplyr::left_join(spp.names.use, grow.all, by = c("SpeciesCode" = "Species")) %>%
+  dplyr::mutate_if(is.numeric, round, 2) %>% 
+  dplyr::mutate(results = case_when(is.na(Median) ~ "", 
+                              !is.na(Median) ~ paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")"))) %>%
+  dplyr::select(SciName, results) %>%
+ dplyr::rename("All" = "results")
+
+
+s.g.3 <- dplyr::left_join(s.g.1, s.g.2, by = "SciName") %>% 
+  tidyr::replace_na(list(California = "", Washington = "", Oregon = "")) %>%
+  dplyr::filter(All != "")
+  
+
+
+
+growth.ft <- flextable(s.g.3) %>%
+  fontsize(size = 9, part = "body") %>%
+  line_spacing(i = NULL, j = NULL, space = 0.2, part = "body") %>% # Control space between lines. 
+  theme_zebra(
+    odd_header = "#FFFFFF",   # White background for header
+    even_header = "#FFFFFF",  # White background for header
+    odd_body = "#F9F9F9",     # Light gray for odd rows
+    even_body = "#FFFFFF"     # White for even rows
+  ) %>%
+  autofit() %>%
+  set_table_properties(layout = "autofit", width = 1)
+
 # State mortality
-s.m.1 <- 
+#s.m.1 <- 
 
 
 
 ```
 
+\newpage
+<!---BLOCK_LANDSCAPE_START--->
+```{r tbl-growth}
+#| tbl-cap: "Growth estimates by state and overall for analysis species.  Mean estimates with confidence intervals and plot number are provided.  Estimates are not made for states with fewer than 10 plots."
+growth.ft  
+```
 
+<!---BLOCK_LANDSCAPE_STOP--->
 
 
 # Introduction

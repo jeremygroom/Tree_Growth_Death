@@ -8,6 +8,11 @@
 tree.num <- dim(tree.plt.data %>% filter(SPCD %in% sel.spp))[1]
 plot.num <- dim(PlotDat)[1]
 
+## Q: What percentage of plots with 9, 10, and 11 yr remeasure?
+remeas <- tree.plt.data %>% dplyr::select(puid, REMPER) %>% distinct() %>% mutate(REMPER2 = round(REMPER, digits = 0))
+pct.remeas <- round(100 * table(remeas$REMPER2)/nrow(remeas), digits = 1)[4:6]
+
+
 ## Number of Gymnosperms?  Which ones?
 gym.angio.dat <- spp.names %>% filter(SPCD %in% sel.spp) %>%
   mutate(sci_name = paste(GENUS, SPECIES),
@@ -23,15 +28,50 @@ n.zero <- nrow(climate.use %>% filter(difference < 0))
 n.min.3 <- nrow(climate.use %>% filter(difference < -3))
 
 cwd.lt.0.pct <- round(n.zero/n.cwd, 3) * 100 #Percent CWD diff < 0  =  8%
+cwd.gt.0.pct <- round(1 - n.zero/n.cwd, 3) * 100 # Percent CWD diff > 0 (91.6%)
 cwd.lt.min3.pct <- n.min.3/n.cwd #Percent CWD diff < -3  = 0.6% (This is useful for the mapping)
 
 
 
+mort.out <- readRDS(paste0(save.loc.fcn(2), "Domain_Analysis_Output.RDS"))
+
+init.cwd.stats <- summ.spp.fcn(mort.out$all_dat, "pre_mean", gym.angio.dat) 
+diff.cwd.stats <- summ.spp.fcn(mort.out$all_dat, "difference", gym.angio.dat)
+
+init.cwd.min.mean <- which(init.cwd.stats$Mean == min(init.cwd.stats$Mean))
+init.cwd.max.mean <- which(init.cwd.stats$Mean == max(init.cwd.stats$Mean))
+init.range = init.cwd.stats$q95 - init.cwd.stats$q05
+init.cwd.90range.min <- which(init.range == min(init.range))
+init.cwd.90range.max <- which(init.range == max(init.range))
+
+
+diff.cwd.min.mean <- which(diff.cwd.stats$Mean == min(diff.cwd.stats$Mean))
+diff.cwd.max.mean <- which(diff.cwd.stats$Mean == max(diff.cwd.stats$Mean))
+diff.range = as.vector(diff.cwd.stats$q95 - diff.cwd.stats$q05)
+diff.cwd.90range.min <- diff.range[which(diff.range == min(diff.range))]
+diff.cwd.90range.max <- diff.range[which(diff.range == max(diff.range))]
+diff.cwd.95max <- which(diff.cwd.stats$q95 == max(diff.cwd.stats$q95))
+
+
 analysis.stats <- list(tree.num = tree.num,
                        plot.num = plot.num,
+                       pct.remeas = pct.remeas,
                        cwd.lt0.pct = cwd.lt.0.pct,
+                       cwd.gt0.pct = cwd.gt.0.pct,
                        gym.angio.dat = gym.angio.dat,
-                       n.gym.spp = n.gym.spp) 
+                       n.gym.spp = n.gym.spp,
+                       init.cwd.stats = init.cwd.stats,
+                       diff.cwd.stats = diff.cwd.stats,
+                       init.cwd.min.mean = init.cwd.min.mean, 
+                       init.cwd.max.mean = init.cwd.max.mean, 
+                       init.cwd.90range.min = init.cwd.90range.min,
+                       init.cwd.90range.max = init.cwd.90range.max,
+                       diff.cwd.min.mean = diff.cwd.min.mean, 
+                       diff.cwd.max.mean = diff.cwd.max.mean, 
+                       diff.cwd.90range.min = diff.cwd.90range.min,
+                       diff.cwd.90range.max = diff.cwd.90range.max,
+                       diff.cwd.95max = diff.cwd.95max
+                       ) 
 
 write_rds(analysis.stats, paste0(RESULTS.OTHER, "analysis.stats.RDS"))
 
@@ -93,7 +133,7 @@ for(k in 1:2){
                                          n.plots.used = n_plots2, size.trees = "") 
     
     q_plot_spp <- domain.matrix %>% dplyr::select(all_of(sppnum.to.plot), all_of(var1), all_of(var.delt)) %>%
-      filter(get(plot.spp) > 0) 
+      filter(get(sppnum.to.plot) > 0) 
     pts.max.y <- ceiling(layer_scales(plot.vals.plt)$y$range$range[2] * 10) / 10 # Extracts max Y extent of ggplot
     
     #ceiling(max(use.dat2$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
@@ -195,7 +235,7 @@ cwd.map.fcn <- function(var.use, title.txt, lab.use, add_extras = FALSE) {
     coord_sf(xlim = x_range, ylim = y_range, expand = FALSE) +
     theme_void() +
     theme(
-      panel.border = element_rect(colour = "black", fill = NA, linesize = 0.8),
+      panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.8),
       legend.position = "bottom",
       legend.box.margin = margin(t = -5, b = 5),
       legend.title = element_text(size = 10, face = "bold"),
@@ -278,19 +318,19 @@ cwd.maps <- plot_grid(
   nrow = 1, 
   align = "hv"
 ) + 
-  plot.margin = unit(c(0, 0, 0, 0), "null")
+  theme(plot.margin = unit(c(0, 0, 0, 0), "null"))
 
 
 cwd.maps <- ggdraw() +
-  draw_plot(cwd.plt.startcwd, x = 0, y = 0, width = 0.55, height = 1) +
-  draw_plot(cwd.plt.deltcwd, x = 0.45, y = 0, width = 0.45, height = 1) 
+  draw_plot(cwd.plt.startcwd, x = 0, y = 0, width = 0.5, height = 1) +
+  draw_plot(cwd.plt.deltcwd, x = 0.5, y = 0, width = 0.5, height = 1) 
   
 
 # Print the final figure
 print(cwd.maps)
 
 # Saving a png of the figure and a RDS version as well. The MS relies on the RDS.
-ggsave(paste0(RESULTS.OTHER, "cwd_maps_figure.jpg"), cwd.maps, device = 'jpg',
+ggsave(paste0(RESULTS.OTHER, "cwd_maps_figure.png"), cwd.maps, device = 'png',
        width = 6, height = 8.81, dpi = 300, units = "in",
        bg = "white")
 

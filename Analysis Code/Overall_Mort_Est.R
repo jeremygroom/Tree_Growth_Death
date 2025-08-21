@@ -7,10 +7,10 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
   
   
   if(k == 1) {
-    t.all <- map(as.numeric(gsub("X", "", SEL.SPP)), clim.growth.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use)
+    t.all <- purrr::map(as.numeric(gsub("X", "", SEL.SPP)), clim.growth.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use)
     a.all <- parse.tree.clim.fcn(t.all, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
   } else { 
-    t.all <- map(as.numeric(gsub("X", "", SEL.SPP)), clim.mort.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use)
+    t.all <- purrr::map(as.numeric(gsub("X", "", SEL.SPP)), clim.mort.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use)
     a.all <- parse.tree.clim.fcn(t.all, clim.var = CLIM.VAR.USE, analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
   }
   
@@ -56,7 +56,7 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
   
   # Finding and saving domain summaries
   state.domain.summaries <- state.domain.index %>% 
-    map(\(d) domain.sum.fcn(state.bootstrap_results, d, domain_n =state.n)) %>%
+    purrr::map(\(d) domain.sum.fcn(state.bootstrap_results, d, domain_n =state.n)) %>%
     do.call(rbind, .) %>%
     mutate(State = case_match(Domain, 1 ~ "CA", 2 ~ "WA", 3 ~ "OR")) %>%
     arrange(Species, Domain)

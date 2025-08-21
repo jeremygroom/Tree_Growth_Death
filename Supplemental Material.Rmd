@@ -1,0 +1,121 @@
+---
+title: "Supplemental material for Tree growth, mortality, and climatic stress in west-coast states, USA"
+date: "`r Sys.Date()`"
+author: "Jeremiah D. Groom"
+output: 
+  officedown::rdocx_document:
+    mapstyles:
+      Normal: ['First Paragraph']
+    reference_docx: "template_use2.docx"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+
+library(officedown)
+library(officer)
+library(kableExtra)   # Enhanced table formatting
+library(scales)       # Scale functions for visualization
+library(flextable)    # Professional tables for Word output
+library(rvg)
+library(captioner) # For figure captions.
+
+
+fp <- fp_par(
+  text.align = "center", 
+  padding.bottom = 20, padding.top = 120, 
+  border.bottom = fp_border())
+
+ft <- fp_text(shading.color='#EFEFEF', bold = TRUE)
+
+
+set_flextable_defaults(
+  font.family = "Times New Roman",
+  font.size = 11,
+  theme_fun = "theme_vanilla"
+)
+
+```
+
+```{r load_data}
+
+source('Global.R')
+# Some general analysis info + plots
+analysis.stats <- read_rds(paste0(RESULTS.OTHER, "analysis.stats.RDS"))
+
+
+
+```
+
+
+```{r cwd_summary_tables}
+cwd.init <- analysis.stats$init.cwd.stats 
+cwd.diff <- analysis.stats$diff.cwd.stats
+
+init.ft <- flextable(cwd.init) %>%
+  fontsize(size = 10, part = "body") %>%
+  fontsize(size = 11, part = "header") %>%
+  italic(j = 1, part = "body") %>%
+  line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
+    set_table_properties(layout = "autofit", width = 0) %>%
+  border_remove() %>%
+  hline_top(part = "all") %>%
+  hline_bottom(part = "all") 
+
+diff.ft <- flextable(cwd.diff) %>%
+  fontsize(size = 10, part = "body") %>%
+  fontsize(size = 11, part = "header") %>%
+  italic(j = 1, part = "body") %>%
+  line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
+    set_table_properties(layout = "autofit", width = 0) %>%
+  border_remove() %>%
+  hline_top(part = "all") %>%
+  hline_bottom(part = "all") 
+
+```
+
+
+```{r table-legends}
+tab_nums <- captioner::captioner(prefix = "Table S")
+
+t.ref <- function(x)  {
+  stringr::str_extract(tab_nums(x), "[^:]*")
+}
+
+tbl_cwd_init <- tab_nums(name = "tbl_cwdinit", 
+                        caption = "Summary statistics for initial-visit plot CWD values by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
+
+tbl_cwd_diff <- tab_nums(name = "tbl_cwddiff", 
+                        caption = "Summary statistics for the difference in plot CWD values between visits by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
+
+```
+
+
+
+\newpage
+
+<!---BLOCK_LANDSCAPE_START--->
+
+
+```{r table-cwd-init, tab.cap=tbl_cwd_init}
+
+init.ft
+
+```
+
+\newpage
+
+```{r table-cwd-diff, tab.cap=tbl_cwd_diff}
+
+diff.ft
+
+```
+
+<!---BLOCK_LANDSCAPE_STOP--->
+
+

@@ -23,7 +23,9 @@ library(maps)
 # Code controls:
 CALC.FIREPROP <- TRUE   # Set this to TRUE if wanting to calculate or recalculate
                           # the proportion of dead trees killed by fire by quantile.
-RUN.STATES <- TRUE # Should ANALYSIS.PATHWAY 1 find mortality estimates by state?
+RUN.STATES <- TRUE # Should Data_Prep_Analysis.R find mortality estimates by state and overall?
+
+RUN.SUMMARY <- TRUE # Should Data_Prep_Analysis.R calculate 
 
 # File locations:
 DATA.LOC <- "Data/"

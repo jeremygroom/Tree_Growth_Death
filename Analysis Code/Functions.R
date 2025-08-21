@@ -465,7 +465,8 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {
   
   # Old slow code.  For understanding the data.table usage.
   #  Zt_i <- Yv_i <- rep(0, length(strata) )  # Weighted values for each strata
-  #  for (h in 1:strat.num) {                  # h indexes strata
+  #strat.num <- length(unique(strata))  
+  #for (h in 1:strat.num) {                  # h indexes strata
   #    w_h <- unique(dat_tot$w[dat_tot$stratum == strata[h]])
   #    n_h <- unique(dat_tot$n_h.plts[dat_tot$stratum == strata[h]])    # Number of plots in stratum h 
   #    Yv_i[h] <- w_h * sum(get(col.name, dat_vals)[dat_vals$stratum == strata[h]]) / n_h 
@@ -500,14 +501,20 @@ calculate_domain_estimates.fcn <- function(samp, domain_data, domain_idx, select
       if (n_q < N.PLOT.LIM) {
         return(NA_real_)
       } else {
-        return(mean.q.fcn(
+       # return(mean.q.fcn(
+        mean.q.fcn(
           dat_tot = d.all_use[samp$row.id, ],
           dat_vals = d.vals_use[samp$row.id, ],
           spp.sel1 = spp.sel
-        )$R)
+        )$R
       }
     })
   
+
+ # df <- rbind(estimates, estimates.yv, estimates.zt) %>% data.frame()
+#  colnames(df) <- SEL.SPP
+ # write.csv(df, "Oregon.csv")
+
   return(estimates)
 }
 
@@ -578,6 +585,8 @@ generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain
   
   return(bootstrap_array2)
 }
+
+
 
 
 
@@ -658,6 +667,9 @@ cm2.fcn <- function(k, results.table){
 ## This plot provides the 
 diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
   
+  # Kludgy way to get a conifer/deciduous break.  X312 = bigleaf maple.
+  decid.break <- length(SEL.SPP) - which(SEL.SPP == "X312") + 1.5
+  
   ggplot(diff.dat, aes(y = as.numeric(species_label) + y.offset)) + 
     geom_vline(xintercept = 0, linewidth = 0.5) + 
     geom_segment(aes(x = LCI.95, xend = UCI.95, 
@@ -669,6 +681,7 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
                    fill = ifelse(significant, "black", "white"),
                    color = Domain),
                size = 2, shape = 21, stroke = 0.8) +
+    geom_hline(yintercept = decid.break, linetype = 2) +
     #scale_y_continuous(breaks = 1:length(levels(DvS2$species_label)),
     #                    labels = levels(DvS2$species_label)) +
     scale_y_continuous(breaks = 1:length(levels(diff.dat$species_label)),
@@ -716,7 +729,7 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
 
 ### Plot of domain estimates for Growth or Mortality ###
 ## Used in pair.plts.fcn below.
-domain.grid.plt.fcn <- function(domains, domain.index) {
+domain.grid.plt.fcn <- function(domains, domain.index, use.dat2, qt.max, q.g.p.labs) {
   ggplot(data = use.dat2 %>% filter(Domain %in% domain.index), aes(factor(Domain), Means, fill = factor(Domain))) + 
     geom_col() + 
     geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.1) + 
@@ -833,7 +846,7 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use) {
 
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
-pair.plts.fcn <- function(sppnum.to.plot, var.filename, use.dat, domain.matrix,
+pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
                           quant.lims, domain.n, k){
   
   use.dat2 <- use.dat %>% filter(Species == sppnum.to.plot)
@@ -857,13 +870,13 @@ pair.plts.fcn <- function(sppnum.to.plot, var.filename, use.dat, domain.matrix,
   
   # These will be arranged in a plot below
   if(n_domain == 9){
-    p1 <- domain.grid.plt.fcn(c("LiHc", "MiHc", "HiHc"), 1:3) 
-    p2 <- domain.grid.plt.fcn(c("LiMc", "MiMc", "HiMc"), 4:6) 
-    p3 <- domain.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9) 
+    p1 <- domain.grid.plt.fcn(c("LiHc", "MiHc", "HiHc"), 1:3, use.dat2, qt.max, q.g.p.labs) 
+    p2 <- domain.grid.plt.fcn(c("LiMc", "MiMc", "HiMc"), 4:6, use.dat2, qt.max, q.g.p.labs) 
+    p3 <- domain.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9, use.dat2, qt.max, q.g.p.labs) 
     p_all <- plot_grid(p1, p2, p3, ncol = 1)
   } else if(n_domain == 6) {
-    p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3) 
-    p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6) 
+    p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs) 
+    p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs) 
     p_all <- plot_grid(p1, p2, ncol = 1)
   }
   
@@ -1001,7 +1014,36 @@ maxmin.fcn <- function(table1, mean_col, lower_ci_col, upper_ci_col,
 
 
 
+### Function for preparing supplementary tables of CWD max/min/quantiles.
+###  Used in Manuscript_information.R
+########################
 
+summ.spp.fcn <- function(data.all, var.select, spp.names.use) {
 
+summ.spp <- all_dat %>% left_join(climate.use, by = "puid") %>%
+  dplyr::select(-STATECD, -ESTN_UNIT, -STRATUMCD, -w, -stratum, -n_h.plts, -LAT, -LON) %>%
+  pivot_longer(cols = starts_with("nd."), names_to = "spp", values_to = "values") %>%
+  mutate(spp = as.numeric(gsub("nd.", "", spp))) %>%
+  filter(values > 0) %>%
+  group_by(spp) %>%
+  summarize(
+    n = n(),
+    Minimum = min(get(var.select)),
+    q05 = quantile(get(var.select), 0.05),
+    q25 = quantile(get(var.select), 0.25),
+    Mean = mean(get(var.select)),
+    Median = median(get(var.select)),
+    q75 = quantile(get(var.select), 0.75),
+    q95 = quantile(get(var.select), 0.95),
+    Maximum = max(get(var.select))
+  ) %>%
+  left_join(spp.names.use %>% dplyr::select(SPCD, sci_name), by = c("spp" = "SPCD")) %>%
+  relocate(sci_name) %>%
+  rename("Species" = "sci_name") %>%
+  dplyr::select(-spp) %>%
+  mutate(across(c(-Species, -n), round, digits = 1))
+
+return(summ.spp)
+}
 
 

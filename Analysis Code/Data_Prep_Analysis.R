@@ -194,6 +194,7 @@ if(RUN.STATES == TRUE) {
 tic() 
 # For ANALYSIS.PATHWAY == 1, one climate variable, and 16 dedicated cores, the analysis takes about 8 minutes.
 # With 6 domains and 23 species, 16 dedicated cores, 3.8 minutes
+# With 6 domains, 1000 iterations, 23 spp, 16 cores, 15 min.
 
 for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
   
@@ -224,12 +225,7 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     quant.lims <- mort.grow.dat$quant.lims
     quant.lims.delta <- mort.grow.dat$quant.lims.delt
     
-    # The quant.spp is a data frame of the change quantiles.  This is for 
-    #  reporting purposes (sent over to Manuscript_information.R)
-    quants.spp <- quant.lims %>%
-        map_dfr(~ data.frame(q25 = .["25%"], q75 = .["75%"]), .id = "species")
-    
-    
+
     ## First, adjusting the species list
     #spp.id <- paste0("X", spp.list)     # Can use SEL.SPP
     spp.list <- as.numeric(gsub("X", "", SEL.SPP))
@@ -252,8 +248,10 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     ## Quantile estimates for mortality or growth, across select species.
     domain.index <- 1:n_domain
     
-    
+
     ## Generating the bootstrap values: 
+   # 200 iterations = 104.99 s, or 1.75 min, or 29.2 hours
+   # 1000 iterations = 426.21 s, or 7.1 min, or 118.3 hrs or 5 days....
     bootstrap_results <- generate_bootstrap_array.fcn(
       vals.dat = vals_dat,
       all.dat = all_dat,
@@ -263,14 +261,14 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
       n_iter = BS.N
     )
 
-    
     # Finding and saving domain summaries
     domain.summaries <- domain.index %>% 
       purrr::map(\(d) domain.sum.fcn(bootstrap_results, d, domain_n = domain.n)) %>%
       do.call(rbind, .) %>%
       arrange(Species, Domain)
     
-    saveRDS(list(bootstrap_results = bootstrap_results, domain.summaries = domain.summaries, quants.spp = quants.spp), file = paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS"))
+    saveRDS(list(bootstrap_results = bootstrap_results, domain.summaries = domain.summaries, all_dat = all_dat), 
+            file = paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS"))
     
     ## The code in this section is dedicated to preparing data files for plotting the differences in six-domain results.
     ## This process has two steps: first, the domain matrix pairs are subtracted from one another 
@@ -360,7 +358,8 @@ if(n_domain == 6) {
     ggsave(paste0(save.loc.fcn(k), filename.use, "Panel_Plot.png"), plot = diff.plt2, device = "png", width = 10, height = 10, units = 'in')
   }
 }
-
+domain.index %>% 
+  purrr::map(\(d) domain.sum.fcn(bootstrap_results, d, domain_n = domain.n))
 
   # Analysis Pathway 1: no subgroups of size or site class
 for(k in 1:2){ # 1 = growth, 2 = mortality
@@ -378,8 +377,8 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
   
     
     # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
-    purrr::map(SEL.SPP, pair.plts.fcn, use.dat = plt.dat2, domain.matrix = domain.matrix,
-                 quant.lims = quant.lims, domain.n = domain.n, k = k)
+    SEL.SPP %>% purrr::map(\(s) pair.plts.fcn(sppnum.to.plot = s, use.dat = plt.dat2, domain.matrix = domain.matrix,
+                 quant.lims = quant.lims, domain.n = domain.n, k = k))
 }
 
 
