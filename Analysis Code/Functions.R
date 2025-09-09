@@ -765,8 +765,8 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
   plot.vals.plt <- ggplot(q_plot_spp, aes(get(var1), get(var.delt), color = factor(Domain))) + 
     geom_point() + 
     #stat_ellipse(type = "norm", level = 0.95, col = "orange", lwd = 2) +
-    geom_hline(yintercept = quant.lims.delt.plt[1], col = "blue") +
-    geom_hline(yintercept = quant.lims.delt.plt[2], col = "blue") +
+    geom_hline(yintercept = quant.lims.delt.plt[1], col = "blue", linewidth = 1.5, linetype = 2) +
+    geom_hline(yintercept = quant.lims.delt.plt[2], col = "blue", linewidth = 1.5, linetype = 2) +
     geom_vline(xintercept = quant.lims.plt[1], col = "green") +
     geom_vline(xintercept = quant.lims.plt[2], col = "green") +
     geom_hline(yintercept = 0, col = "black") +
@@ -1001,6 +1001,31 @@ maxmin.fcn <- function(table1, mean_col, lower_ci_col, upper_ci_col,
   return(maxmin_output)
 }
 
+## Summary of domain difference figures.  A pmap() call will 
+#   operate on a list of datasets. Datatype = type of comparison,
+#   n.comp is the number of total comparisons in a figure column (sig and non-sig).
+summ.fig.fcn <- function(dataset, datatype, n.comp) {
+  
+  x.a <- dataset %>% 
+    mutate(np = ifelse(Means < 0, "Negative", "Positive"),
+           pos.sig = ifelse(significant == TRUE & np == "Positive", 1, 0)) 
+  
+  x.a1 <- x.a %>% 
+    group_by(Domain) %>%
+    reframe(Total = length(significant[significant == TRUE]),
+            Positive = sum(pos.sig),
+            Negative = Total - Positive)
+  
+  x.a2 <- x.a1 %>% 
+    mutate(across(-Domain, \(x) sum(x)),
+           Domain = "All") %>% 
+    distinct() %>%
+    bind_rows(x.a1) %>%
+    mutate(Comparison = datatype,
+           n = ifelse(Domain == "All", n.comp, "")) %>%
+    relocate(Comparison) 
+}
+
 
 
 ### Function for preparing supplementary tables of CWD max/min/quantiles.
@@ -1009,7 +1034,7 @@ maxmin.fcn <- function(table1, mean_col, lower_ci_col, upper_ci_col,
 
 summ.spp.fcn <- function(data.all, var.select, spp.names.use) {
 
-summ.spp <- all_dat %>% left_join(climate.use, by = "puid") %>%
+summ.spp <- data.all %>% left_join(climate.use, by = "puid") %>%
   dplyr::select(-STATECD, -ESTN_UNIT, -STRATUMCD, -w, -stratum, -n_h.plts, -LAT, -LON) %>%
   pivot_longer(cols = starts_with("nd."), names_to = "spp", values_to = "values") %>%
   mutate(spp = as.numeric(gsub("nd.", "", spp))) %>%
@@ -1030,7 +1055,7 @@ summ.spp <- all_dat %>% left_join(climate.use, by = "puid") %>%
   relocate(sci_name) %>%
   rename("Species" = "sci_name") %>%
   dplyr::select(-spp) %>%
-  mutate(across(c(-Species, -n), round, digits = 1))
+  mutate(across(c(-Species, -n), \(x) round(x, digits = 1)))
 
 return(summ.spp)
 }

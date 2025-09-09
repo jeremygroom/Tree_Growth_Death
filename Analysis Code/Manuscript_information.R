@@ -36,8 +36,8 @@ cwd.lt.min3.pct <- n.min.3/n.cwd #Percent CWD diff < -3  = 0.6% (This is useful 
 
 mort.out <- readRDS(paste0(save.loc.fcn(2), "Domain_Analysis_Output.RDS"))
 
-init.cwd.stats <- summ.spp.fcn(mort.out$all_dat, "pre_mean", gym.angio.dat) 
-diff.cwd.stats <- summ.spp.fcn(mort.out$all_dat, "difference", gym.angio.dat)
+init.cwd.stats <- summ.spp.fcn(data.all = mort.out$all_dat, "pre_mean", gym.angio.dat) 
+diff.cwd.stats <- summ.spp.fcn(data.all = mort.out$all_dat, "difference", gym.angio.dat)
 
 init.cwd.min.mean <- which(init.cwd.stats$Mean == min(init.cwd.stats$Mean))
 init.cwd.max.mean <- which(init.cwd.stats$Mean == max(init.cwd.stats$Mean))
@@ -137,17 +137,34 @@ for(k in 1:2){
     q_plot_spp <- domain.matrix %>% dplyr::select(all_of(sppnum.to.plot), all_of(var1), all_of(var.delt)) %>%
       filter(get(sppnum.to.plot) > 0) 
     pts.max.y <- ceiling(layer_scales(plot.vals.plt)$y$range$range[2] * 10) / 10 # Extracts max Y extent of ggplot
+    pts.min.y <- ceiling(layer_scales(plot.vals.plt)$y$range$range[1] * 10) / 10 # Extracts max Y extent of ggplot
     
     #ceiling(max(use.dat2$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
     
     
     range.x <- range(q_plot_spp$pre_mean, na.rm = TRUE)
     pts.min.x <- min(q_plot_spp$pre_mean) + 0.065 * (range.x[2] - range.x[1]) 
+    pts.max.x <- max(q_plot_spp$pre_mean)
+    
+    # Locations for domain text in figure:
+    q.lim.n <- which(names(quant.lims) == sppnum.to.plot)
+    q.lim.plot <- quant.lims[[q.lim.n]]
+    # Low/med/high positions
+    l.txt.loc <- q.lim.plot[1] - (q.lim.plot[1] - pts.min.x)/2
+    m.txt.loc <- q.lim.plot[1] + (q.lim.plot[2] - q.lim.plot[1])/2
+    h.txt.loc <- q.lim.plot[2] + (pts.max.x - q.lim.plot[2])/2
+    # Above/below positions
+    a.txt.loc <- pts.max.y - (pts.max.y - 5)/2
+    b.txt.loc <- pts.min.y + (5 - pts.min.y)/2
+    
+    txt.loc.x.vec <- as.vector(rep(c(l.txt.loc, m.txt.loc, h.txt.loc), 2))
+    txt.loc.y.vec <- as.vector(c(rep(a.txt.loc, 3), rep(b.txt.loc, 3)))
     
     plot.vals.plt <- plot.vals.plt + 
       labs(title = NULL) + 
       annotate("text", x = pts.min.x , y = pts.max.y, label = "C", parse = TRUE, size = 6) +
-      theme(text = element_text(size = text.size))
+      annotate("text", x = txt.loc.x.vec , y = txt.loc.y.vec, label = DOMAIN.LEVELS, parse = TRUE, size = 4) +
+      theme(text = element_text(size = text.size)) 
     
     plot.vals.plt.no_legend <- plot.vals.plt + theme(legend.position = 'none')
   }

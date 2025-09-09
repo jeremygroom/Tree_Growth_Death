@@ -102,7 +102,9 @@ mort.diff <- read_rds(paste0(save.loc.fcn(2), "Processed_6Domain_Data.RDS"))
 
 
 # Significant findings, Growth
-grow.n <- nrow(grow.diff$AvB2)
+grow.n.AvB <- nrow(grow.diff$AvB2)
+grow.n.A <- nrow(grow.diff$A_LMH2)
+grow.n.B <- nrow(grow.diff$B_LMH2)
 
 grow.AvB.sig <- length(grow.diff$AvB2$significant[grow.diff$AvB2$significant == TRUE])
 grow.AvB.signeg <- length(grow.diff$AvB2$significant[grow.diff$AvB2$significant == TRUE & grow.diff$AvB2$Means < 0])
@@ -113,12 +115,27 @@ grow.B.signeg <- length(grow.diff$B_LMH2$significant[grow.diff$B_LMH2$significan
 
 
 # Significant findings, Mort
+mort.n.AvB <- nrow(mort.diff$AvB2)
+mort.n.A <- nrow(mort.diff$A_LMH2)
+mort.n.B <- nrow(mort.diff$B_LMH2)
+
 mort.AvB.sig <- length(mort.diff$AvB2$significant[mort.diff$AvB2$significant == TRUE])
 mort.AvB.signeg <- length(mort.diff$AvB2$significant[mort.diff$AvB2$significant == TRUE & mort.diff$AvB2$Means < 0])
 mort.A.sig <- length(mort.diff$A_LMH2$significant[mort.diff$A_LMH2$significant == TRUE])
 mort.A.signeg <- length(mort.diff$A_LMH2$significant[mort.diff$A_LMH2$significant == TRUE & mort.diff$A_LMH2$Means < 0])
 mort.B.sig <- length(mort.diff$B_LMH2$significant[mort.diff$B_LMH2$significant == TRUE])
 mort.B.signeg <- length(mort.diff$B_LMH2$significant[mort.diff$B_LMH2$significant == TRUE & mort.diff$B_LMH2$Means < 0])
+
+# Summary of significant Growth and Mortality findings for table creation.
+datasets.grow <- list(grow.diff$AvB2, grow.diff$A_LMH2, grow.diff$B_LMH2)
+datasets.mort <- list(mort.diff$AvB2, mort.diff$A_LMH2, mort.diff$B_LMH2)
+datatypes <- list("Above vs. Below", "Above", "Below")
+n.comp.grow <- list(grow.n.AvB, grow.n.A, grow.n.B)
+n.comp.mort <- list(mort.n.AvB, mort.n.A, mort.n.B)
+
+growth.summ <- pmap(list(datasets.grow, datatypes, n.comp.grow), summ.fig.fcn) %>% bind_rows()
+mortality.summ <- pmap(list(datasets.mort, datatypes, n.comp.mort), summ.fig.fcn) %>% bind_rows()
+
 
 ```
 
@@ -174,18 +191,48 @@ max.q95.diff.spp <- analysis.stats$diff.cwd.stats$Species[analysis.stats$diff.cw
 max.range.diff <- analysis.stats$diff.cwd.90range.max
 max.q95.diff.spp <- analysis.stats$diff.cwd.stats$Species[analysis.stats$diff.cwd.95max]
 
+
+
+
+# Adding a section identifier to each table
+growth.summ2 <- growth.summ %>%
+  mutate(Type = "Growth", .before = 1)
+
+mortality.summ2 <- mortality.summ %>%
+  mutate(Type = "Mortality", .before = 1)
+
+# Combine the tables
+grow.mort.summ <- bind_rows(growth.summ2, mortality.summ2)
+
+# Create flextable
+g.m.summ.ft <- flextable(grow.mort.summ) %>%
+  merge_v(j = "Type") %>%  # Merge cells in Section column
+  valign(j = "Type", valign = "top") %>%  # Top align section labels
+  flextable::align(j = "Type", align = "left") %>%   # Left align section labels
+  line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
+  set_table_properties(layout = "autofit", width = 0) %>%
+  theme_zebra(
+    odd_header = "#FFFFFF",   # White background for all
+    even_header = "#FFFFFF",
+    odd_body = "#FFFFFF",     
+    even_body = "#FFFFFF"     
+  ) %>%
+    flextable::align(j = 3:7, align = "center", part = "all")
+
 ```
 
 
 ```{r set_captions}
 
 # 
-fig_nums <- captioner::captioner(prefix = "Figure")
+fig_nums <- captioner::captioner(prefix = "")
 tab_nums <- captioner::captioner(prefix = "Table")
 
 
 f.ref <- function(x) {
- stringr::str_extract(fig_nums(x), "[^:]*")
+ caption_text <- fig_nums(x)
+  # Remove any leading numbers and extract just "Figure X"
+  stringr::str_extract(caption_text, "\\d+")
 }
 
 t.ref <- function(x)  {
@@ -193,16 +240,17 @@ t.ref <- function(x)  {
 }
 
 tab.tbl_growth <- tab_nums(name = "tbl_growth", 
-                        caption = "Decadal growth estimates by state and overall for analysis species. Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 plots.")
+                        caption = "Decadal growth estimates by state and overall for analysis species (cm\u00B2/decade). Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 plots.")
 
 tab.tbl_mort <- tab_nums(name = "tbl_mort", 
                         caption = "Decadal mortality estimates by state and overall for analysis species. Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 plots.")
+
 
 fig.cwdmap_cap <- fig_nums(name = "fig_cwdmap", 
                         caption = "Fuzzed FIA plot locations displayed with initial visit climatic water deficit (CWD) values (A) and CWD change between visits (C) for the U.S. states, north to south, of Washington, Oregon, and California (see inset map B for the location of these states within the USA).")
 
 fig.domains <- fig_nums(name = "fig_domains",
-                        caption = "Decadal (A) growth and (B) mortality domain estimates for *Abies lasiocarpa*.  The six domains are defined as FIA plots that fall [A]bove or [B]elow the CWD change threshold with [L]ow, [M]edium, or [H]igh initial CWD values (see text for details). E.g., 'AL' is Above CWD change threshold, Low initial CWD value. The distribution of plot CWD change and initial values (C) is presented as well, with the blue horizontal line at a change in CWD of 5 mm representing the change threshold and the green vertical lines representing the quantile boundaries between Low, Medium, and High initial CWD values." )
+                        caption = "Decadal (A) growth and (B) mortality domain estimates for *Calocedrus decurrens*.  The six domains are defined as FIA plots that fall [A]bove or [B]elow the CWD change threshold with [L]ow, [M]edium, or [H]igh initial CWD values (see text for details). E.g., 'AL' is Above CWD change threshold, Low initial CWD value. The distribution of plot CWD change and initial values (C) is presented as well, with the blue horizontal line at a change in CWD of 5 mm representing the change threshold and the green vertical lines representing the quantile boundaries between Low, Medium, and High initial CWD values." )
 
 fig.diff_grow <- fig_nums(name = "fig_diffgrow", 
                           caption = paste0("Differences in mean growth rates (cm\u00B2/decade) between domains by species.  Domain abbreviations are described in the legend for ",
@@ -213,6 +261,11 @@ fig.diff_mort <- fig_nums(name = "fig_diffmort",
                           caption = paste0("Differences in mean decadal mortality rates between domains by species.  Domain abbreviations are described in the legend for ",
                                            f.ref("fig_domains"), 
                                            ". See each column legend for the key of domain differences.  Mean domain differences (circles) with 95% CIs (bars) that do not intersect zero are filled. Species above the dashed line are coniferous; those below are deciduous."))
+
+
+tab.summ_grow_mort <- tab_nums(name = "tbl_summ_grow_mort",
+                               caption = paste0("Summary of number of comparisons with 95% CIs that do not overlap with zero ([T]otal, [P]ositive-, and [N]egative-valued estimates) for Figures ", fig_nums("fig_diffgrow", display = "num"), " and ", fig_nums("fig_diffmort", display = "num"), " by analysis (T)ype (Growth or Mortality) and type of (C)omparison.  The column Domains lists the domains compared; All is the sum of values within a Comparison. See text for other domain labels.  'n' is the total number of differences examined within a Comparison."))
+
 
 
 ```
@@ -247,7 +300,7 @@ The numerator of species-specific growth estimates is the sum of stratum-weighte
 
 The analysis finds species growth and mortality estimates for six domains based on CWD values (Figure 2C).   The initial CWD values are divided into three quantiles: values below the first quartile (Low), between the first and third quartiles (Medium), and above the third quartile (High).  These initial CWD value divisions allowed for species-specific assessments.  For all species we defined an arbitrary boundary of 5 mm to define plots with a greater change in CWD (Above [the boundary]) and those with less CWD change (Below).  This was done because species did not differ greatly in CWD change (Table S2).  The category Below includes CWD changes that are negative (i.e., mean CWD was larger prior to the initial visit than between visits).  We also report species mortality and growth estimates for all plots across and within Oregon, Washington, and California irrespective of CWD values.  We limited the number of species examined to those with more than 400 plots.  We report domain estimates for all CWD-based domains with 10 or more plots.    
 
-We obtained empirical means and 95% confidence intervals via bootstrap. For every species we sampled plots with replacement from within each of the strata and obtained point estimates.  For each domain we calculated a mean and upper and lower 95% CIs with the 2.5% and 97.5% quantiles from 1000 sampling iterations.  This approach allows for nonsymmetrical CIs around a mean and prevents CIs from including negative values.  We estimated differences between pairs of CWD domains by subtracting within-iteration domain point estimates.    
+We obtained empirical means and 95% confidence intervals via bootstrap. For every species we sampled plots with replacement and obtained point estimates.  For each domain we calculated a mean and upper and lower 95% CIs with the 2.5% and 97.5% quantiles from 1000 sampling iterations.  This approach allows for nonsymmetrical CIs around a mean and prevents CIs from including negative values.  We estimated differences between pairs of CWD domains by subtracting within-iteration domain point estimates.    
 [permutation analysis]
 
 
@@ -260,11 +313,14 @@ Forested plot 10-year differences in CWD do not visually coincide with initial C
 
 The confidence intervals for 10-year mortality and growth rate domains did not necessarily follow the same patterns nor did all confidence intervals for a species' mortality or growth estimates overlap (e.g., Figures `r fig_nums("fig_domains", display = "num")`A and `r fig_nums("fig_domains", display = "num")`B). The relationship between initial CWD values and plot-level change in CWD were not reliably linear (e.g., Figure `r fig_nums("fig_domains", display = "num")`C) and varied by species (see dashboard).    
 
-We examined differences in 10-year growth estimates among domains (Figure `r fig_nums("fig_diffgrow", display = "num")`).  The column "Above vs. Below Threshold" compares the domains above the CWD change threshold with those below it (e.g., for *Abies lasiocarpa*, subtracting the estimates for columns BL, BM, and BH from AL, AM, AH, respectively; Figure `r fig_nums("fig_domains", display = "num")`A).  There were `r grow.AvB.sig` estimates out of `r grow.n` which had 95% CIs that did not overlap with zero; `r grow.AvB.signeg` of these were negative. Negative estimates indicate that the growth rate was greater for a species in plots below the change estimates.   
+We examined differences in 10-year growth estimates (Figure `r fig_nums("fig_diffgrow", display = "num")`) and mortality estimates (Figure `r fig_nums("fig_diffmort", display = "num")`) among domains.  The column "Above vs. Below Threshold" compares the domains above the CWD change threshold with those below it (e.g., for *Abies lasiocarpa*, subtracting the estimates for columns BL, BM, and BH from AL, AM, AH, respectively; Figure `r fig_nums("fig_domains", display = "num")`A). Negative estimates for the "Above vs. Below Threshold" in Figures `r fig_nums("fig_diffgrow", display = "num")` and `r fig_nums("fig_diffmort", display = "num")`  indicate that the 10-year growth or mortality rate was greater for a species in plots below the change estimates, respectively.  `r t.ref("tbl_summ_grow_mort")` summarizes the number of domain differences in each of the columns in Figures `r fig_nums("fig_diffgrow", display = "num")` and `r fig_nums("fig_diffmort", display = "num")` where the 95% CI does not include zero as well as the number of comparisons per figure column.   
 
-The second column of Figure `r fig_nums("fig_diffgrow", display = "num")` shows the differences in growth estimates AH - AL, AH - AM, and AM - AL for each species; effectively, the top row of domains shown in Figure `r fig_nums("fig_domains", display = "num")`A.  `r grow.A.sig` comparisons had 95% CIs that did not include 0, of which `r grow.A.signeg` were negative.  Negative values indicate that a lower-valued initial CWD domain had a greater growth rate than a higher-valued domain.  The third column displays the same domain differences but for the bottom row of domains shown in `r fig_nums("fig_domains", display = "num")`A.  `r grow.B.sig` comparisons had 95% CIs that did not include 0, of which `r grow.B.signeg` were negative. Like the second column, negative differences indicate lower initial-value CWD domains had higher growth than higher domains.  
+Growth domain comparisons (`r fig_nums("fig_diffgrow")`, `r t.ref("tbl_summ_grow_mort")`) did not appear to be produce substantially more "significant" negative vs. positive estimates, and all three columns of `r fig_nums("fig_diffgrow")` had similar numbers of "significant" comparisons. Growth may have been susceptible (negatively or positively) to a change in CWD and differed by initial CWD values, and the responses are species-specific. *Thuja plicata* exhibited greater growth in the Above and Below Medium domains than in the Lower or Higher domains.  *Abies amablis* had lower growth in the Above and Below High domains than the others, where initial-visit CWD was the greatest.  *Picea englelmannii* had lower growth in the Low domain than the High domain, indicating that more growth was occurring where trees were more water stressed.
 
-We examined mortality estimates in a similar fashion.  The first column in Figure `r fig_nums("fig_diffmort", display = "num")` has `r mort.AvB.sig` comparisons with 95% CIs that do not overlap zero, `r mort.AvB.sig - mort.AvB.signeg` of which are positive, indicating mortality is greater for those species in one or more of the above-threshold CWD change domains.  The middle column had `r mort.A.sig` "significant" comparisons, `r mort.A.signeg` of which were negative (for the above-threshold change CWD domains, there was more mortality for lower initial-value CWD domains).  The right column had `r mort.B.sig` "significant" comparisons, `r mort.B.signeg` of which were negative (for the below-threshold change CWD domains, there was more mortality for lower initial-value CWD domains).   
+Mortality domain comparisons are similar in certain regards to the growth comparisons: results for the three types of domain comparisons did not appear to be predominantly positive or negative (`r fig_nums("fig_diffmort")`, `r t.ref("tbl_summ_grow_mort")`).  There were fewer mortality estimates with "significant" findings than growth. There were fewer differences for "Above vs. Below Threshold" comparisons (`r t.ref("tbl_summ_grow_mort")`) than for the comparisons Above or Below the threshold, indicating that mortality may not be as strongly associated with the change in CWD as by the starting value.  *Abies concolor* had greater mortality at the Above Low and High categories than the Above Middle.  *Calocedrus decurrens* had a higher mortality rate at the High Above domains than the other Above domains. *Picea engelmannii* was the opposite; mortality was lowest at the Above High domain compared to other domains.  *Psuedotsuga menziesii* exhibited greater mortality at its Below High domain than other Below domains.  The two *Quercus* species did not exhibit strong patterns to their mortality.  
+
+
+
 
 
 
@@ -308,7 +364,7 @@ mort.ft
 
 
 
-```{r mapfig, fig.height = 7,  fig.dpi=300, fig.cap=fig.cwdmap_cap, fig.cap.pre="", fig.cap.sep=""}
+```{r mapfig, fig.height = 7,  fig.dpi=300, fig.cap=fig.cwdmap_cap, fig.cap.sep=""}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS.OTHER, "cwd_maps_figure.png"))
@@ -316,7 +372,7 @@ knitr::include_graphics(paste0(RESULTS.OTHER, "cwd_maps_figure.png"))
 ```
 
 
-```{r domainsfig, fig.width = 6,  fig.dpi=300, fig.cap=fig.domains, fig.cap.pre="", fig.cap.sep=""}
+```{r domainsfig, fig.width = 6,  fig.dpi=300, fig.cap=fig.domains, fig.cap.sep=""}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS.OTHER, "Example_spp_figure.png"))
@@ -324,7 +380,7 @@ knitr::include_graphics(paste0(RESULTS.OTHER, "Example_spp_figure.png"))
 ```
 
 
-```{r diff_grow_fig, fig.height = 6, width = 6, fig.dpi=300, fig.cap=fig.diff_grow, fig.cap.pre="", fig.cap.sep=""}
+```{r diff_grow_fig, fig.height = 6, width = 6, fig.dpi=300, fig.cap=fig.diff_grow, fig.cap.sep=""}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS1.LOC, "/Growth_figs_cwd/Growth_Panel_Plot.png"))
@@ -332,7 +388,7 @@ knitr::include_graphics(paste0(RESULTS1.LOC, "/Growth_figs_cwd/Growth_Panel_Plot
 ```
 
 
-```{r diff_mort_fig, fig.height = 6, width = 6, fig.dpi=300, fig.cap=fig.diff_mort, fig.cap.pre="", fig.cap.sep=""}
+```{r diff_mort_fig, fig.height = 6, width = 6, fig.dpi=300, fig.cap=fig.diff_mort, fig.cap.sep=""}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS1.LOC, "/Mort_figs_cwd/Mort_Panel_Plot.png"))
@@ -340,3 +396,11 @@ knitr::include_graphics(paste0(RESULTS1.LOC, "/Mort_figs_cwd/Mort_Panel_Plot.png
 ```
 
 
+\newpage
+
+
+```{r tbl-summ-grow-mort, tab.cap = tab.summ_grow_mort}
+
+g.m.summ.ft
+
+```
