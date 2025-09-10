@@ -72,7 +72,7 @@ DOMAIN.LEVELS <- c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc
 DOMAIN.LEVELS <- c("AL", "AM", "AH", "BL", "BM", "BH") # Above/Below threshold and Low/Medium/High
 }
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
-BS.N <- 200    # Bootstrap iteration number
+BS.N <- 1000    # Bootstrap iteration number
  
 
 # Species number as number
