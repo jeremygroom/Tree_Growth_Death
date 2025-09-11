@@ -113,8 +113,8 @@ for(k in 1:2){
   
   text.size <- 9
   
-  p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs) 
-  p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs) 
+  p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs) 
+  p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs) 
   #p_all <- plot_grid(p1, p2, ncol = 1)
   list1 <- list(p1 = p1, p2 = p2)
   fig.letter <- switch(k, "A", "B")

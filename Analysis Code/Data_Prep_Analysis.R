@@ -151,6 +151,18 @@ arrays.mort <- parse.tree.clim.fcn(tree.mort.dat, clim.var = CLIM.VAR.USE, analy
 
 arrays.grow <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
 
+if(file.exists(paste0(DATA.LOC, "analysis.arrays.RDS")) == FALSE){
+  write_rds(list(arrays.mort = arrays.mort, arrays.grow = arrays.grow), file = paste0(DATA.LOC, "analysis.arrays.RDS"))
+  zip(zipfile = file.path(DATA.LOC, "analysis.arrays.zip"), files = file.path(DATA.LOC, "analysis.arrays.RDS"),
+      flags = '-r9Xj' )  # This weird bit keeps the parent directory from being included in the zip folder
+  
+  # Deleting written CSV file (~200 MB), cleaning up after the data zip process. 
+  if (file.exists(file.path(DATA.LOC, "analysis.arrays.RDS")) == TRUE) {
+    file.remove(file.path(DATA.LOC, "analysis.arrays.RDS"))
+  }
+  
+}
+
 
 #### 4) Analysis and plotting  --------------------------------------------------------
 
@@ -379,7 +391,7 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
   
   # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
   SEL.SPP %>% purrr::map(\(s) pair.plts.fcn(sppnum.to.plot = s, use.dat = plt.dat2, domain.matrix = domain.matrix,
-                                            quant.lims = quant.lims, domain.n = domain.n, k = k))
+                                            quant.lims = quant.lims, domain.n = domain.n, k = k, SHINYAPP.IN.USE = FALSE))
 }
 
 

@@ -718,7 +718,7 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
 
 ### Plot of domain estimates for Growth or Mortality ###
 ## Used in pair.plts.fcn below.
-domain.grid.plt.fcn <- function(domains, domain.index, use.dat2, qt.max, q.g.p.labs) {
+domain.grid.plt.fcn <- function(domains, domain.index, use.dat2, qt.max, q.g.p.labs, ylabs) {
   ggplot(data = use.dat2 %>% filter(Domain %in% domain.index), aes(factor(Domain), Means, fill = factor(Domain))) + 
     geom_col() + 
     geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.1) + 
@@ -836,7 +836,7 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use) {
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
 pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
-                          quant.lims, domain.n, k){
+                          quant.lims, domain.n, k, SHINYAPP.IN.USE){
   
   use.dat2 <- use.dat %>% filter(Species == sppnum.to.plot)
   
@@ -844,8 +844,8 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   plot.domain.dat <- use.dat %>% 
     filter(Species == sppnum.to.plot) %>%
     left_join(domain.level.table, by = c("Domain" = "q.num"))
-  
-  # Details for plotting
+
+    # Details for plotting
   virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
   
   qt.max <- ceiling(max(use.dat2$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
@@ -859,13 +859,13 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   
   # These will be arranged in a plot below
   if(n_domain == 9){
-    p1 <- domain.grid.plt.fcn(c("LiHc", "MiHc", "HiHc"), 1:3, use.dat2, qt.max, q.g.p.labs) 
-    p2 <- domain.grid.plt.fcn(c("LiMc", "MiMc", "HiMc"), 4:6, use.dat2, qt.max, q.g.p.labs) 
-    p3 <- domain.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9, use.dat2, qt.max, q.g.p.labs) 
+    p1 <- domain.grid.plt.fcn(c("LiHc", "MiHc", "HiHc"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs) 
+    p2 <- domain.grid.plt.fcn(c("LiMc", "MiMc", "HiMc"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs) 
+    p3 <- domain.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9, use.dat2, qt.max, q.g.p.labs, ylabs) 
     p_all <- plot_grid(p1, p2, p3, ncol = 1)
   } else if(n_domain == 6) {
-    p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs) 
-    p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs) 
+    p1 <- domain.grid.plt.fcn(c("AL", "AM", "AH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs) 
+    p2 <- domain.grid.plt.fcn(c("BL", "BM", "BH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs) 
     p_all <- plot_grid(p1, p2, ncol = 1)
   }
   
@@ -889,8 +889,12 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
     comb.plt <- ((p1/p2 + plot_layout(axis_titles = "collect")) | plot.vals.plt | domain.map) #/ guide_area() + plot_layout(guides = 'collect', heights = c(10, 0.01)) 
   }
   
+  if(SHINYAPP.IN.USE == FALSE) {
   ggsave(paste0(save.loc.fcn(k), sppnum.to.plot, "_plots.png"), 
          comb.plt, device = "png", width = 7, height = 5, units = "in")
+  } else {
+    return(comb.plt)
+  }
 }
 
 
