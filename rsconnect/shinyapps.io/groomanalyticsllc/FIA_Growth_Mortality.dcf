@@ -1,0 +1,13 @@
+name: FIA_Growth_Mortality
+title: FIA_Growth_Mortality
+username: groomanalyticsllc
+account: groomanalyticsllc
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15427357
+bundleId: 10894698
+url: https://groomanalyticsllc.shinyapps.io/FIA_Growth_Mortality/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: CWD_map.png|cwd_maps_figure.png|g_alpha.png|g_alpha_1k.png|g_alpha_s3.png|g_delta_s4.png|g_s3_line_violin.png|Manuscript.docx|Manuscript.qmd|Manuscript.Rmd|Manuscript_files/figure-docx/mapfig-1.png|README.md|Rplot.png|Species_Fig.csv|Supplemental-Material.docx|Supplemental Material.Rmd|template_use2.docx

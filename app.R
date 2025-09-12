@@ -1,171 +1,75 @@
-# Forest Analysis Shiny Application
-# Load required libraries
+# Tree Growth and Mortality Analysis Shiny App
+
 library(shiny)
 library(shinydashboard)
 library(DT)
 library(plotly)
-library(readxl)
-library(here)
 
 # Source required files
 source("Global.R")
 source(paste0(CODE.LOC, "Functions.R"))
 
-# Load species names data
-spp_names_full <- readxl::read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx"))
-
-# Details for plotting
-virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
-
-# Create species choice list with readable labels
-species_choices <- spp_names_full %>%
-  filter(SPCD %in% as.numeric(gsub("X", "", SEL.SPP))) %>%
-  mutate(
-    species_code = paste0("X", SPCD),
-    display_name = paste0(GENUS, " ", SPECIES, " (", COMMON_NAME, ")")
-  ) %>%
-  arrange(GENUS, SPECIES) %>%
-  pull(display_name, name = species_code)
-
-# Load analysis arrays once at startup
-load_analysis_data <- function() {
-  # Load the main analysis arrays
-  if (file.exists(paste0(DATA.LOC, "analysis.arrays.zip"))) {
-    temp_file <- unzip(paste0(DATA.LOC, "analysis.arrays.zip"), "analysis.arrays.RDS")
-    analysis_data <- readRDS(temp_file)
-    file.remove(temp_file)  # Clean up
-    return(analysis_data)
-  } else {
-    stop("analysis.arrays.zip file not found in Data/ directory")
-  }
-}
-
-# Pre-load the analysis data
-analysis_arrays <- load_analysis_data()
-
 # UI
-ui <- dashboardPage(
-  dashboardHeader(title = "Forest Climate Response Analysis"),
+ui <- fluidPage(
+  tags$head(  # Container for logo
+    tags$style(HTML("
+      .logo-container {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        z-index: 1000;
+      }
+      .logo-container img {
+        transition: opacity 0.3s ease;
+      }
+      .logo-container img:hover {
+        opacity: 0.8;
+      }
+    "))
+  ),
   
-  dashboardSidebar(
-    sidebarMenu(
-      menuItem("Analysis", tabName = "analysis", icon = icon("tree"))
+  titlePanel("FIA Tree Growth and Mortality Analysis"),
+  
+  # Logo
+  tags$div(
+    class = "logo-container",
+    tags$a(
+      href = 'http://www.groomanalytics.com',
+      target = "_blank",
+      tags$img(src = 'GroomAnalyticsH.jpg', 
+               height = "40px",
+               alt = "Groom Analytics",
+               title = "Groom Analytics Home")
     )
   ),
   
-  dashboardBody(
-    tags$head(
-      tags$style(HTML("
-        .content-wrapper, .right-side {
-          background-color: #f4f4f4;
-        }
-        .box {
-          border-radius: 5px;
-        }
-        .selectize-input {
-          font-size: 14px;
-        }
-      "))
+  # Control panel at top
+  fluidRow(
+    column(6,
+           selectInput("analysis_type", 
+                       "Analysis Type:",
+                       choices = list("Growth" = 1, "Mortality" = 2),
+                       selected = 1)
     ),
-    
-    tabItems(
-      tabItem(tabName = "analysis",
-              fluidRow(
-                box(
-                  title = "Analysis Parameters", 
-                  status = "primary", 
-                  solidHeader = TRUE,
-                  width = 12,
-                  
-                  fluidRow(
-                    column(6,
-                           selectInput(
-                             "species_selection",
-                             "Select Tree Species:",
-                             choices = species_choices,
-                             selected = names(species_choices)[1],
-                             width = "100%"
-                           )
-                    ),
-                    column(6,
-                           radioButtons(
-                             "analysis_type",
-                             "Analysis Type:",
-                             choices = list(
-                               "Growth Analysis" = "grow",
-                               "Mortality Analysis" = "mort"
-                             ),
-                             selected = "grow",
-                             inline = TRUE
-                           )
-                    )
-                  ),
-                  
-                  fluidRow(
-                    column(12,
-                           actionButton(
-                             "generate_plot",
-                             "Generate Analysis Plot",
-                             class = "btn-primary btn-lg",
-                             style = "width: 200px; margin-top: 10px;"
-                           )
-                    )
-                  )
-                )
-              ),
-              
-              fluidRow(
-                box(
-                  title = "Analysis Results", 
-                  status = "success", 
-                  solidHeader = TRUE,
-                  width = 12,
-                  height = "600px",
-                  
-                  conditionalPanel(
-                    condition = "output.plot_ready",
-                    div(
-                      style = "text-align: center;",
-                      plotOutput("analysis_plot", height = "550px")
-                    )
-                  ),
-                  
-                  conditionalPanel(
-                    condition = "!output.plot_ready",
-                    div(
-                      style = "text-align: center; margin-top: 200px;",
-                      h4("Select species and analysis type, then click 'Generate Analysis Plot'"),
-                      icon("chart-line", "fa-3x", style = "color: #3c8dbc; margin-top: 20px;")
-                    )
-                  )
-                )
-              ),
-              
-              fluidRow(
-                box(
-                  title = "Analysis Information",
-                  status = "info",
-                  solidHeader = TRUE,
-                  width = 12,
-                  
-                  h4("About This Analysis"),
-                  p("This application analyzes tree growth and mortality responses to climate variables across different environmental domains."),
-                  
-                  h5("Climate Variable:"),
-                  p(paste("Current analysis uses:", CLIM.VAR.USE, "data")),
-                  
-                  h5("Domains:"),
-                  p(paste("Analysis includes", n_domain, "environmental domains:", paste(DOMAIN.LEVELS, collapse = ", "))),
-                  
-                  h5("Plot Components:"),
-                  tags$ul(
-                    tags$li("Left panel: Response rates by environmental domain"),
-                    tags$li("Center panel: Distribution of plots across climate conditions"),
-                    tags$li("Right panel: Geographic distribution of sample plots")
-                  )
-                )
-              )
-      )
+    column(6,
+           selectInput("species", 
+                       "Select Species:",
+                       choices = NULL,  # Will be populated in server
+                       selected = NULL)
+    )
+  ),
+  
+  # Main plot area
+  fluidRow(
+    column(12,
+           plotOutput("main_plot", height = "600px")
+    )
+  ),
+  
+  # Status text
+  fluidRow(
+    column(12,
+           textOutput("status")
     )
   )
 )
@@ -173,133 +77,159 @@ ui <- dashboardPage(
 # Server
 server <- function(input, output, session) {
   
-  # Reactive value to track plot readiness
-  plot_ready <- reactiveVal(FALSE)
+  # Load data at startup
+  data_loaded <- reactiveVal(FALSE)
+  analysis_data <- reactiveValues()
+  species_choices <- reactiveVal(NULL)
   
-  # Load domain analysis output based on analysis type
-  load_domain_output <- reactive({
-    k <- ifelse(input$analysis_type == "grow", 1, 2)
-    output_file <- paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS")
-    
-    if (file.exists(output_file)) {
-      return(readRDS(output_file))
-    } else {
-      return(NULL)
-    }
-  })
+  # Load climate variable names (used to define var1 etc.)
+  clim.names <- read_csv(paste0(DATA.LOC, "ClimateNames.csv"), show_col_types = FALSE) %>%
+    filter(filename == CLIM.VAR.USE)
   
-  # Generate plot when button is clicked
-  observeEvent(input$generate_plot, {
-    
-    # Show loading message
-    showNotification("Generating plot...", type = "message", duration = 2)
-    
-    # Set plot as not ready while generating
-    plot_ready(FALSE)
-    
-    # Generate the plot
-    tryCatch({
+  var1 <<- clim.names$values[grep("pre", clim.names$values)]
+  var.delt <<- clim.names$values[grep("d", clim.names$values)]
+  
+  var.label <<- clim.names$label[clim.names$values == var1]
+  var.delt.label <<- clim.names$label[clim.names$values == var.delt]
+  
+  
+  
+  # Load all data on startup
+  observe({
+    withProgress(message = 'Loading data...', value = 0, {
       
-      # Determine k value (1 = growth, 2 = mortality)
-      k <- ifelse(input$analysis_type == "grow", 1, 2)
       
-      # Load the domain analysis output
-      plt_dat <- load_domain_output()
       
-      if (is.null(plt_dat)) {
-        showNotification(
-          paste("Domain analysis output not found for", input$analysis_type), 
-          type = "error", 
-          duration = 5
-        )
+      # Load species names and create choices
+      incProgress(0.2, detail = "Loading species information...")
+      spp_names_data <- readxl::read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx"))
+      
+      # Create species choices in the format "Genus species - Common name"
+      choices_df <- spp_names_data %>%
+        filter(paste0("X", SPCD) %in% SEL.SPP) %>%
+        mutate(
+          label = paste0(GENUS, " ", SPECIES, " - ", COMMON_NAME),
+          value = paste0("X", SPCD)
+        ) %>%
+        arrange(GENUS, SPECIES)
+      
+      choices_list <- setNames(choices_df$value, choices_df$label)
+      species_choices(choices_list)
+      
+      # Load analysis arrays
+      incProgress(0.4, detail = "Loading analysis arrays...")
+      if (file.exists(paste0(DATA.LOC, "analysis.arrays.zip"))) {
+        arrays_data <- readRDS(unzip(paste0(DATA.LOC, "analysis.arrays.zip"), 
+                                     "analysis.arrays.RDS"))
+        file.remove("analysis.arrays.RDS")  # Clean up unzipped file
+        
+        analysis_data$arrays_mort <- arrays_data$arrays.mort
+        analysis_data$arrays_grow <- arrays_data$arrays.grow
+      } else {
+        showNotification("Analysis arrays file not found", type = "error")
         return()
       }
       
-      plt_dat2 <- plt_dat$domain.summaries
+      # Load domain analysis outputs
+      incProgress(0.6, detail = "Loading growth analysis...")
+      growth_file <- paste0(save.loc.fcn(1), "Domain_Analysis_Output.RDS")
+      if (file.exists(growth_file)) {
+        analysis_data$growth_output <- readRDS(growth_file)
+      } else {
+        showNotification("Growth analysis file not found", type = "error")
+        return()
+      }
       
-      # Get the appropriate analysis arrays
-      mort_grow_dat <- if (k == 1) analysis_arrays$arrays.grow else analysis_arrays$arrays.mort
-      # Need climate names for files and axes.
-      clim.names <- read_csv(paste0(DATA.LOC, "ClimateNames.csv"), show_col_types = FALSE) %>%
-        filter(filename == CLIM.VAR.USE)
+      incProgress(0.8, detail = "Loading mortality analysis...")
+      mort_file <- paste0(save.loc.fcn(2), "Domain_Analysis_Output.RDS")
+      if (file.exists(mort_file)) {
+        analysis_data$mort_output <- readRDS(mort_file)
+      } else {
+        showNotification("Mortality analysis file not found", type = "error")
+        return()
+      }
       
-      var1 <<- clim.names$values[grep("pre", clim.names$values)]
-      var.delt <<- clim.names$values[grep("d", clim.names$values)]
-      
-      
-      var.label <<- clim.names$label[clim.names$values == var1]
-      #var.filename <- clim.names$filename[clim.names$values == var1]
-      var.delt.label <<- clim.names$label[clim.names$values == var.delt]
-      
-      
-      domain_matrix <- mort_grow_dat$domain.matrix
-      domain_n <- mort_grow_dat$domain.n 
-      quant_lims <- mort_grow_dat$quant.lims
-      quant.lims.delta <<- mort_grow_dat$quant.lims.delt
-      #browser()
-      # Generate the plot using your existing function
-      pair.plts.fcn(
-        sppnum.to.plot = names(which(species_choices == input$species_selection)),
-        use.dat = plt_dat2,
-        domain.matrix = domain_matrix,
-        quant.lims = quant_lims,
-        domain.n = domain_n,
-        k = k,
-        SHINYAPP.IN.USE = TRUE
-      )
-      
-      # Set plot as ready
-      plot_ready(TRUE)
-      
-      showNotification("Plot generated successfully!", type = "message", duration = 3)
-      
-      
-    }, error = function(e) {
-      showNotification(
-        paste("Error generating plot:", e$message), 
-        type = "error", 
-        duration = 10
-      )
-      plot_ready(FALSE)
+      incProgress(1.0, detail = "Data loading complete!")
+      data_loaded(TRUE)
     })
   })
   
-  # Render the plot
-  output$analysis_plot <- renderPlot({
-    if (plot_ready()) {
-      k <- ifelse(input$analysis_type == "grow", 1, 2)
-      plot_file <- paste0(save.loc.fcn(k), input$species_selection, "_plots.png")
-      
-      if (file.exists(plot_file)) {
-        # Read and display the saved plot
-        img <- png::readPNG(plot_file)
-        grid::grid.raster(img)
-      }
+  # Update species choices when data is loaded
+  observe({
+    if (data_loaded() && !is.null(species_choices())) {
+      updateSelectInput(session, "species", 
+                        choices = species_choices(),
+                        selected = species_choices()[[1]])
     }
   })
   
-  # Output for conditional panel
-  output$plot_ready <- reactive({
-    plot_ready()
-  })
-  outputOptions(output, "plot_ready", suspendWhenHidden = FALSE)
-  
-  # Display selected species info
-  observe({
-    if (!is.null(input$species_selection)) {
-      species_info <- spp_names_full %>%
-        filter(paste0("X", SPCD) == input$species_selection)
+  # Generate plot
+  output$main_plot <- renderPlot({
+    if (!data_loaded() || is.null(input$species) || input$species == "") {
+      return(NULL)
+    }
+    
+    tryCatch({
+      # Get analysis type
+      k <- as.numeric(input$analysis_type)
       
-      if (nrow(species_info) > 0) {
-        updateSelectInput(
-          session,
-          "species_selection",
-          label = paste0("Selected: ", species_info$GENUS, " ", species_info$SPECIES, " (", species_info$COMMON_NAME, ")")
-        )
+      # Get the appropriate data
+      if (k == 1) {
+        # Growth
+        mort_grow_dat <- analysis_data$arrays_grow
+        plt_dat <- analysis_data$growth_output
+      } else {
+        # Mortality
+        mort_grow_dat <- analysis_data$arrays_mort
+        plt_dat <- analysis_data$mort_output
       }
+      
+      plt_dat2 <- plt_dat$domain.summaries
+      domain.matrix <- mort_grow_dat$domain.matrix
+      domain.n <- mort_grow_dat$domain.n
+      quant.lims <- mort_grow_dat$quant.lims
+      quant.lims.delta <<- mort_grow_dat$quant.lims.delt
+      
+      virid.use <<- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
+      
+      
+    # browser()
+      # Generate the plot using pair.plts.fcn with SHINYAPP.IN.USE = TRUE
+      plot_result <- pair.plts.fcn(
+        sppnum.to.plot = input$species, 
+        use.dat = plt_dat2, 
+        domain.matrix = domain.matrix,
+        quant.lims = quant.lims, 
+        domain.n = domain.n, 
+        k = k, 
+        SHINYAPP.IN.USE = TRUE,
+        SHINY.FONTSIZE = SHINY.FONTSIZE
+      )
+      
+      return(plot_result)
+      
+    }, error = function(e) {
+      # Create a simple error plot
+      plot(1, 1, type = "n", xlab = "", ylab = "", main = "Error occurred", 
+           axes = FALSE, frame.plot = FALSE)
+      text(1, 1, "There was an error in the code or there was insufficient data for selected species and analysis type", 
+           cex = 1.2, col = "red")
+    })
+  })
+  
+  # Status output
+  output$status <- renderText({
+    if (!data_loaded()) {
+      "Loading data..."
+    } else if (is.null(input$species) || input$species == "") {
+      "Please select a species"
+    } else {
+      analysis_type_name <- ifelse(input$analysis_type == 1, "Growth", "Mortality")
+      species_name <- names(species_choices())[species_choices() == input$species]
+      paste("Displaying", analysis_type_name, "analysis for", species_name)
     }
   })
 }
 
-# Run the application
+# Run the app
 shinyApp(ui = ui, server = server)

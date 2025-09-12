@@ -391,7 +391,8 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
   
   # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
   SEL.SPP %>% purrr::map(\(s) pair.plts.fcn(sppnum.to.plot = s, use.dat = plt.dat2, domain.matrix = domain.matrix,
-                                            quant.lims = quant.lims, domain.n = domain.n, k = k, SHINYAPP.IN.USE = FALSE))
+                                            quant.lims = quant.lims, domain.n = domain.n, k = k, 
+                                            SHINYAPP.IN.USE = FALSE, SHINYAPP.FONTSIZE = SHINYAPP.FONTSIZE)) # fontsize irrelevant here
 }
 
 

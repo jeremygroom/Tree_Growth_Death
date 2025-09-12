@@ -718,8 +718,9 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
 
 ### Plot of domain estimates for Growth or Mortality ###
 ## Used in pair.plts.fcn below.
-domain.grid.plt.fcn <- function(domains, domain.index, use.dat2, qt.max, q.g.p.labs, ylabs) {
-  ggplot(data = use.dat2 %>% filter(Domain %in% domain.index), aes(factor(Domain), Means, fill = factor(Domain))) + 
+domain.grid.plt.fcn <- function(domains, domain.index, use.dat2, qt.max, 
+                                q.g.p.labs, ylabs, text.size) {
+  g1 <- ggplot(data = use.dat2 %>% filter(Domain %in% domain.index), aes(factor(Domain), Means, fill = factor(Domain))) + 
     geom_col() + 
     geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.1) + 
     scale_fill_manual(values = virid.use[domain.index]) + 
@@ -728,7 +729,8 @@ domain.grid.plt.fcn <- function(domains, domain.index, use.dat2, qt.max, q.g.p.l
     theme_bw() +
     theme(legend.position = "none") + 
     labs(x = NULL, y = ylabs) +
-    theme(text = element_text(size = 7))
+    theme(text = element_text(size = text.size))
+  return(g1)
 }
 
 
@@ -740,7 +742,7 @@ domain.grid.plt.fcn <- function(domains, domain.index, use.dat2, qt.max, q.g.p.l
 # for each species, var1, var.delt = carried through from input for pairs.plts.fcn,
 # quant.lims, domain.n = quantile boundaries and number of plots, established in parse.tree.clim.fcn,
 # size.trees = one of "small diameter ", "large diameter ", and (for pathways 1 and 3) "".  
-domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.lims, n.plots.used, size.trees) {
+domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.lims, n.plots.used, size.trees, text.size) {
   
   q_plot_spp <- domain.matrix %>% dplyr::select(all_of(plot.spp), all_of(var1), all_of(var.delt)) %>%
     filter(get(plot.spp) > 0) 
@@ -767,14 +769,14 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
     #stat_ellipse(type = "norm", level = 0.95, col = "orange", lwd = 2) +
     geom_hline(yintercept = quant.lims.delt.plt[1], col = "blue", linewidth = 1.5, linetype = 2) +
     geom_hline(yintercept = quant.lims.delt.plt[2], col = "blue", linewidth = 1.5, linetype = 2) +
-    geom_vline(xintercept = quant.lims.plt[1], col = "green") +
-    geom_vline(xintercept = quant.lims.plt[2], col = "green") +
+    geom_vline(xintercept = quant.lims.plt[1], col = "darkorange", linewidth = 1) +
+    geom_vline(xintercept = quant.lims.plt[2], col = "darkorange", linewidth = 1) +
     geom_hline(yintercept = 0, col = "black") +
     theme_bw() + 
     scale_color_manual(values = scatter.virid.use, name = "Domains", labels = DOMAIN.LEVELS[which(n.plots.used$n > 0)]) + 
     labs(title = fig.lab,
          x = var.label, y = var.delt.label) +
-    theme(text = element_text(size = 7),
+    theme(text = element_text(size = text.size),
           legend.position = "bottom") +
     guides(color = guide_legend(nrow = 1))
   
@@ -791,7 +793,7 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
 
 ### -- Mapping elements -- ###
 
-domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use) {
+domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use, point.size) {
   
   map.dat.1 <- domain.matrix %>% 
     mutate(targ.spp = get(spp.num)) %>%
@@ -810,7 +812,7 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use) {
   
   ggplot(data = map.dat.1, aes(x = LON, y = LAT)) +
     coord_fixed(xlim = c(minlong - 1, maxlong + 1),  ylim = c(minlat - 1, maxlat + 1), ratio = 1.3) +
-    geom_point(data = map.dat.1, aes(LON, LAT, color = factor(targ.spp)), size = 0.5) +
+    geom_point(data = map.dat.1, aes(LON, LAT, color = factor(targ.spp)), size = point.size) +
     #  geom_tile(data = map.dat.1, mapping = aes(x = LON, y = LAT, z = targ.spp), binwidth = 0.15, 
     #            stat = "summary_2d", fun = mean, na.rm = TRUE, show.legend = FALSE) + 
     scale_color_manual(values = map.virid.use) +  
@@ -836,7 +838,7 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use) {
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
 pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
-                          quant.lims, domain.n, k, SHINYAPP.IN.USE){
+                          quant.lims, domain.n, k, SHINYAPP.IN.USE, SHINY.FONTSIZE){
   
   use.dat2 <- use.dat %>% filter(Species == sppnum.to.plot)
   
@@ -856,20 +858,23 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   
   ylabs <- if (k == 1) "Mean Growth (inches^2)" else "Mean Annual Mortality Rate"
   
+  text_size <- if(SHINYAPP.IN.USE == TRUE) SHINY.FONTSIZE else 7
+  point_size <- if(SHINYAPP.IN.USE == TRUE) 1 else 0.5
   
   # These will be arranged in a plot below
   if(n_domain == 9){
-    p1 <- domain.grid.plt.fcn(c("LiHc", "MiHc", "HiHc"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs) 
-    p2 <- domain.grid.plt.fcn(c("LiMc", "MiMc", "HiMc"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs) 
-    p3 <- domain.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9, use.dat2, qt.max, q.g.p.labs, ylabs) 
+    p1 <- domain.grid.plt.fcn(c("LiHc", "MiHc", "HiHc"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size)
+    p2 <- domain.grid.plt.fcn(c("LiMc", "MiMc", "HiMc"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size) 
+    p3 <- domain.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size)
     p_all <- plot_grid(p1, p2, p3, ncol = 1)
   } else if(n_domain == 6) {
-    p1 <- domain.grid.plt.fcn(c("AL", "AM", "AH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs) 
-    p2 <- domain.grid.plt.fcn(c("BL", "BM", "BH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs) 
+    p1 <- domain.grid.plt.fcn(c("AL", "AM", "AH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size)
+    p2 <- domain.grid.plt.fcn(c("BL", "BM", "BH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size)
     p_all <- plot_grid(p1, p2, ncol = 1)
   }
   
   
+
   # Code to prep for next two figures - helps in reducing the color palette.
   n_plots <- get(sppnum.to.plot, domain.n)
   n_plots2 <- tibble(loc = 1:n_domain, n = n_plots) %>%
@@ -878,15 +883,29 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   # Plotting the scatterplot of points in quadrants:
   plot.vals.plt <- domain.dist.plt.fcn(plot.spp = sppnum.to.plot, domain.matrix = domain.matrix, 
                                        var1 = var1, var.delt = var.delt, quant.lims = quant.lims,
-                                       n.plots.used = n_plots2, size.trees = "") 
+                                       n.plots.used = n_plots2, size.trees = "", text.size = text_size) 
+  
   
   # Plotting the map of plot locations:
-  domain.map <- domain.map.fcn(domain.matrix, spp.num = sppnum.to.plot, n.plots.used = n_plots2, virid.use = virid.use) 
+  domain.map <- domain.map.fcn(domain.matrix, spp.num = sppnum.to.plot, n.plots.used = n_plots2, virid.use = virid.use, point.size = point_size)
+  
+  
+  if(SHINYAPP.IN.USE == TRUE) {
+    p_all <- (p1/p2) + plot_layout(axis_titles = "collect") 
+    plot.vals.plt <- plot.vals.plt + labs(title = "FIA plot distributions by CWD") +
+      theme(plot.title = element_text(size = text_size + 2, hjust = 0))
+    domain.map <- domain.map + labs(title = "FIA fuzzed plot locations") +
+      theme(plot.title = element_text(size = text_size + 2, hjust = 0, margin = margin(b = 7)))  
+    }
   
   if(n_domain == 9) {
     comb.plt <- ((p1/p2/p3 + plot_layout(axis_titles = "collect")) | plot.vals.plt | domain.map) #/ guide_area() + plot_layout(guides = 'collect', heights = c(10, 0.01)) 
   } else if(n_domain == 6) {
-    comb.plt <- ((p1/p2 + plot_layout(axis_titles = "collect")) | plot.vals.plt | domain.map) #/ guide_area() + plot_layout(guides = 'collect', heights = c(10, 0.01)) 
+    comb.plt <- (p_all | plot.vals.plt | domain.map) + 
+      plot_annotation(title = 'CWD domain estimates', 
+                      theme = theme(plot.title=element_text(size = text_size + 2, 
+                                                            hjust = 0.25,
+                                                            margin = margin(b = -20))))
   }
   
   if(SHINYAPP.IN.USE == FALSE) {

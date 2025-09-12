@@ -73,7 +73,11 @@ DOMAIN.LEVELS <- c("AL", "AM", "AH", "BL", "BM", "BH") # Above/Below threshold a
 }
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
 BS.N <- 1000    # Bootstrap iteration number
- 
+
+
+## Shiny app settings
+SHINYAPP.IN.USE <- FALSE
+SHINY.FONTSIZE <- 14
 
 # Species number as number
 sel.spp <- as.numeric(gsub("X", "", SEL.SPP))
