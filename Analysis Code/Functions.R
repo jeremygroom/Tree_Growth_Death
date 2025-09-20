@@ -48,29 +48,29 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   
   # Applying quantiles to a particular species
   tree.plots2 <- tree.plots %>% dplyr::select(puid, all_of(c(var1, var.delt))) %>% 
-      {if (n_domain == 9) {
-        mutate(., var.quants = ifelse(!!sym(var1) > quant.lims[2], 1, ifelse(!!sym(var1) < quant.lims[1], -1, 0)),
-               deltvar.quants = ifelse(!!sym(var.delt) > quant.lims.delta[2], 1, ifelse(!!sym(var.delt) < quant.lims.delta[1], -1, 0)),
-               vq = case_match(var.quants, -1 ~ "Li", 0 ~ "Mi", 1 ~ "Hi"),
-               dvq = case_match(deltvar.quants, -1 ~ "Lc", 0 ~ "Mc", 1 ~ "Hc"),
-               var.deltvar = factor(paste0(vq, dvq), levels = DOMAIN.LEVELS)) 
-      } else if (n_domain == 6) {
-        mutate(., var.quants = ifelse(!!sym(var1) > quant.lims[2], 1, ifelse(!!sym(var1) < quant.lims[1], -1, 0)),
-               deltvar.quants = ifelse(!!sym(var.delt) > quant.lims.delta, 1, 0),
-               vq = case_match(var.quants, -1 ~ "L", 0 ~ "M", 1 ~ "H"),
-               dvq = case_match(deltvar.quants, 0 ~ "B", 1 ~ "A"),
-               var.deltvar = factor(paste0(dvq, vq), levels = DOMAIN.LEVELS))
-      }}
-        
-    # Not currently used, but available    
-    # For centroid calcluation
-    dat.cent <- tree.plots2 %>% group_by(var.deltvar) %>% # Quartile centers, good for finding centroids in each quadrant
-      reframe(end.x = mean(get(var1)),        # Referred to as "end" because of distance measurements from the main centroid to each of the outer (end) centroids.
-              end.y = mean(get(var.delt))) %>% 
-      right_join(domain.level.table %>% select(-q.num), by = "var.deltvar") %>%
-      arrange(var.deltvar)
-    
-   
+    {if (n_domain == 9) {
+      mutate(., var.quants = ifelse(!!sym(var1) > quant.lims[2], 1, ifelse(!!sym(var1) < quant.lims[1], -1, 0)),
+             deltvar.quants = ifelse(!!sym(var.delt) > quant.lims.delta[2], 1, ifelse(!!sym(var.delt) < quant.lims.delta[1], -1, 0)),
+             vq = case_match(var.quants, -1 ~ "Li", 0 ~ "Mi", 1 ~ "Hi"),
+             dvq = case_match(deltvar.quants, -1 ~ "Lc", 0 ~ "Mc", 1 ~ "Hc"),
+             var.deltvar = factor(paste0(vq, dvq), levels = DOMAIN.LEVELS)) 
+    } else if (n_domain == 6) {
+      mutate(., var.quants = ifelse(!!sym(var1) > quant.lims[2], 1, ifelse(!!sym(var1) < quant.lims[1], -1, 0)),
+             deltvar.quants = ifelse(!!sym(var.delt) > quant.lims.delta, 1, 0),
+             vq = case_match(var.quants, -1 ~ "L", 0 ~ "M", 1 ~ "H"),
+             dvq = case_match(deltvar.quants, 0 ~ "B", 1 ~ "A"),
+             var.deltvar = factor(paste0(dvq, vq), levels = DOMAIN.LEVELS))
+    }}
+  
+  # Not currently used, but available    
+  # For centroid calcluation
+  dat.cent <- tree.plots2 %>% group_by(var.deltvar) %>% # Quartile centers, good for finding centroids in each quadrant
+    reframe(end.x = mean(get(var1)),        # Referred to as "end" because of distance measurements from the main centroid to each of the outer (end) centroids.
+            end.y = mean(get(var.delt))) %>% 
+    right_join(domain.level.table %>% select(-q.num), by = "var.deltvar") %>%
+    arrange(var.deltvar)
+  
+  
   
   # Joining tree data with domain assignment, providing plot-level summary of the number of trees, number that died, and percent that died.
   
@@ -487,7 +487,7 @@ calculate_domain_estimates.fcn <- function(samp, domain_data, domain_idx, select
       if (n_q < N.PLOT.LIM) {
         return(NA_real_)
       } else {
-       # return(mean.q.fcn(
+        # return(mean.q.fcn(
         mean.q.fcn(
           dat_tot = d.all_use[samp$row.id, ],
           dat_vals = d.vals_use[samp$row.id, ],
@@ -496,17 +496,17 @@ calculate_domain_estimates.fcn <- function(samp, domain_data, domain_idx, select
       }
     })
   
-
- # df <- rbind(estimates, estimates.yv, estimates.zt) %>% data.frame()
-#  colnames(df) <- SEL.SPP
- # write.csv(df, "Oregon.csv")
-
+  
+  # df <- rbind(estimates, estimates.yv, estimates.zt) %>% data.frame()
+  #  colnames(df) <- SEL.SPP
+  # write.csv(df, "Oregon.csv")
+  
   return(estimates)
 }
 
 
 # Generate bootstrap sample.  Each stratum is separately sampled by the stratum size.   
-generate_bootstrap_sample.fcn <- function() {
+generate_bootstrap_sample.fcn <- function(strata.num = strata.num) {
   strata.num.dt <- as.data.table(strata.num)
   
   #samp <- strata.num.dt[, .SD[sample(.N, .N, replace = TRUE)], by = stratum] # If we want to sample within strata
@@ -532,7 +532,8 @@ prepare_domain_data.fcn <- function(vals.dat, all.dat, domain.array, n_domains) 
 
 
 # Main function to generate the bootstrap array using parallel processing
-generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain.n, selected.spp, n_iter) {
+generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain.n, selected.spp, n_iter,
+                                         strata.num, PlotDat = PlotDat) {
   
   n_species <- length(selected.spp)
   n_domains <- if(ncol(domain.array) == 2) 1 else ncol(domain.array) # If == 2, then we are after
@@ -545,7 +546,7 @@ generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain
   bootstrap_results <- 1:n_iter %>% 
     future_map(\(iter) {
       # Generate single bootstrap sample for this iteration
-      samp <- generate_bootstrap_sample.fcn()
+      samp <- generate_bootstrap_sample.fcn(strata.num = strata.num)
       
       # Calculate estimates for all domains for this iteration
       1:n_domains %>% 
@@ -633,6 +634,70 @@ diff.fig.prep.fcn <- function(diff.table, diff.levels){
 }
 
 
+
+
+### MC Permutation analysis functions --------------------------------------
+
+# Function to randomly permute non-zero values within a column
+permute_nonzero <- function(x) {
+  nonzero_idx <- which(x != 0) # Row numbers where values != 0
+  # If there are non-zero values, randomly permute them
+  if(length(nonzero_idx) > 0) {
+    nonzero_values <- x[nonzero_idx]
+    permuted_values <- sample(nonzero_values, length(nonzero_values), replace = FALSE)
+    x[nonzero_idx] <- permuted_values # Put them back in their positions
+  }
+  return(x)
+}
+
+samp.domain.array.fcn <- function(target.domain.matrix){
+  
+  # First, using the original domain matrix to sample with replacement the domains.
+  dt.dm <- data.table(target.domain.matrix)   
+  
+  # Identify species columns (those starting with 'X')
+  species_cols <- names(dt.dm)[grepl("^X", names(dt.dm))]
+  # Apply the permutation to each species column
+  dt.dm <- dt.dm[, (species_cols) := lapply(.SD, permute_nonzero), .SDcols = species_cols]
+  
+  # Now building the array:
+  # Get dimensions
+  n_rows <- nrow(dt.dm)
+  n_domains <- 6  
+  n_species <- length(species_cols)
+  
+  species_array <- array(0, dim = c(n_rows, n_domains, n_species))
+  
+  # Set dimension names for clarity
+  dimnames(species_array) <- list(
+    rows = 1:n_rows,
+    domains = DOMAIN.LEVELS,
+    species = species_cols
+  )
+  
+  
+  for(i in seq_along(species_cols)) {
+    species_col <- species_cols[i]
+    values <- dt.dm[[species_col]]
+    
+    # Create one-hot encoding: outer() compares each value against each domain
+    # Result is TRUE/FALSE matrix, convert to 0/1
+    one_hot <- outer(values, 1:6, "==") * (values != 0)
+    species_array[, , i] <- as.integer(one_hot)
+  }
+  
+  
+  return(species_array)
+}
+
+
+# Within perm.test.fcn(), finds number of outputs with significant findigns
+sig.n.fcn <- function(t.contrast) {
+  t.contrast <- t.contrast %>% filter(is.na(LCI.95) == FALSE) %>%
+    mutate(sig = ifelse((LCI.95 < 0 & UCI.95 < 0) | (LCI.95 > 0 & UCI.95 > 0), 1, 0 )
+    )
+  return(sum(t.contrast$sig))
+}
 
 
 
@@ -846,8 +911,8 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   plot.domain.dat <- use.dat %>% 
     filter(Species == sppnum.to.plot) %>%
     left_join(domain.level.table, by = c("Domain" = "q.num"))
-
-    # Details for plotting
+  
+  # Details for plotting
   virid.use <- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
   
   qt.max <- ceiling(max(use.dat2$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
@@ -874,7 +939,7 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   }
   
   
-
+  
   # Code to prep for next two figures - helps in reducing the color palette.
   n_plots <- get(sppnum.to.plot, domain.n)
   n_plots2 <- tibble(loc = 1:n_domain, n = n_plots) %>%
@@ -895,8 +960,8 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
     plot.vals.plt <- plot.vals.plt + labs(title = "FIA plot distributions by CWD") +
       theme(plot.title = element_text(size = text_size + 2, hjust = 0))
     domain.map <- domain.map + labs(title = "FIA fuzzed plot locations") +
-      theme(plot.title = element_text(size = text_size + 2, hjust = 0, margin = margin(b = 7)))  
-    }
+      theme(plot.title = element_text(size = text_size + 2, hjust = 0.4, margin = margin(b = 7)))  
+  }
   
   if(n_domain == 9) {
     comb.plt <- ((p1/p2/p3 + plot_layout(axis_titles = "collect")) | plot.vals.plt | domain.map) #/ guide_area() + plot_layout(guides = 'collect', heights = c(10, 0.01)) 
@@ -904,13 +969,14 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
     comb.plt <- (p_all | plot.vals.plt | domain.map) + 
       plot_annotation(title = 'CWD domain estimates', 
                       theme = theme(plot.title=element_text(size = text_size + 2, 
-                                                            hjust = 0.25,
-                                                            margin = margin(b = -20))))
+                                                            hjust = 0.01,
+                                                            margin = margin(b = -20)))) + 
+      plot_layout(widths = 1)
   }
   
   if(SHINYAPP.IN.USE == FALSE) {
-  ggsave(paste0(save.loc.fcn(k), sppnum.to.plot, "_plots.png"), 
-         comb.plt, device = "png", width = 7, height = 5, units = "in")
+    ggsave(paste0(save.loc.fcn(k), sppnum.to.plot, "_plots.png"), 
+           comb.plt, device = "png", width = 7, height = 5, units = "in")
   } else {
     return(comb.plt)
   }
@@ -1056,31 +1122,31 @@ summ.fig.fcn <- function(dataset, datatype, n.comp) {
 ########################
 
 summ.spp.fcn <- function(data.all, var.select, spp.names.use) {
-
-summ.spp <- data.all %>% left_join(climate.use, by = "puid") %>%
-  dplyr::select(-STATECD, -ESTN_UNIT, -STRATUMCD, -w, -stratum, -n_h.plts, -LAT, -LON) %>%
-  pivot_longer(cols = starts_with("nd."), names_to = "spp", values_to = "values") %>%
-  mutate(spp = as.numeric(gsub("nd.", "", spp))) %>%
-  filter(values > 0) %>%
-  group_by(spp) %>%
-  summarize(
-    n = n(),
-    Minimum = min(get(var.select)),
-    q05 = quantile(get(var.select), 0.05),
-    q25 = quantile(get(var.select), 0.25),
-    Mean = mean(get(var.select)),
-    Median = median(get(var.select)),
-    q75 = quantile(get(var.select), 0.75),
-    q95 = quantile(get(var.select), 0.95),
-    Maximum = max(get(var.select))
-  ) %>%
-  left_join(spp.names.use %>% dplyr::select(SPCD, sci_name), by = c("spp" = "SPCD")) %>%
-  relocate(sci_name) %>%
-  rename("Species" = "sci_name") %>%
-  dplyr::select(-spp) %>%
-  mutate(across(c(-Species, -n), \(x) round(x, digits = 1)))
-
-return(summ.spp)
+  
+  summ.spp <- data.all %>% left_join(climate.use, by = "puid") %>%
+    dplyr::select(-STATECD, -ESTN_UNIT, -STRATUMCD, -w, -stratum, -n_h.plts, -LAT, -LON) %>%
+    pivot_longer(cols = starts_with("nd."), names_to = "spp", values_to = "values") %>%
+    mutate(spp = as.numeric(gsub("nd.", "", spp))) %>%
+    filter(values > 0) %>%
+    group_by(spp) %>%
+    summarize(
+      n = n(),
+      Minimum = min(get(var.select)),
+      q05 = quantile(get(var.select), 0.05),
+      q25 = quantile(get(var.select), 0.25),
+      Mean = mean(get(var.select)),
+      Median = median(get(var.select)),
+      q75 = quantile(get(var.select), 0.75),
+      q95 = quantile(get(var.select), 0.95),
+      Maximum = max(get(var.select))
+    ) %>%
+    left_join(spp.names.use %>% dplyr::select(SPCD, sci_name), by = c("spp" = "SPCD")) %>%
+    relocate(sci_name) %>%
+    rename("Species" = "sci_name") %>%
+    dplyr::select(-spp) %>%
+    mutate(across(c(-Species, -n), \(x) round(x, digits = 1)))
+  
+  return(summ.spp)
 }
 
 

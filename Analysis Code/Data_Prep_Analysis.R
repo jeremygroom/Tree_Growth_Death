@@ -151,8 +151,8 @@ arrays.mort <- parse.tree.clim.fcn(tree.mort.dat, clim.var = CLIM.VAR.USE, analy
 
 arrays.grow <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
 
-if(file.exists(paste0(DATA.LOC, "analysis.arrays.RDS")) == FALSE){
-  write_rds(list(arrays.mort = arrays.mort, arrays.grow = arrays.grow), file = paste0(DATA.LOC, "analysis.arrays.RDS"))
+if(file.exists(paste0(DATA.LOC, "analysis.arrays.zip")) == FALSE){
+  write_rds(list(arrays.mort = arrays.mort, arrays.grow = arrays.grow, PlotDat = PlotDat), file = paste0(DATA.LOC, "analysis.arrays.RDS"))
   zip(zipfile = file.path(DATA.LOC, "analysis.arrays.zip"), files = file.path(DATA.LOC, "analysis.arrays.RDS"),
       flags = '-r9Xj' )  # This weird bit keeps the parent directory from being included in the zip folder
   
@@ -208,6 +208,7 @@ tic()
 # For ANALYSIS.PATHWAY == 1, one climate variable, and 16 dedicated cores, the analysis takes about 8 minutes.
 # With 6 domains and 23 species, 16 dedicated cores, 3.8 minutes
 # With 6 domains, 1000 iterations, 23 spp, 16 cores, 15 min.
+# With 6 domains, 1000 iterations, 23 spp, 20 cores, 16 min.
 
 for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
   

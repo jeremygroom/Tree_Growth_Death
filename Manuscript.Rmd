@@ -301,6 +301,9 @@ The numerator of species-specific growth estimates is the sum of stratum-weighte
 The analysis finds species growth and mortality estimates for six domains based on CWD values (Figure 2C).   The initial CWD values are divided into three quantiles: values below the first quartile (Low), between the first and third quartiles (Medium), and above the third quartile (High).  These initial CWD value divisions allowed for species-specific assessments.  For all species we defined an arbitrary boundary of 5 mm to define plots with a greater change in CWD (Above [the boundary]) and those with less CWD change (Below).  This was done because species did not differ greatly in CWD change (Table S2).  The category Below includes CWD changes that are negative (i.e., mean CWD was larger prior to the initial visit than between visits).  We also report species mortality and growth estimates for all plots across and within Oregon, Washington, and California irrespective of CWD values.  We limited the number of species examined to those with more than 400 plots.  We report domain estimates for all CWD-based domains with 10 or more plots.    
 
 We obtained empirical means and 95% confidence intervals via bootstrap. For every species we sampled plots with replacement and obtained point estimates.  For each domain we calculated a mean and upper and lower 95% CIs with the 2.5% and 97.5% quantiles from 1000 sampling iterations.  This approach allows for nonsymmetrical CIs around a mean and prevents CIs from including negative values.  We estimated differences between pairs of CWD domains by subtracting within-iteration domain point estimates.    
+
+We 
+
 [permutation analysis]
 
 
@@ -309,7 +312,7 @@ We obtained empirical means and 95% confidence intervals via bootstrap. For ever
 
 Our study tracked the fate of `r comma(analysis.stats$tree.num)` trees from `r length(sel.spp)` species in `r comma(analysis.stats$plot.num)` plots that were visited twice by FIA crews. The two visits for `r pct.remeas[2]`% of plots were 10 years apart (`r pct.remeas[1]`% were 9 years, `r pct.remeas[3]`% were 11 years). Plots were distributed in `r analysis.stats$strat.num` strata.  Of the `r length(sel.spp)` species, `r analysis.stats$n.gym.spp` are gymnosperms.  Mean overall growth rates for species varied between `r min.grow.spp$mean` (*`r min.grow.spp$spp`*) and `r max.grow.spp$mean` (*`r max.grow.spp$spp`*, `r t.ref("tbl_growth")`) cm$^2$/decade.  Decadal mean mortality rates varied between `r min.mort.spp$mean` (*`r min.mort.spp$spp`*) and `r max.mort.spp$mean` (*`r max.mort.spp$spp`*, `r t.ref("tbl_mort")`). Growth and mortality rates differed among states (Tables `r tab_nums("tbl_growth", display = "num")` and `r tab_nums("tbl_mort", display = "num")`).
 
-Forested plot 10-year differences in CWD do not visually coincide with initial CWD values (Figure `r fig_nums("fig_cwdmap", display = "num")`); however, `r analysis.stats$cwd.gt0.pct`% of plots increased in their CWD values to some degree during that time period. Tree species exhibited a variety of initial-visit CWD ranges, with means ranging from `r min.mean.init` (*`r min.mean.init.spp`*) to `r max.mean.init` (*`r max.mean.init.spp`*; Table S1).  The CWD difference tended to be comparatively small, with a maximum 95th percentile value of `r max.q95.diff` (*`r max.q95.diff.spp`*, Table S2). The distribution of individual species plot domain values for CWD and change in CWD can be explored on the dashboard(). 
+Forested plot 10-year differences in CWD do not visually coincide with initial CWD values (Figure `r fig_nums("fig_cwdmap", display = "num")`); however, `r analysis.stats$cwd.gt0.pct`% of plots increased in their CWD values to some degree during that time period. Tree species exhibited a variety of initial-visit CWD ranges, with means ranging from `r min.mean.init` (*`r min.mean.init.spp`*) to `r max.mean.init` (*`r max.mean.init.spp`*; Table S1).  The CWD difference tended to be comparatively small, with a maximum 95th percentile value of `r max.q95.diff` (*`r max.q95.diff.spp`*, Table S2). The distribution of individual species plot domain values for CWD and change in CWD can be explored on the dashboard (https://tinyurl.com/FIAgrowmort). 
 
 The confidence intervals for 10-year mortality and growth rate domains did not necessarily follow the same patterns nor did all confidence intervals for a species' mortality or growth estimates overlap (e.g., Figures `r fig_nums("fig_domains", display = "num")`A and `r fig_nums("fig_domains", display = "num")`B). The relationship between initial CWD values and plot-level change in CWD were not reliably linear (e.g., Figure `r fig_nums("fig_domains", display = "num")`C) and varied by species (see dashboard).    
 
@@ -317,12 +320,56 @@ We examined differences in 10-year growth estimates (Figure `r fig_nums("fig_dif
 
 Growth domain comparisons (`r fig_nums("fig_diffgrow")`, `r t.ref("tbl_summ_grow_mort")`) did not appear to be produce substantially more "significant" negative vs. positive estimates, and all three columns of `r fig_nums("fig_diffgrow")` had similar numbers of "significant" comparisons. Growth may have been susceptible (negatively or positively) to a change in CWD and differed by initial CWD values, and the responses are species-specific. *Abies amabilis*, *Abies grandis*, *Calocedrus decurrens*, *Pinus ponderosa*, *Pseudotsuga menziesii*, *Tsuga mertensiana*, *Acer macrophyllum*, and *Alnus rubra* exhibited greater growth in the Low domains than the Medium and/or High domains.  Except for *Alnus rubra*, these results predominantly occurred in both the Below domain (2) or the Above and Below domains (5).  *Thuja plicata* had higher growth in the Above and Below Medium domains than either High or Low domains. *Abies concolor*, *Larix occidentalis*, *Picea engelmannii*, *Pinus contorta*, *Pinus lambertiana*, *Arbutus menziesii*, and *Quercus kelloggii* had greater growth in the more water stressed High domains than the Medium and/or Low domains. Except for *Larix occidentalis*, these results predominantly occurred in both the Above domain (3) or the Above and Below domains (3). Other species exhibited no 'significant' findings or displayed a mixture of results.
 
-Mortality domain comparisons are similar in certain regards to the growth comparisons: results for the three types of domain comparisons did not appear to be predominantly positive or negative (`r fig_nums("fig_diffmort")`, `r t.ref("tbl_summ_grow_mort")`).  There were fewer mortality estimates with "significant" findings than growth. There were fewer differences for "Above vs. Below Threshold" comparisons (`r t.ref("tbl_summ_grow_mort")`) than for the comparisons Above or Below the threshold, indicating that mortality may not be as strongly associated with the change in CWD as by the starting value.  *Larix occidentalis*, *Picea engelmannii*,	*Pinus contorta*,	*Pinus monticola*, *Thuja plicata*,	and *Arbutus menziesii* had greater mortality in the lower water deficit Low domains than Medium and/or High domains. These results occurred in Above (3) or both Above and Below (3) domains. *Abies lasiocarpa*,	*Calocedrus decurrens*,	*Pinus lambertiana*, *Pinus ponderosa*,	*Pseudotsuga menziesii*,	*Tsuga heterophylla*,	*Tsuga mertensiana*,	*Acer macrophyllum*,	and *Notolithocarpus densiflorus* had more mortality in the High domains than the Medium and/or Low domains.  A(1111) both() B(11111)
+Mortality domain comparisons are similar in certain regards to the growth comparisons: results for the three types of domain comparisons did not appear to be predominantly positive or negative (`r fig_nums("fig_diffmort")`, `r t.ref("tbl_summ_grow_mort")`).  There were fewer mortality estimates with "significant" findings than growth. There were fewer differences for "Above vs. Below Threshold" comparisons (`r t.ref("tbl_summ_grow_mort")`) than for the comparisons Above or Below the threshold, indicating that mortality may not be as strongly associated with the change in CWD as by the starting value.  *Larix occidentalis*, *Picea engelmannii*,	*Pinus contorta*,	*Pinus monticola*, *Thuja plicata*,	and *Arbutus menziesii* had greater mortality in the lower water deficit Low domains than Medium and/or High domains. These results occurred in Above (3) or both Above and Below (3) domains. Mortality rates for *Abies lasiocarpa*,	*Calocedrus decurrens*,	*Pinus lambertiana*, *Pinus ponderosa*,	*Pseudotsuga menziesii*,	*Tsuga heterophylla*,	*Tsuga mertensiana*,	*Acer macrophyllum*,	and *Notolithocarpus densiflorus* were greater in the High domains than the Medium and/or Low domains.  These species were approximately evenly split between differences being present in the Above (4) or Below (5) domains, but none with 'significant' findings in both the Above and Below domains.  
  
 
+Mortality: 
+Picea engelmannii: Highest upper mortality = low. 
+Abies lasiocarpa: Lowest mortaity in Low. 
+- delta CWD lower for PIEN than for PILA.  Mean of High Above = 7.5 vs. 9ish.  
+- Similar patterns of delta CWD vs. CWD
+- ABLA = Least mortality in Low, in OLY penninsula, NW Cascades of WA.  High mortality overall (0.22)
+- PIEN = most mort in NE WA. High mortality overall (0.28)
+- PILA = most mort in mid/southern Sierras.  Seems like high mortality (0.20)
+
+ABLA and PIEN are conspecifics / codominants. Perret et al. 2023 estimated rangewide mortality of ABLA of 25% +/-2.7, mort concentrated in eastern OR cascades (and ID and CO). 83% of mort due to fire or bio disturbance.  Conspecifics mostly affected by beetles, ABLA by fire.  PIEN = higher survival and longevity (used to be; they estimate around a high of 1% annual mortality for fir, below 0.5% annually in spruce, PIEN), ABLA = faster growing, more prolific regeneration (Andrus 2018).  We found that PIEN had higher mortality in the Above Low and Medium domains.  We note that the Above domains represents a proportionally large increase for Low and Medium, with CWD means of approximately 50 and 80 mm, respectively.  The same is true for ABLA, however, where the mean for Low is approximately 40 mm yet PIEN has less mortality in the Low domains and PIEN has more mortality in the Above Low domain.  The difference may be geographical: ABLA low-mortality plots are primarily on the Olympic Peninsula of Washington and the northwestern Cascades, where rainfall is abundant.  PIEN is generally absent from these locations.  However, PIEN has the least mortality in the Above domain in the Blue Mountains of Oregon and Washington while ABLA does not show a similar finding for the same geographical region (their AH domains largely overlap and exist only in that mountain range). PIEN mortality in N&NE WA may have been driven by spruce beetles (WADNR 2023)
 
 
-*Abies concolor* had greater mortality at the Above Low and High categories than the Above Middle.  *Calocedrus decurrens* had a higher mortality rate at the High Above domains than the other Above domains. *Picea engelmannii* was the opposite; mortality was lowest at the Above High domain compared to other domains.  *Psuedotsuga menziesii* exhibited greater mortality at its Below High domain than other Below domains.  The two *Quercus* species did not exhibit strong patterns to their mortality.  
+Pinus contorta: Greatest mort in Low, least in High
+Pinus ponderosa: Greatest mort in High
+- In southern Sierra I see that they co-occur but have opposite mortality signals. Also a scattering in the Blue Mtns of opposite signals domains. Different fire strategies; Keely et al. 2011 may be useful.  
+
+Growth: 
+PIEN: greater growth in High, above and below.  So, greater growth where least mortality.  
+ABLA: not really any difference in growth by domain.  Supposed to be faster growing than PIEN, but not seeing it. 
+
+Lowest growth rate is for PIEN BL, at 15 in2.  Highest growth for ABLA is 12.5 in2. ABLA is supposed to be a faster grower (height) but maybe not DIA?  Diameter growth may be slow (trees 10-20" may be 150-200 yrs; Alexander et al. 1990).  On other hand, PIEN appears to have the capability of achieving greater diameters relatively sooner than ABLA (Parish et al. 1999).  PIEN growth in the High domains may be related to more growing days relative to other domains.  
+
+
+
+Communities:
+Pinus lambertiana PILA
+Pinus monticola PIMO
+(Pinus ponderosa) PIPO
+(Pinus contorta) PICO
+
+These two are interesting because the lowest mortality domain for PIMO (Above, High) coincides geographically in the southern Sierra with the highest mortality domain for PILA (and for much of the highest-mortality domain for PIPO).  PILA has the highest growth in AH whereas there isn't much of a growth story for PIMA.  PIPO and PICO have great range overlap.  PICO has the highest mortality in Low (NE WA), particularly AL and lowest mortality in BH (Sierras, OR Cascades).  Note that the mortality rate for PICO in WA was the highest of any species in any state, and more than twice as high as the mortality rate for WA and 5 times higher than CA.  PICO growth is lowest in AL.  PIPO has the highest growth in Low.  PIPO in NE WA has much less acreage of pine beetle damage in 2023 than PICO, not really a factor for PIMO. 
+
+What is happening in the southern Sierras?  N/NE wA?  
+
+Pseudotsuga menziesii PSME
+So much data.  Over 4500 plots.  Except for High, where mortality of Above and Below was approximately equivalent, we see that mortality was high in AL and AM.  BL, BM had the lowest mortality.  These coincided with moister plots.  Growth was highest for Below except for BH.  PSME mortality appears to be drought related - see Cline et al. 2025. 
+-Tree mortality increased 2020-2023, prolongued drought and warming.  Soil moisture, temperature, and VPD key predictors of old tree (125-500yr) mortality. 
+-strongest signal at mid-elevation west of Cascade crest, OR
+-Strongest for suppressed/intermediate, non-dominant or codominant individuals, smaller diameter (competition exacerbated the effect of climate variables on smaller-tree mortality at drier sites). 
+-insect mortality more prevalent following drought. 
+- lots of relevant citations
+- Western hemlock (Tsuga heterophylla) in the S/I cohort also died more frequently.  ACMA also did at one site.  
+- PNW heat dome of 2021 caused 11% mortality of C/D trees at Falls Creek site
+
+
+Acer macrophyllum ACMA
+We found that mortality was higher for BH than BL, BM. Maybe more interesting, growth was higher for Low, then Medium, then High irrespective of Above, Below. We cannot explain outright the high mortality for ACMA in California.  However, Betzen et al. (2021) found widespread evidence in Washington of ACMA decline (crown dieback, thinning, discoloration, reduced leaf size) and reduced growth and mortality associated with higher temperatures and water limitations. These findings are technically in alignment with the overall pattern in growth and mortality we observed, but does not specifically address the very high mortality rate of CA relative to OR and WA.  
 
 
 
@@ -341,7 +388,17 @@ The initial CWD values coincide fairly well with mean annual precipitation [NOAA
 # References
 
 ::: {#refs}
+
+Betzen, J.J., Ramsey, A., Omdal, D., Ettl, G.J. and Tobin, P.C., 2021. Bigleaf maple, Acer macrophyllum Pursh, decline in western Washington, USA. Forest Ecology and Management, 501, p.119681.
+
 Wang, T., Hamann, A. Spittlehouse, D.L. and Carroll, C. 2016. Locally downscaled and spatially customizable climate data for historical and future periods for North America. PLoS One 11: e0156720
+
+Alexander, R.R., Shearer, R.C. and Shepperd, W.D., 1990. Abies lasiocarpa (Hook.) Nutt. subalpine fir. Silvics of North America, 1, pp.60-70.
+
+Washington State Department of Natural Resources (DNR) Forest Reliance Division. 2024. Forest health highlights in Washington: A summary of insect, disease, and other disturbance conditions affecting Washington’s forests.  
+
+Washington State Department of Natural Resources (WADNR). 2024. Forest Health Highlights in Washington – 2024. Washington State Department of Natural Resources, Forest Resilience Division, Olympia, WA. https://dnr.wa.gov/sites/default/files/2025-03/rp_2023_fhh_report_final_wr.pdf, accessed 9/18/2025
+
 
 :::
 
