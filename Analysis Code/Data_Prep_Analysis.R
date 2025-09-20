@@ -272,7 +272,9 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
       domain.array = domain.array,
       domain.n = domain.n,
       selected.spp = SEL.SPP,
-      n_iter = BS.N
+      n_iter = BS.N, 
+      strata.num = strata.num,
+      PlotDat = PlotDat
     )
 
     # Finding and saving domain summaries

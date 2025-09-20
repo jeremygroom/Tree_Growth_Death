@@ -51,7 +51,9 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
     domain.array = state.array,
     domain.n = state.n,
     selected.spp = SEL.SPP,
-    n_iter = BS.N
+    n_iter = BS.N, 
+    strata.num = strata.num,
+    PlotDat = PlotDat
   )
   
   # Finding and saving domain summaries
@@ -71,7 +73,9 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
     domain.array = all.array,
     domain.n = all.n,
     selected.spp = SEL.SPP,
-    n_iter = BS.N
+    n_iter = BS.N, 
+    strata.num = strata.num,
+    PlotDat = PlotDat
   )
   
   all.species.summaries <- domain.sum.fcn(all.bootstrap_results, 1, domain_n =all.n)
