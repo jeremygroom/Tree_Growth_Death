@@ -1,19 +1,20 @@
 ## Monte Carlo permutation analysis ##
 
-source("Global.R")
-source(paste0(CODE.LOC, "Functions.R"))
-
 library(furrr)
 library(parallel)
 library(tictoc)  # For development, timing routines.
 library(data.table)
+library(matrixStats) # For fast iteration processing
 library(abind) # for combining matrices into arrays
 library(simctest) # Gandy 2009 permutation reduction approach
+
+source("Global.R")
+source(paste0(CODE.LOC, "Functions.R"))
 
 ## Constants
 
 # Number of maximum MC permutation iterations:
-PERM.ITER.N <- 10
+PERM.ITER.N <- 3
 
 
 
@@ -73,9 +74,11 @@ perm.output <- list(perm.grow = perm.grow, perm.mort = perm.mort)
 
 
 ## Here's the main permutation function.  
-perm.test.fcn <- function() {
-  
-  gandy.out <- c(rep(NA, 6))
+perm.test.fcn <- function(arrays.grow, arrays.mort, PlotDat) {
+  gandy.out <- numeric(6)
+  sig.tests.out <- matrix(NA, nrow = ncol(arrays.grow$domain.n) * 3, ncol = 13 )
+  colnames(sig.tests.out) <- c("Species", "G.AvB.domain", "G.AvB.sig", "G.A_LMH.domain", "G.A_LMH.sig", "G.B_LMH.domain", "G.B_LMH.sig",
+                            "M.AvB.domain", "M.AvB.sig", "M.A_LMH.domain", "M.A_LMH.sig", "M.B_LMH.domain", "M.B_LMH.sig")
   for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     
     # Obtaining the data to work with: Grabbing the list objects from above
@@ -104,14 +107,13 @@ perm.test.fcn <- function() {
     
     # Strata for bootstrap resampling procedure
     strata <- unique(vals_dat$stratum)
-    strata.num <- vals_dat %>% dplyr::select(stratum, puid) %>%
+    strata.num <- vals_dat %>% dplyr::select(stratum, puid, w, n_h.plts) %>%
       ungroup() %>% 
       mutate(row.id = row_number())
     
     ## THIS IS WHERE THE DOMAIN ASSIGNMENTS ARE SAMPLED FOR THE PERMUTATION:
     domain.samp.array <- samp.domain.array.fcn(domain.matrix)
-      
-      
+
     ## Quantile estimates for mortality or growth, across select species.
     domain.index <- 1:n_domain
 
@@ -120,6 +122,13 @@ perm.test.fcn <- function() {
     ## Generating the bootstrap values: 
     # 200 iterations = 104.99 s, or 1.75 min, or 29.2 hours
     # 1000 iterations = 426.21 s, or 7.1 min, or 118.3 hrs or 5 days....
+    
+    
+    # 100 iterations, 217 sec / 3.5 min using future_map
+    # 100 iterations, 227 s/3.8 min using map (no parallel processing): 
+    # 200 iterations, 447.29 s/ 7.45 min using map 
+    
+ 
     bootstrap_results <- generate_bootstrap_array.fcn(
       vals.dat = vals_dat,
       all.dat = all_dat,
@@ -130,7 +139,7 @@ perm.test.fcn <- function() {
       strata.num = strata.num,
       PlotDat = PlotDat
     )
-    
+
     # Finding and saving domain summaries
     domain.summaries <- domain.index %>% 
       purrr::map(\(d) domain.sum.fcn(bootstrap_results, d, domain_n = domain.n)) %>%
@@ -149,7 +158,9 @@ perm.test.fcn <- function() {
       B.vec <- c("BL", "BM", "BH")
       
       AvB <- bind_rows(map2(A.vec, B.vec, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
-        arrange(Species, Domain)
+        arrange(Species) %>%
+        mutate(Significant = ifelse(LCI.95 < 0 & UCI.95 < 0, 1, 
+                                    ifelse(LCI.95 > 0 & UCI.95 > 0, 1, 0)))
       
       
             # Domains compared: Above threshold, Low/Med/High comparisons
@@ -157,90 +168,111 @@ perm.test.fcn <- function() {
       A_LMH.vec2 <- c("AL", "AL", "AM")
       
       A_LMH <- bind_rows(map2(A_LMH.vec1, A_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
-        arrange(Species, Domain)
+        arrange(Species) %>%
+        mutate(Significant = ifelse(LCI.95 < 0 & UCI.95 < 0, 1, 
+                                    ifelse(LCI.95 > 0 & UCI.95 > 0, 1, 0)))
       
       # Domains compared: Below threshold, Low/Med/High comparisons
       B_LMH.vec1 <- c("BH", "BM", "BH")
       B_LMH.vec2 <- c("BL", "BL", "BM")
       
       B_LMH <- bind_rows(map2(B_LMH.vec1, B_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
-        arrange(Species, Domain)
+        arrange(Species) %>%
+        mutate(Significant = ifelse(LCI.95 < 0 & UCI.95 < 0, 1, 
+                                    ifelse(LCI.95 > 0 & UCI.95 > 0, 1, 0)))
       
 
     n.sig.AvB <- sig.n.fcn(AvB)
     n.sig.A_LMH <- sig.n.fcn(A_LMH)
     n.sig.B_LMH <- sig.n.fcn(B_LMH)
     
+
+    
+    test.sigs <- matrix(c(AvB$Species, AvB$Domain, AvB$Significant, A_LMH$Domain, A_LMH$Significant, B_LMH$Domain, B_LMH$Significant), ncol = 7)
+    
+    
     perm.output[[k]] <<- perm.output[[k]] %>% rbind(matrix(c(n.sig.AvB, n.sig.A_LMH, n.sig.B_LMH), ncol = 3))
     gandy.out[(k-1) * 3 + 1:3] <- c(n.sig.AvB, n.sig.A_LMH, n.sig.B_LMH)
-
+    if(k == 1) {
+      sig.tests.out[, 1:7] <- test.sigs
+    } else {
+      sig.tests.out[, 8:13] <- test.sigs[, -1]
+    }
   }   # end k 
-  return(gandy.out)
+  return(list(gandy.out = gandy.out, sig.tests.out = sig.tests.out))
 }
+
+
+## Some run times...
+# plan(4, 5), BATCH.SIZE = 200 = 246 s, 4 outputs, 4.1 min, 61.5s/iteration
+# plan(5, 4), BATCH.SIZE = 250 = 290 s, 5 outputs, 4.83 min, 58s/iteration
+#plan(10, 2), BATCH.SIZE = 500 =  533, 10 outputs.  8.88 min, 53.3 sec/iteration
+#plan(20, 1), BATCH.SIZE = 1000 = 1110 , 20 outputs.  18.5 min, 55.5 sec/iteration
+
+#plan(2, 10), BATCH.SIZE = 500 =  613s, 10 outputs.  10.2 min, 61.3 sec/iteration
+#plan(5, 4) BATCH.SIZE = 200 = 305 s, 5 outputs, 5.08 min, 61 s/iteration
+
+# plan(10, 2), batch size 500 = 1048.78 s, 20 outputs, 17.48 min, 52.45 sec/iteration. 14.6 hrs on my machine for 1000 outputs
+
+
+
+
+## With 76 cores...
+#  I recommend trying BATCH.SIZE = 500, n.output = 38, n.process = 2:
+n.output <- 38   # Number of output per cycle
+n.process <- 76/n.output
+BATCH.SIZE <- 1000/n.process
+# I estimate your machine will complete the task in about 4 hours.
+
+
+total.output <- 1000  # Maybe try with 10 first?  There will be some warnings about unused cores, I think.
+
+#n.output <- 4
+#n.process <- 20/n.output
+#BATCH.SIZE <- 1000/n.process
+
+# Here we set up worker cores for multi-level parallel processing.  
+plan(list(
+  tweak(multisession, workers =  n.output),  # Outer level (outputs)
+  tweak(multisession, workers = I(n.process)) # Inner level (iterations)
+))
+
+#print(plan('list'))
+
+tic()
+x <- furrr::future_map(1:n.output, function(i) {
+  J <-i 
+  y <- perm.test.fcn(arrays.grow = arrays.grow,
+                     arrays.mort = arrays.mort, 
+                     PlotDat = PlotDat)
+  return(y)
+  
+}, .options = furrr_options(seed = TRUE))
+toc()
+
+
+plan(sequential)  # This closes parallel workers
+
+#tic()
+#perm_results <- 1:PERM.ITER.N %>% 
+#  future_map(\(perm_n) perm.test.fcn(arrays.grow = arrays.grow,
+#                                     arrays.mort = arrays.mort, 
+#                                     PlotDat = PlotDat
+#                                     ), .options = furrr_options(seed = TRUE))
+#toc()
+
 
 # The Gandy simctest needs a function that makes a comparison.  In this case the 
 # comparison is to see if each iteration produces a TRUE value.
-gen <- function(){perm.test.fcn()[contrast.min.position] >= contrast.min.val}
+#gen <- function(){perm.test.fcn()[contrast.min.position] >= contrast.min.val}
 
 # Setting up parallel computing. See Global.R for n.cores.
-plan(multisession, workers = n.cores) 
+#plan(multisession, workers = n.cores) 
 
 
-tic()
-simctest(gen, maxsteps = PERM.ITER.N)  # Here's the permutation test.
-toc()
-
-# Closing parallel workers
-plan(sequential)
-
-
-
-#1781.76 sec elapsed, 30 min for 10 iterations of the permutation, 100 bootstraps
-# per permutation.  So, 3 min/iteration.  It does not appear that simctest is 
-#  making the process unduly long. The process does that all by itself : ) 
-
-
-#> perm.output
-#$perm.grow
-#AvB Above Below
-#[1,]  NA    NA    NA
-#[2,]   6     6     6
-#[3,]   9     9     1
-#[4,]   3     5     4
-#[5,]   6     8     5
-#[6,]   4     6     6
-#[7,]   8     7     5
-#[8,]   3     9     6
-#[9,]   4     2     7
-#[10,]   3     3     2
-#[11,]  14     8    14
-
-#$perm.mort
-#     AvB Above Below
-#[1,]  NA    NA    NA
-#[2,]   4     7     7
-#[3,]   7     6     3
-#[4,]   4     5     9
-#[5,]   2     5     6
-#[6,]   6     4     7
-#[7,]   1     8     9
-#[8,]   5     5     8
-#[9,]   4     6     4
-#[10,]   6     4     2
-#[11,]   6     6     7
-
-
-
-
-
-
-
-
-
-
-
-
-
+#tic()
+#simctest(gen, maxsteps = PERM.ITER.N)  # Here's the permutation test.
+#toc()
 
 
 

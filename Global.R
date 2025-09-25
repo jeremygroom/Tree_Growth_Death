@@ -73,6 +73,8 @@ DOMAIN.LEVELS <- c("AL", "AM", "AH", "BL", "BM", "BH") # Above/Below threshold a
 }
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
 BS.N <- 1000    # Bootstrap iteration number
+BATCH.SIZE <- 200 # Parallel computing batch number of iterations to process per core
+N.WORKERS <- 5
 
 
 ## Shiny app settings
@@ -106,8 +108,8 @@ spp.names <- readxl::read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx")) %>% dplyr:
 
 
 ## Items for parallel computing
-n.cores <- round(detectCores() * 0.75, 0) # Number of cores, package "parallel".  Using 75% of the available cores, rounded.
-
+#n.cores <- round(detectCores() * 0.75, 0) # Number of cores, package "parallel".  Using 75% of the available cores, rounded.
+n.cores <- N.WORKERS
 
    # State layers
 states <- map_data("state")   # Loaded with ggplot2

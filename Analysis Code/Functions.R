@@ -469,39 +469,49 @@ mean.q.fcn <- function(dat_tot, dat_vals, spp.sel1) {
 
 
 # Calculate estimates for all species in a given domain using map
+# NOTE: this code sidesteps mean.q.fcn entirely in favor of vectorization.
 calculate_domain_estimates.fcn <- function(samp, domain_data, domain_idx, selected.spp, domain.n) {
   
-  d.all_use <- domain_data[[domain_idx]]$all
-  d.vals_use <- domain_data[[domain_idx]]$vals
+  d.all_use <- domain_data[[domain_idx]]$all[samp$row.id, ]
+  d.vals_use <- domain_data[[domain_idx]]$vals[samp$row.id, ]
   
   # Convert species names to numeric for domain.n lookup
   spp.use.numeric <- as.numeric(gsub("X", "", selected.spp))
+  spp_cols <- paste0("nd.", spp.use.numeric)
   
-  # Use map to calculate estimates for all species
-  estimates <- spp.use.numeric %>% 
-    map_dbl(\(spp.sel) {
-      # Check if we have enough plots for this species in this domain. Otherwise returns NA.
-      spp.id1 <- paste0("X", spp.sel)
-      n_q <- get(spp.id1, domain.n)[domain_idx]
-      
-      if (n_q < N.PLOT.LIM) {
-        return(NA_real_)
-      } else {
-        # return(mean.q.fcn(
-        mean.q.fcn(
-          dat_tot = d.all_use[samp$row.id, ],
-          dat_vals = d.vals_use[samp$row.id, ],
-          spp.sel1 = spp.sel
-        )$R
-      }
-    })
+  # Single data.table conversion and join
+  dt_all <- as.data.table(d.all_use)
+  dt_vals <- as.data.table(d.vals_use)
   
   
-  # df <- rbind(estimates, estimates.yv, estimates.zt) %>% data.frame()
-  #  colnames(df) <- SEL.SPP
-  # write.csv(df, "Oregon.csv")
+  # More efficient: calculate everything in one data.table operation
+  # First, calculate stratum-level summaries for both datasets (weights, # plots)
+  all_stratum <- dt_all[, c(
+    lapply(.SD, sum),
+    list(w_h = w[1], n_h = n_h.plts[1])
+  ), by = stratum, .SDcols = spp_cols]
   
-  return(estimates)
+  # Adding values by stratum for each species
+  vals_stratum <- dt_vals[, lapply(.SD, sum), by = stratum, .SDcols = spp_cols]
+  
+  # Calculate weighted values directly
+  all_matrix <- as.matrix(all_stratum[, ..spp_cols])
+  vals_matrix <- as.matrix(vals_stratum[, ..spp_cols])
+  weights <- all_stratum$w_h / all_stratum$n_h # Shortcut: dividing w_h by n_h as part of estimation
+  
+  # Vectorized calculations across all species
+  Zt_all <- colSums(all_matrix * weights)
+  Yv_all <- colSums(vals_matrix * weights)
+  
+  # Calculate all ratios at once
+  ratios <- Yv_all / Zt_all
+  
+  # Vectorized plot threshold check
+  plot_counts <- sapply(selected.spp, function(spp) get(spp, domain.n)[domain_idx])
+  sufficient_plots <- plot_counts >= N.PLOT.LIM
+  ratios[!sufficient_plots] <- NA_real_
+  
+  return(ratios)
 }
 
 
@@ -531,9 +541,9 @@ prepare_domain_data.fcn <- function(vals.dat, all.dat, domain.array, n_domains) 
 }
 
 
-# Main function to generate the bootstrap array using parallel processing
+# Generate bootstrap sample.  Each stratum is separately sampled by the stratum size.   
 generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain.n, selected.spp, n_iter,
-                                         strata.num, PlotDat = PlotDat) {
+                                         strata.num, PlotDat = PlotDat, batch_size = BATCH.SIZE) {
   
   n_species <- length(selected.spp)
   n_domains <- if(ncol(domain.array) == 2) 1 else ncol(domain.array) # If == 2, then we are after
@@ -542,23 +552,38 @@ generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain
   # Pre-process data for all domains
   domain_data <- prepare_domain_data.fcn(vals.dat, all.dat, domain.array, n_domains)
   
+  # Create batches of iterations to facilitate parallelization
+  n_batches <- ceiling(n_iter / batch_size)
+  batch_starts <- seq(1, n_iter, by = batch_size)
+  batch_ends <- pmin(batch_starts + batch_size - 1, n_iter)
+  
+  
   # Run all bootstrap iterations in parallel
-  bootstrap_results <- 1:n_iter %>% 
-    future_map(\(iter) {
-      # Generate single bootstrap sample for this iteration
-      samp <- generate_bootstrap_sample.fcn(strata.num = strata.num)
+  bootstrap_results <- seq_along(batch_starts) %>%
+    future_map(\(batch_idx) {
+      batch_start <- batch_starts[batch_idx]
+      batch_end <- batch_ends[batch_idx]
+      actual_batch_size <- batch_end - batch_start + 1
       
-      # Calculate estimates for all domains for this iteration
-      1:n_domains %>% 
-        purrr::map(\(d) calculate_domain_estimates.fcn(
-          samp = samp,
-          domain_data = domain_data,
-          domain_idx = d,
-          selected.spp = selected.spp,
-          domain.n = domain.n
-        )) %>%
-        do.call(rbind, .) # Combine domains into matrix
-    }, .options = furrr_options(seed = TRUE))
+      # Process multiple iterations within this worker
+      batch_results <- replicate(actual_batch_size, {
+        samp <- generate_bootstrap_sample.fcn(strata.num = strata.num)
+        
+       # Calculate estimates for all domains for this iteration
+        1:n_domains %>% 
+          purrr::map(\(d) calculate_domain_estimates.fcn(
+            samp = samp,
+            domain_data = domain_data,
+            domain_idx = d,
+            selected.spp = selected.spp,
+            domain.n = domain.n
+          )) %>%
+          do.call(rbind, .) # Combine domains into matrix
+      }, simplify = FALSE)
+      return(batch_results)
+    }, .options = furrr_options(seed = TRUE)) %>%
+    unlist(recursive = FALSE) # Flatten the list structure
+  
   
   # Convert list of matrices to 3D array
   bootstrap_array <- array(
@@ -580,19 +605,37 @@ generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain
 
 
 
+
 ## Functions for preparing plotting data
 
+
 # This function is used to find the quantiles of a bootstrap matrix. Used by both
-#  domain.sum.fcn and domain.diff.fcn.
+#  domain.sum.fcn and domain.diff.fcn. This uses matrixStats for faster performance.
 matrix.summ.fcn <- function(matrix.use, domain.id, domain_n){
-  quants <- data.frame(t(apply(matrix.use, 2, function(x) quantile(x, probs = c(0.5, 0.025, 0.975), na.rm = TRUE))))
-  names(quants) <- c("Median", "LCI.95", "UCI.95")
-  quants$Means <- apply(matrix.use, 2, mean, na.rm = TRUE)
-  quants$n.plts <- unlist(as.vector(domain_n[domain.id, SEL.SPP ]))
-  quants$Species <- SEL.SPP
-  quants$Domain <- domain.id
+  # Use colQuantiles - much faster than apply
+  quants_mat <- colQuantiles(matrix.use, probs = c(0.5, 0.025, 0.975), na.rm = TRUE)
+  
+  # Use colMeans2 from matrixStats
+  means_vec <- colMeans2(matrix.use, na.rm = TRUE)
+  
+  # Build data.frame directly without transpose
+  quants <- data.frame(
+    Median = quants_mat[, 1],
+    LCI.95 = quants_mat[, 2],
+    UCI.95 = quants_mat[, 3],
+    Means = means_vec,
+    n.plts = unlist(as.vector(domain_n[domain.id, SEL.SPP])),
+    Species = SEL.SPP,
+    Domain = domain.id,
+    stringsAsFactors = FALSE
+  )
+  
   return(quants)
 }
+
+
+
+
 
 # Used in summarizing individual domains
 domain.sum.fcn <- function(results.array, domain.num, domain_n) {

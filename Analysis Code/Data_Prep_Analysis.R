@@ -36,6 +36,7 @@ library(parallel)
 library(RSQLite) # For obtaining SQLite FIA databases
 library(tictoc)  # For development, timing routines.
 library(data.table)
+library(matrixStats) # For fast iteration processing
 library(abind) # for combining matrices into arrays
 #### 2) Base data prep --------------------------------------------------------
 # These are the base data sets that will be transformed by the analysis types.
@@ -265,7 +266,11 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
 
     ## Generating the bootstrap values: 
    # 200 iterations = 104.99 s, or 1.75 min, or 29.2 hours
-   # 1000 iterations = 426.21 s, or 7.1 min, or 118.3 hrs or 5 days....
+   # 1000 iterations, 10 cores, batches of 100: 50 s
+  # 1000 iterations, 5 cores, batches of 200:  41 s # This appears best
+  # 1000 iterations, 4 cores, batches of 250: 44 s
+  # 1000 iterations, 1 core, batch of 1000: 110 s  
+    #tic()
     bootstrap_results <- generate_bootstrap_array.fcn(
       vals.dat = vals_dat,
       all.dat = all_dat,
@@ -276,7 +281,7 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
       strata.num = strata.num,
       PlotDat = PlotDat
     )
-
+  #toc()
     # Finding and saving domain summaries
     domain.summaries <- domain.index %>% 
       purrr::map(\(d) domain.sum.fcn(bootstrap_results, d, domain_n = domain.n)) %>%
