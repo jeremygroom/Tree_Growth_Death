@@ -1039,12 +1039,12 @@ state.table.fcn <- function(state.dat, all.dat, sig.places) {
                   n.plts = as.integer(n.plts),
                   results = case_when(
                     is.na(Median) ~ "", 
-                    grepl("NA", paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")")) ~ "",
-                    !is.na(Median) ~ paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")")
+                    grepl("NA", paste0(Means, " (", LCI.95, ", ", UCI.95, "; ", n.plts, ")")) ~ "",
+                    !is.na(Median) ~ paste0(Means, " (", LCI.95, ", ", UCI.95, "; ", n.plts, ")")
                   ))%>%
     dplyr::mutate(results = case_when(is.na(Median) ~ "", 
                                       Median == "NA" ~ "",
-                                      !is.na(Median) ~ paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")"))) %>%
+                                      !is.na(Median) ~ paste0(Means, " (", LCI.95, ", ", UCI.95, "; ", n.plts, ")"))) %>%
     dplyr::select(sci_name, State, results) %>%
     tidyr::pivot_wider(names_from = State, values_from = results) %>%
     dplyr::rename("California" = "CA", "Washington" = "WA", "Oregon" = "OR") %>%
@@ -1056,8 +1056,8 @@ state.table.fcn <- function(state.dat, all.dat, sig.places) {
                   n.plts = as.integer(n.plts),
                   results = case_when(
                     is.na(Median) ~ "", 
-                    grepl("NA", paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")")) ~ "",
-                    !is.na(Median) ~ paste0(Means, " (", LCI.95, ",", UCI.95, "; ", n.plts, ")")
+                    grepl("NA", paste0(Means, " (", LCI.95, ", ", UCI.95, "; ", n.plts, ")")) ~ "",
+                    !is.na(Median) ~ paste0(Means, " (", LCI.95, ", ", UCI.95, "; ", n.plts, ")")
                   )) %>%
     dplyr::select(sci_name, results) %>%
     dplyr::rename("All" = "results")

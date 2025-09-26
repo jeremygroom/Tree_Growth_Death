@@ -240,7 +240,7 @@ plan(list(
 #print(plan('list'))
 
 tic()
-x <- furrr::future_map(1:n.output, function(i) {
+x <- furrr::future_map(1:total.output, function(i) {
   J <-i 
   y <- perm.test.fcn(arrays.grow = arrays.grow,
                      arrays.mort = arrays.mort, 
@@ -252,6 +252,44 @@ toc()
 
 
 plan(sequential)  # This closes parallel workers
+
+
+
+## Code for opening previously-run permutation tests
+x <- read_rds(paste0(DATA.LOC, "perm_test_out_092625.RDS"))
+
+gandy_table <- data.frame(do.call(rbind, lapply(x, function(xi) xi$gandy.out)))
+
+n.sto <- length(x)
+sto.rows <- nrow(x[[1]]$sig.tests.out)
+sto.cols <- ncol(x[[1]]$sig.tests.out)
+
+sig_tests_table <- map_dfr(seq_along(x), ~ {
+  as.data.frame(x[[.x]]$sig.tests.out) %>%
+    mutate(id = .x)
+})
+
+
+sig_array <- array(dim = c(sto.rows, sto.cols, n.sto))
+
+# Fill each slice with the corresponding matrix
+for(i in 1:n.sto) {
+  sig_array[, , i] <- x[[i]]$sig.tests.out
+}
+
+
+odd_cols <- seq(3, 13, by = 2)  # Creates c(3, 5, 7, 9, 11, 13)
+
+sig_array2 <- sig_array[, odd_cols, ]
+  
+sig_array2 <- apply(sig_array2, c(1, 2, 3), as.numeric)
+
+sig_array_prop <- apply(sig_array2, c(1, 2), function(x) mean(x == 1, na.rm = TRUE))
+
+# Convert to data frame
+proportions_df <- as.data.frame(proportions)
+colnames(proportions_df) <- paste0("col_", odd_cols)
+
 
 #tic()
 #perm_results <- 1:PERM.ITER.N %>% 
