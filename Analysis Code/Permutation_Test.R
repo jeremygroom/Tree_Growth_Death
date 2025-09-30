@@ -2,6 +2,7 @@
 
 library(furrr)
 library(parallel)
+library(future) # Involved in parallel computing
 library(tictoc)  # For development, timing routines.
 library(data.table)
 library(matrixStats) # For fast iteration processing
@@ -10,13 +11,6 @@ library(simctest) # Gandy 2009 permutation reduction approach
 
 source("Global.R")
 source(paste0(CODE.LOC, "Functions.R"))
-
-## Constants
-
-# Number of maximum MC permutation iterations:
-PERM.ITER.N <- 3
-
-
 
 
 ## Loading data to be used.  Assuming analysis.arrays.RDS exist. If not, Data_Prep_Analysis will need to be run.
@@ -38,19 +32,44 @@ PlotDat <- arrays.use$PlotDat
 
 
 # Finding the analysis results to pull out the minimum number of significant findings
-#  per contrast. This is used in the Gandy simctest() function at the end.
+#  per contrast and the distance of the CI from zero.
+sig.dist <- NULL
 contrast.min <- rep(NA, 6)
 for(k in 1:2) {
 plt.dat <- readRDS(paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
 
+# Counting the number of sig findings by column for k (growth, mortality)
 sig.AvB2 <- length(plt.dat$AvB2$Species[plt.dat$AvB2$significant == TRUE])
 sig.A_LMH2 <- length(plt.dat$A_LMH2$Species[plt.dat$A_LMH2$significant == TRUE])
 sig.B_LMH2 <- length(plt.dat$B_LMH2$Species[plt.dat$B_LMH2$significant == TRUE])
 
 contrast.min[(k-1) * 3 + 1:3] <- c(sig.AvB2, sig.A_LMH2, sig.B_LMH2)
+
+# Finding the CI distance from zero by column for k (growth, mortality)
+sig.dist.AvB <- sig.dist.fcn(plt.dat$AvB)
+sig.dist.A_LMH <- sig.dist.fcn(plt.dat$A_LMH)
+sig.dist.B_LMH <- sig.dist.fcn(plt.dat$B_LMH)
+
+sig.dist.k <- data.frame(sig.dist.AvB, sig.dist.A_LMH, sig.dist.B_LMH) %>%
+  mutate(order.c = seq_along(1:n())) %>%
+  relocate(order.c)
+if(is.null(sig.dist)){
+sig.dist <- sig.dist.k %>% cbind(Species = plt.dat$AvB$Species) %>% relocate(Species)
+} else {
+  if(all(row.names(sig.dist.k) == row.names(sig.dist)) & all(sig.dist.k$order.c == sig.dist$order.c)) {
+    sig.dist <- left_join(sig.dist, sig.dist.k, by = "order.c") 
+    colnames(sig.dist)[3:ncol(sig.dist)] <- paste0(c("Domain", "sig.dist"), rep(1:6, each = 2))  
+    
+  } else {
+    print("Error: misaligned species or comparison numbers.")
+  }
+}
+
 }
 contrast.min.val <- min(contrast.min)                # Minimum number of significant contrasts
 contrast.min.position <- which(contrast.min == min(contrast.min)) # Position of the minimum number (id which contrast)
+
+
 
 
 # Need climate names for files and axes.
@@ -76,9 +95,9 @@ perm.output <- list(perm.grow = perm.grow, perm.mort = perm.mort)
 ## Here's the main permutation function.  
 perm.test.fcn <- function(arrays.grow, arrays.mort, PlotDat) {
   gandy.out <- numeric(6)
-  sig.tests.out <- matrix(NA, nrow = ncol(arrays.grow$domain.n) * 3, ncol = 13 )
-  colnames(sig.tests.out) <- c("Species", "G.AvB.domain", "G.AvB.sig", "G.A_LMH.domain", "G.A_LMH.sig", "G.B_LMH.domain", "G.B_LMH.sig",
-                            "M.AvB.domain", "M.AvB.sig", "M.A_LMH.domain", "M.A_LMH.sig", "M.B_LMH.domain", "M.B_LMH.sig")
+  sig.tests.out <- NULL#matrix(NA, nrow = ncol(arrays.grow$domain.n) * 3, ncol = 14 )
+  #colnames(sig.tests.out) <- c("Species", "G.AvB.domain", "G.AvB.sig", "G.A_LMH.domain", "G.A_LMH.sig", "G.B_LMH.domain", "G.B_LMH.sig",
+   #                         "M.AvB.domain", "M.AvB.sig", "M.A_LMH.domain", "M.A_LMH.sig", "M.B_LMH.domain", "M.B_LMH.sig")
   for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     
     # Obtaining the data to work with: Grabbing the list objects from above
@@ -127,6 +146,8 @@ perm.test.fcn <- function(arrays.grow, arrays.mort, PlotDat) {
     # 100 iterations, 217 sec / 3.5 min using future_map
     # 100 iterations, 227 s/3.8 min using map (no parallel processing): 
     # 200 iterations, 447.29 s/ 7.45 min using map 
+    
+    #plan(multisession, workers = 5)
     
  
     bootstrap_results <- generate_bootstrap_array.fcn(
@@ -187,17 +208,24 @@ perm.test.fcn <- function(arrays.grow, arrays.mort, PlotDat) {
     n.sig.B_LMH <- sig.n.fcn(B_LMH)
     
 
+    # This code populates sig.tests.out.  The function sig.dist.fcn is structured to
+    #   enable left joins and verify that the results will be correctly interpreted
+    #   relative to the observed results, sig.dif.  
+    sig.dist.use <- list(
+      sig.dist.AvB = sig.dist.fcn2(AvB, 1 + (k-1)*3),
+      sig.dist.A_LMH = sig.dist.fcn2(A_LMH, 2 + (k-1)*3),
+      sig.dist.B_LMH = sig.dist.fcn2(B_LMH, 3 + (k-1)*3)
+    )
     
-    test.sigs <- matrix(c(AvB$Species, AvB$Domain, AvB$Significant, A_LMH$Domain, A_LMH$Significant, B_LMH$Domain, B_LMH$Significant), ncol = 7)
-    
-    
-    perm.output[[k]] <<- perm.output[[k]] %>% rbind(matrix(c(n.sig.AvB, n.sig.A_LMH, n.sig.B_LMH), ncol = 3))
-    gandy.out[(k-1) * 3 + 1:3] <- c(n.sig.AvB, n.sig.A_LMH, n.sig.B_LMH)
     if(k == 1) {
-      sig.tests.out[, 1:7] <- test.sigs
+      sig.tests.out <- purrr::reduce(sig.dist.use, dplyr::left_join, by = c("Species", "order.c"))
     } else {
-      sig.tests.out[, 8:13] <- test.sigs[, -1]
+      k2.tests.out <- purrr::reduce(sig.dist.use, dplyr::left_join, by = c("Species", "order.c"))
+      sig.tests.out <- left_join(sig.tests.out, k2.tests.out, by = c("Species", "order.c"))
     }
+    
+#    perm.output[[k]] <<- perm.output[[k]] %>% rbind(matrix(c(n.sig.AvB, n.sig.A_LMH, n.sig.B_LMH), ncol = 3))
+    gandy.out[(k-1) * 3 + 1:3] <- c(n.sig.AvB, n.sig.A_LMH, n.sig.B_LMH)
   }   # end k 
   return(list(gandy.out = gandy.out, sig.tests.out = sig.tests.out))
 }

@@ -681,6 +681,45 @@ diff.fig.prep.fcn <- function(diff.table, diff.levels){
 
 ### MC Permutation analysis functions --------------------------------------
 
+sig.dist.fcn <- function(data.set){
+  sig.data.set <- data.set %>% mutate(
+    sig.dist = case_when(
+      LCI.95 > 0 & Means > 0 ~ LCI.95,
+      UCI.95 < 0 & Means < 0 ~ UCI.95,
+      LCI.95 < 0 & Means > 0 ~ 0,
+      UCI.95 > 0 & Means < 0 ~ 0,
+      .default = NA)
+  ) %>% dplyr::select(Domain, sig.dist)
+  return(sig.data.set)
+}    
+
+
+# Function for finding the distance from zero a CI is if significant.
+sig.dist.fcn2 <- function(data.set, k.level){
+  domain.col <- paste0("Domain", k.level)
+  sig.col <- paste0("sig.dist", k.level)
+  gt.col <- paste0("abs.gt", k.level)
+  sig.data.set <- data.set %>% mutate(
+    sig.dist = case_when(
+      LCI.95 > 0 & Means > 0 ~ LCI.95,
+      UCI.95 < 0 & Means < 0 ~ UCI.95,
+      LCI.95 < 0 & Means > 0 ~ 0,
+      UCI.95 > 0 & Means < 0 ~ 0,
+      .default = NA)
+    ) %>% left_join(sig.dist %>% dplyr::select(Species, order.c, all_of(domain.col), all_of(sig.col)), by = c("Species", "Domain" = domain.col)) %>%
+    arrange(order.c) %>%
+    mutate(
+      sig.temp = get(sig.col),
+      abs.gt = ifelse(abs(sig.dist) >= abs(sig.temp) & sig.temp != 0, 1, 0)) %>%
+    dplyr::select(Species, order.c, Domain, abs.gt) %>%
+    rename("{domain.col}" := "Domain",
+           "{gt.col}" := "abs.gt")
+    return(sig.data.set)
+}
+
+
+
+
 # Function to randomly permute non-zero values within a column
 permute_nonzero <- function(x) {
   nonzero_idx <- which(x != 0) # Row numbers where values != 0
