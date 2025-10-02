@@ -1,4 +1,4 @@
-## This code provides inforamtion summaries for the manuscript and generates 
+## This code provides information summaries for the manuscript and generates 
 #   non-estimate figures and (maybe) tables.
 #   The file Data_Prep_Analysis.R sources this code.  
 #   The file Manuscript.Rmd will open and use its outputs.
@@ -86,6 +86,17 @@ for(k in 1:2){
   plt.dat <- readRDS(paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS"))
   plt.dat2 <- plt.dat$domain.summaries
   
+  # Need climate names for files and axes.
+  clim.names <- read_csv(paste0(DATA.LOC, "ClimateNames.csv"), show_col_types = FALSE) %>%
+    filter(filename == CLIM.VAR.USE)
+  
+  var1 <- clim.names$values[grep("pre", clim.names$values)]
+  var.delt <- clim.names$values[grep("d", clim.names$values)]
+  var.label <- clim.names$label[clim.names$values == var1]
+  #var.filename <- clim.names$filename[clim.names$values == var1]
+  var.delt.label <- clim.names$label[clim.names$values == var.delt]
+  
+  
   sppnum.to.plot <- "X81"
   mort.grow.dat <- get(paste0("arrays.", ANALYSIS.TYPE[k])) 
   
@@ -96,6 +107,7 @@ for(k in 1:2){
   
   
   use.dat2 <- plt.dat2 %>% filter(Species == sppnum.to.plot)
+  use.dat2 <- cm2.fcn(k, use.dat2)  # Transforming growth from inches2 to cm2
   
   plot.domain.dat <- plt.dat2 %>% 
     filter(Species == sppnum.to.plot) %>%
@@ -113,8 +125,8 @@ for(k in 1:2){
   
   text.size <- 9
   
-  p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs) 
-  p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs) 
+  p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs, text.size) 
+  p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs, text.size) 
   #p_all <- plot_grid(p1, p2, ncol = 1)
   list1 <- list(p1 = p1, p2 = p2)
   fig.letter <- switch(k, "A", "B")
@@ -132,7 +144,7 @@ for(k in 1:2){
     
     plot.vals.plt <- domain.dist.plt.fcn(plot.spp = sppnum.to.plot, domain.matrix = domain.matrix, 
                                          var1 = var1, var.delt = var.delt, quant.lims = quant.lims,
-                                         n.plots.used = n_plots2, size.trees = "") 
+                                         n.plots.used = n_plots2, size.trees = "", text.size) 
     
     q_plot_spp <- domain.matrix %>% dplyr::select(all_of(sppnum.to.plot), all_of(var1), all_of(var.delt)) %>%
       filter(get(sppnum.to.plot) > 0) 

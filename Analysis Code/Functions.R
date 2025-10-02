@@ -985,7 +985,7 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use, poin
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
 pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
-                          quant.lims, domain.n, k, SHINYAPP.IN.USE, SHINY.FONTSIZE){
+                          quant.lims, domain.n, k, SHINYAPP.IN.USE, SHINY.FONTSIZE, cm = TRUE){
   
   use.dat2 <- use.dat %>% filter(Species == sppnum.to.plot)
   
@@ -1003,7 +1003,13 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   # Create a grid of plots to match bivariate plot
   q.g.p.labs <- paste0(DOMAIN.LEVELS, ", n = ", as.numeric(use.dat2$n.plts)) # Labels for the domain grid plot
   
-  ylabs <- if (k == 1) "Mean Growth (inches^2)" else "Mean Annual Mortality Rate"
+  ylabs <- if (k == 1 & cm == FALSE) {
+    "Mean Decadal Growth (inches^2)"
+  } else if (k == 1 & cm == TRUE) {
+    "Mean Decadal Growth (cm^2)"
+  } else {
+    "Mean Decadal Mortality Rate"
+  }
   
   text_size <- if(SHINYAPP.IN.USE == TRUE) SHINY.FONTSIZE else 7
   point_size <- if(SHINYAPP.IN.USE == TRUE) 1 else 0.5

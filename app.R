@@ -184,7 +184,8 @@ server <- function(input, output, session) {
         plt_dat <- analysis_data$mort_output
       }
       
-      plt_dat2 <- plt_dat$domain.summaries
+#      browser()
+      plt_dat2 <- cm2.fcn(k, plt_dat$domain.summaries) # Transforming growth data to cm2
       domain.matrix <- mort_grow_dat$domain.matrix
       domain.n <- mort_grow_dat$domain.n
       quant.lims <- mort_grow_dat$quant.lims
@@ -193,7 +194,7 @@ server <- function(input, output, session) {
       virid.use <<- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
       
       
-    # browser()
+     #browser()
       # Generate the plot using pair.plts.fcn with SHINYAPP.IN.USE = TRUE
       plot_result <- pair.plts.fcn(
         sppnum.to.plot = input$species, 
