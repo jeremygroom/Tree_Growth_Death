@@ -241,19 +241,19 @@ perm.test.fcn <- function(arrays.grow, arrays.mort, PlotDat) {
 #plan(5, 4) BATCH.SIZE = 200 = 305 s, 5 outputs, 5.08 min, 61 s/iteration
 
 # plan(10, 2), batch size 500 = 1048.78 s, 20 outputs, 17.48 min, 52.45 sec/iteration. 14.6 hrs on my machine for 1000 outputs
-
+# I ran plan(10, 2), batch size = 500 for 500 outputs on my laptop. 7 hrs.  
 
 
 
 ## With 76 cores...
 #  I recommend trying BATCH.SIZE = 500, n.output = 38, n.process = 2:
-n.output <- 38   # Number of output per cycle
-n.process <- 76/n.output
+n.output <- 10   # Number of output per cycle
+n.process <- 20/n.output
 BATCH.SIZE <- 1000/n.process
 # I estimate your machine will complete the task in about 4 hours.
 
 
-total.output <- 1000  # Maybe try with 10 first?  There will be some warnings about unused cores, I think.
+total.output <- 500  # Maybe try with 10 first?  There will be some warnings about unused cores, I think.
 
 #n.output <- 4
 #n.process <- 20/n.output
@@ -278,45 +278,95 @@ x <- furrr::future_map(1:total.output, function(i) {
 }, .options = furrr_options(seed = TRUE))
 toc()
 
-
 plan(sequential)  # This closes parallel workers
 
 
-
-## Code for opening previously-run permutation tests
-x <- read_rds(paste0(DATA.LOC, "perm_test_out_092625.RDS"))
-
-gandy_table <- data.frame(do.call(rbind, lapply(x, function(xi) xi$gandy.out)))
-
-n.sto <- length(x)
-sto.rows <- nrow(x[[1]]$sig.tests.out)
-sto.cols <- ncol(x[[1]]$sig.tests.out)
-
-sig_tests_table <- map_dfr(seq_along(x), ~ {
-  as.data.frame(x[[.x]]$sig.tests.out) %>%
-    mutate(id = .x)
-})
+## Code for opening and combining previously-run permutation tests
+x1 <- read_rds(paste0(DATA.LOC, "perm_test_093025.RDS"))
+x2 <- read_rds(paste0(DATA.LOC, "perm_test_out500_20251001.RDS"))
+x3 <- append(x1, x2)
 
 
+# Which data set(s) to examine:
+x.use <- x3
+
+# Dimensions, mostly for the array calcs
+n.sto <- length(x.use)
+sto.rows <- nrow(x.use[[1]]$sig.tests.out)
+sto.cols <- ncol(x.use[[1]]$sig.tests.out)
+
+
+# Looking at number of significant findings >= the number found in the analysis run.
+gandy_table <- data.frame(do.call(rbind, lapply(x.use, function(xi) xi$gandy.out)))
+nsig.col.findings <- unlist(map2(contrast.min, 1:6, nsig.comp.fcn, dat.nsig = gandy_table))
+nsig.col.prop <- nsig.col.findings / n.sto
+
+
+# Now setting up to find out the MC permutation p-value for each comparison
 sig_array <- array(dim = c(sto.rows, sto.cols, n.sto))
 
 # Fill each slice with the corresponding matrix
 for(i in 1:n.sto) {
-  sig_array[, , i] <- x[[i]]$sig.tests.out
+  sig_array[, , i] <- as.matrix(x.use[[i]]$sig.tests.out)
 }
 
 
-odd_cols <- seq(3, 13, by = 2)  # Creates c(3, 5, 7, 9, 11, 13)
+dat_cols <- seq(4, 14, by = 2)  # Creates c(3, 5, 7, 9, 11, 13)
 
-sig_array2 <- sig_array[, odd_cols, ]
+sig_array2 <- sig_array[, dat_cols, ]
   
 sig_array2 <- apply(sig_array2, c(1, 2, 3), as.numeric)
 
 sig_array_prop <- apply(sig_array2, c(1, 2), function(x) mean(x == 1, na.rm = TRUE))
 
 # Convert to data frame
-proportions_df <- as.data.frame(proportions)
-colnames(proportions_df) <- paste0("col_", odd_cols)
+proportions_df <- data.frame(Species = sig.dist$Species, sig_array_prop)
+colnames(proportions_df) <- c("Species", paste0("sig.dist", 1:length(odd_cols)))
+
+
+# WHat is the scope of the values? (which are zero, what's the distribution?)
+
+sig.dist.comp <- sig.dist[, c(1, dat_cols)] # Significant distance compare data frame
+sig.dist.comp[, 2:4] <- sig.dist.comp[, 2:4] * 6.4516 # Transforming square inches to cm2
+
+comp.out <- proportions_df
+comp.out[sig.dist.comp == 0] <- NA
+comp.out.full <- x.use[[1]]$sig.tests.out[, -dat_cols] %>% 
+  bind_cols(comp.out %>% dplyr::select(-Species))
+# A bunch of code to reintroduce the domain labels. 
+cof.names <- names(comp.out.full)
+cof.names.nums <- as.numeric(substr(cof.names, nchar(cof.names), nchar(cof.names)))
+cof.names.d <- grep("Domain", cof.names)
+cof.names.s <- grep("sig.", cof.names)
+cof.names.na <- which(is.na(cof.names.nums))
+cof.names.sorted <- c(rbind(cof.names.d, cof.names.s)) # This is a little matrix-reading trick to select alternating vector values.
+comp.out.full <- comp.out.full[, c(cof.names.na, cof.names.sorted)]
+write_csv(comp.out.full, paste0(RESULTS.OTHER, "Permutation_results.csv"))
+
+
+  
+comp.out.vals <- unlist(as.vector(comp.out[, -1]))
+comp.out.vals2 <- comp.out.vals[is.na(comp.out.vals) == FALSE]
+
+hist(comp.out.vals2, breaks = 20)
+table(comp.out.vals2)
+
+sig.dist.vec.growth <- unlist(as.vector(sig.dist.comp[, 2:4]))
+growth.comp <- which(sig.dist.vec.growth != 0 & is.na(sig.dist.vec.growth) == FALSE)
+sig.dist.vec.growth <- sig.dist.vec.growth[is.na(sig.dist.vec.growth) == FALSE & sig.dist.vec.growth !=0]
+comp.out.growth <- comp.out.vals[growth.comp]
+
+plot(comp.out.growth, abs(sig.dist.vec.growth))
+
+
+sig.dist.vec.mort <- unlist(as.vector(sig.dist.comp[, 5:7]))
+mort.comp <- which(sig.dist.vec.mort != 0 & is.na(sig.dist.vec.mort) == FALSE)
+sig.dist.vec.mort <- sig.dist.vec.mort[is.na(sig.dist.vec.mort) == FALSE & sig.dist.vec.mort !=0]
+comp.out.mort <- comp.out.vals[mort.comp + sto.rows * 3]
+
+plot(comp.out.mort, abs(sig.dist.vec.mort))
+
+
 
 
 #tic()

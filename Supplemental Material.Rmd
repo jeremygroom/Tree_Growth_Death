@@ -45,6 +45,7 @@ set_flextable_defaults(
 ```{r load_data}
 
 source('Global.R')
+source(paste0(CODE.LOC, "Functions.R"))
 # Some general analysis info + plots
 analysis.stats <- read_rds(paste0(RESULTS.OTHER, "analysis.stats.RDS"))
 
@@ -62,7 +63,7 @@ init.ft <- flextable(cwd.init) %>%
   fontsize(size = 11, part = "header") %>%
   italic(j = 1, part = "body") %>%
   line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
-    set_table_properties(layout = "autofit", width = 0) %>%
+  set_table_properties(layout = "autofit", width = 0) %>%
   border_remove() %>%
   hline_top(part = "all") %>%
   hline_bottom(part = "all") 
@@ -72,12 +73,25 @@ diff.ft <- flextable(cwd.diff) %>%
   fontsize(size = 11, part = "header") %>%
   italic(j = 1, part = "body") %>%
   line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
-    set_table_properties(layout = "autofit", width = 0) %>%
+  set_table_properties(layout = "autofit", width = 0) %>%
   border_remove() %>%
   hline_top(part = "all") %>%
   hline_bottom(part = "all") 
 
 ```
+
+```{r domain_pvals}
+
+psig.dat2 <- analysis.stats$psig.dat2
+psig.g <- psig.dat2[, 1:7]
+psig.m <- psig.dat2[, c(1, 8:13)]
+
+psig.ft.g <- psig.ft.fcn(psig.g)
+psig.ft.m <- psig.ft.fcn(psig.m)
+
+
+```
+
 
 
 ```{r table-legends}
@@ -88,10 +102,17 @@ t.ref <- function(x)  {
 }
 
 tbl_cwd_init <- tab_nums(name = "tbl_cwdinit", 
-                        caption = "Summary statistics for initial-visit plot CWD values by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
+                         caption = "Summary statistics for initial-visit plot CWD values by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
 
 tbl_cwd_diff <- tab_nums(name = "tbl_cwddiff", 
-                        caption = "Summary statistics for the difference in plot CWD values between visits by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
+                         caption = "Summary statistics for the difference in plot CWD values between visits by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
+
+tbl_psig_growth <- tab_nums(name = "tbl_psiggrowth", 
+                            caption = "Monte Carlo permutation p-values for tree species growth domains. Values correspond to Manuscript Figure 3 values.  Values of zero represented no permutation results with confidence intervals equal to or greater than those observed in the data.")
+
+tbl_psig_mort <- tab_nums(name = "tbl_psigmort", 
+                            caption = "Monte Carlo permutation p-values for tree species mortality domains. Values correspond to Manuscript Figure 4 values. Values of zero represented no permutation results with confidence intervals equal to or greater than those observed in the data.")
+
 
 ```
 
@@ -116,6 +137,23 @@ diff.ft
 
 ```
 
+
+\newpage
+
+```{r table-psig-growth, tab.cap=tbl_psig_growth}
+
+psig.ft.g
+
+
+```
+
+\newpage
+
+```{r table-psig-mortality, tab.cap=tbl_psig_mort}
+
+psig.ft.m
+
+
+```
+
 <!---BLOCK_LANDSCAPE_STOP--->
-
-

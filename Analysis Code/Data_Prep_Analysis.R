@@ -352,31 +352,76 @@ if(RUN.SUMMARY == TRUE) {
 # Plotting the multi-species panels
 
 if(n_domain == 6) {
-  for(k in 1:2){ # 1 = growth, 2 = mortality
+  plt.dat <- readRDS(paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
+  psig.dat <- read_csv(paste0(RESULTS.OTHER, "Permutation_results.csv"), show_col_types = FALSE)
+
+    for(k in 1:2){ # 1 = growth, 2 = mortality
+      font_to_use <- if("Times New Roman" %in% systemfonts::system_fonts()$family) {
+      "Times New Roman"
+    } else if("Times" %in% systemfonts::system_fonts()$family) {
+      "Times"
+    } else {
+      "serif"  # Fallback to default serif
+    }
     
-    plt.dat <- readRDS(paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
     
-    AvB2 <- cm2.fcn(k, results.table = plt.dat$AvB2)
-    A_LMH2 <- cm2.fcn(k, results.table = plt.dat$A_LMH2)
-    B_LMH2 <- cm2.fcn(k, results.table = plt.dat$B_LMH2)
+    psig.join.fcn <- function(k, position) {
+      pos.adj <- 3*(k-1) + position
+      psig.cols <- grep(pos.adj, colnames(psig.dat))
+      psig.spp <- grep("Species", colnames(psig.dat))
+      join.table <- psig.dat[, c(psig.spp, psig.cols)] 
+      names(join.table) <- c("Species", "Domain", "sig.dist")
+      join.table <- join.table %>% mutate(
+        symb = case_when(
+          is.na(sig.dist) == TRUE ~ "",
+          sig.dist > 0.05 ~ "--",
+          sig.dist > 0.01 & sig.dist <= 0.05 ~ "*",
+          sig.dist > 0.001 & sig.dist <= 0.01 ~ "**",
+          sig.dist > 0 & sig.dist <= 0.001 ~ "***",
+          sig.dist == 0 ~ "****",
+          .default = "XX"
+        ),
+        yadj = ifelse(symb == "--", 0.075, -0.11)
+      )
+      return(join.table)
+    }
+    
+    AvB2 <- cm2.fcn(k, results.table = plt.dat$AvB2) %>% left_join(psig.join.fcn(k, position = 1), by = c("Species", "Domain"))
+    A_LMH2 <- cm2.fcn(k, results.table = plt.dat$A_LMH2) %>% left_join(psig.join.fcn(k, position = 2), by = c("Species", "Domain"))
+    B_LMH2 <- cm2.fcn(k, results.table = plt.dat$B_LMH2) %>% left_join(psig.join.fcn(k, position = 3), by = c("Species", "Domain"))
     
     
     xlab.use <- switch(k, "1" = "Difference in Domain Growth Rates (cm\u00B2/decade)", "2" = "Difference in Domain Decadal Mortality Rate")  #  "Annual Growth Rate (in2/yr)"
     filename.use <- switch(k, "1" = "Growth_", "2" = "Mort_")
     
-    p1 <- diff.panel.fcn(AvB2, remove.y = FALSE, fig.title = "Above vs. Below Threshold", lab.right = FALSE)
-    p2 <- diff.panel.fcn(A_LMH2, remove.y = TRUE, fig.title = "Above Threshold, High/Med/Low", lab.right = FALSE)
-    p3 <- diff.panel.fcn(B_LMH2, remove.y = TRUE, fig.title = "Below Threshold, High/Med/Low", lab.right = TRUE)
+    legend.side <- switch(k, "1" = c(TRUE, TRUE, FALSE),
+           "2" = c(FALSE, FALSE, TRUE))
     
-    grand.x.lab <- ggdraw() + draw_label(xlab.use, x = 0.6, y = 0.5, size = 13) + theme_bw() + theme(rect = element_blank())
     
-    diff.plt <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(0.9, 0.5, 0.5)) 
+    p1 <- diff.panel.fcn(AvB2, remove.y = FALSE, fig.title = "Above vs. Below Threshold", lab.right = legend.side[1])
+    p2 <- diff.panel.fcn(A_LMH2, remove.y = TRUE, fig.title = "Above Threshold, High/Med/Low", lab.right = legend.side[2])
+    p3 <- diff.panel.fcn(B_LMH2, remove.y = TRUE, fig.title = "Below Threshold, High/Med/Low", lab.right = legend.side[3])
     
-    diff.plt2 <- plot_grid(diff.plt, grand.x.lab, 
-                           ncol = 1, 
-                           rel_heights = c(1, 0.03)) 
+    grand.x.lab <- ggdraw() + draw_label(xlab.use, x = 0.6, y = 0.5, size = 13, fontfamily = "Times New Roman") + theme_bw() + 
+      theme(rect = element_blank())
     
-    ggsave(paste0(save.loc.fcn(k), filename.use, "Panel_Plot.png"), plot = diff.plt2, device = "png", width = 10, height = 10, units = 'in')
+    
+    diff.plt <- p1 + p2 + p3 + 
+      plot_layout(ncol = 3, widths = c(1, 1, 1)) +
+      plot_annotation(
+        caption = xlab.use,
+        theme = theme(plot.caption = element_text(size = 13, hjust = 0.7, family = font_to_use))
+      )
+    
+    
+  #  diff.plt <- plot_grid(p1, p2, p3, ncol = 3, rel_widths = c(0.9, 0.5, 0.5)) 
+  #  
+  #  diff.plt2 <- plot_grid(diff.plt, grand.x.lab, 
+  #                         ncol = 1, 
+  #                         rel_heights = c(1, 0.03)) 
+    
+    ggsave(paste0(save.loc.fcn(k), filename.use, "Panel_Plot.png"), plot = diff.plt, device = ragg::agg_png, 
+           width = 10, height = 10, units = 'in', res = 300)
   }
 }
 

@@ -53,6 +53,18 @@ diff.cwd.90range.min <- diff.range[which(diff.range == min(diff.range))]
 diff.cwd.90range.max <- diff.range[which(diff.range == max(diff.range))]
 diff.cwd.95max <- which(diff.cwd.stats$q95 == max(diff.cwd.stats$q95))
 
+# For supplemental, MC permutation p-values
+psig.dat <- read_csv(paste0(RESULTS.OTHER, "Permutation_results.csv"), show_col_types = FALSE)
+psig.dat2 <- psig.dat %>% dplyr::select(-order.c) %>%
+  left_join(gym.angio.dat %>% dplyr::select(SpeciesCode, sci_name, SFTWD_HRDWD), by = c("Species" = "SpeciesCode")) %>%
+  arrange(desc(SFTWD_HRDWD), sci_name) %>%
+  dplyr::select(-SFTWD_HRDWD, -Species) %>%
+  relocate(sci_name)
+
+num.cols <- grep("sig.dist", names(psig.dat2) )
+
+psig.dat2[, num.cols] <- apply(psig.dat2[, num.cols], 2, as.character)
+psig.dat2[is.na(psig.dat2)] <- ""
 
 analysis.stats <- list(tree.num = tree.num,
                        plot.num = plot.num,
@@ -64,6 +76,7 @@ analysis.stats <- list(tree.num = tree.num,
                        n.gym.spp = n.gym.spp,
                        init.cwd.stats = init.cwd.stats,
                        diff.cwd.stats = diff.cwd.stats,
+                       psig.dat2 = psig.dat2,
                        init.cwd.min.mean = init.cwd.min.mean, 
                        init.cwd.max.mean = init.cwd.max.mean, 
                        init.cwd.90range.min = init.cwd.90range.min,

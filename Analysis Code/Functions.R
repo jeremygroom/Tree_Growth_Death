@@ -782,6 +782,20 @@ sig.n.fcn <- function(t.contrast) {
 }
 
 
+# For the output: Sum of the permuation runs with significant findings exceeding the 
+# observed number of significant findings.
+nsig.comp.fcn <- function(sig.num, col.id, dat.nsig){
+  dat.nsig[, col.id] <- ifelse(dat.nsig[, col.id] >= sig.num, 1, 0)
+  return(sum(dat.nsig[, col.id]))
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -801,8 +815,19 @@ cm2.fcn <- function(k, results.table){
 
 
 ## This plot provides the 
-diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
+diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right, ft_to_use = font_to_use) {
   
+  # Position for astrices 
+  diff.dat <- diff.dat %>% mutate(
+    lab.x = case_when(
+      k == 1 & LCI.95 > 0 ~ -100,
+      k == 1 & LCI.95 < 0 ~ 100,
+      k == 2 & LCI.95 > 0 ~ -0.25,
+      k == 2 & LCI.95 < 0 ~ 0.25
+    )
+  )
+  
+
   # Kludgy way to get a conifer/deciduous break.  X312 = bigleaf maple.
   decid.break <- length(SEL.SPP) - which(SEL.SPP == "X312") + 1.5
   
@@ -817,36 +842,32 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right) {
                    fill = ifelse(significant, "black", "white"),
                    color = Domain),
                size = 2, shape = 21, stroke = 0.8) +
+    geom_text(aes(x = lab.x, 
+                  y = as.numeric(species_label) + y.offset + yadj,
+                  label = symb), size = 6) + 
     geom_hline(yintercept = decid.break, linetype = 2) +
     #scale_y_continuous(breaks = 1:length(levels(DvS2$species_label)),
     #                    labels = levels(DvS2$species_label)) +
     scale_y_continuous(breaks = 1:length(levels(diff.dat$species_label)),
                        labels = levels(diff.dat$species_label)) +
-    scale_color_viridis(discrete = TRUE, name = "Domain", option = "B", begin = 0.2, end = 0.6) +
+    scale_color_viridis(discrete = TRUE, name = NULL, option = "B", begin = 0.2, end = 0.6) +
     scale_fill_identity() + 
     labs(x = NULL, y = NULL, title = fig.title) +
     theme_bw() + 
-    theme(axis.text.y = element_text(size = 10, face = "italic"),
+    theme(text = element_text(family = ft_to_use),
+          axis.text.y = element_text(size = 12, face = "italic"),
           legend.position = "inside",
-          legend.position.inside = c(if(lab.right) 0.8 else 0.2, 0.95),
+          legend.position.inside = c(if(lab.right) 0.81 else 0.19, 0.96),
           legend.background = element_rect(fill = "white", color = "gray80"),
           legend.title = element_text(size = 9),
           legend.text = element_text(size = 8),
           title = element_text(size = 10),
-          legend.key.size = unit(0.4, "cm"))  + 
+          legend.key.size = unit(0.4, "cm")
+          )  + 
     {if(remove.y) {
       theme(axis.text.y = element_blank())
     }}
 }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1204,6 +1225,7 @@ summ.fig.fcn <- function(dataset, datatype, n.comp) {
 }
 
 
+##### Supplemental Materials functions -----------------------------------------
 
 ### Function for preparing supplementary tables of CWD max/min/quantiles.
 ###  Used in Manuscript_information.R
@@ -1238,3 +1260,30 @@ summ.spp.fcn <- function(data.all, var.select, spp.names.use) {
 }
 
 
+psig.ft.fcn <- function(psig.table){
+  psig.table2 <- psig.table
+  names(psig.table2) <- c("Species", "Dom1", "p1", "Dom2", "p2", "Dom3", "p3")
+  
+  flextable(psig.table2) %>%
+  set_header_labels(
+#    sci_name = "Species",
+    Dom1 = "Domain",
+    p1 = "p-value",
+    Dom2 = "Domain",
+    p2 = "p-value",
+    Dom3 = "Domain",
+    p3 = "p-value"
+  ) %>%
+  add_header_row(
+    values = c("", "Above vs. Below", "Above Threshold, High/Med/Low", "Below Threshold, High/Med/Low"),
+    colwidths = c(1, 2, 2, 2)
+  ) %>%
+  italic(j = 1, part = "body") %>%
+  fontsize(size = 10, part = "body") %>%
+  fontsize(size = 11, part = "header") %>%
+  line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>%
+  set_table_properties(layout = "autofit", width = 0) %>%
+  border_remove() %>%
+  hline_top(part = "all") %>%
+  hline_bottom(part = "all")  
+}

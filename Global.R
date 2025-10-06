@@ -11,13 +11,21 @@ library(tidyverse)
 library(here)         # File path management
 library(furrr)
 library(parallel)
+library(extrafont)
 # Generation of maps
 library(sf)
 library(ggspatial)
 library(maps)
 
 
-
+#library(extrafont)
+#font_import()
+#loadfonts(device = "win")
+#loadfonts(device = "postscript")
+#library(Cairo)
+#cairo_ps("test.eps", family = "Times")
+library(ragg) # Related to fonts
+library(systemfonts)
 ##### ---- Constants ---- #####
 
 # Code controls:

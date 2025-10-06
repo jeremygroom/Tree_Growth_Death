@@ -302,9 +302,9 @@ The numerator of species-specific growth estimates is the sum of stratum-weighte
 
 The analysis finds species growth and mortality estimates for six domains based on CWD values (Figure 2C).   The initial CWD values are divided into three quantiles: values below the first quartile (Low), between the first and third quartiles (Medium), and above the third quartile (High).  These initial CWD value divisions allowed for species-specific assessments.  For all species we defined an arbitrary boundary of 5 mm to define plots with a greater change in CWD (Above [the boundary]) and those with less CWD change (Below).  This was done because species did not differ greatly in CWD change (Table S2).  The category Below includes CWD changes that are negative (i.e., mean CWD was larger prior to the initial visit than between visits).  We also report species mortality and growth estimates for all plots across and within Oregon, Washington, and California irrespective of CWD values.  We limited the number of species examined to those with more than 400 plots.  We report domain estimates for all CWD-based domains with 10 or more plots.    
 
-We obtained empirical means and 95% confidence intervals via bootstrap. For every species we sampled plots with replacement and obtained point estimates.  For each domain we calculated a mean and upper and lower 95% CIs with the 2.5% and 97.5% quantiles from 1000 sampling iterations.  This approach allows for nonsymmetrical CIs around a mean and prevents CIs from including negative values.  We estimated differences between pairs of CWD domains by subtracting within-iteration domain point estimates.    
+We obtained empirical means and 95% confidence intervals via bootstrap. For every species we sampled plots with replacement and obtained point estimates.  For each domain we calculated a mean and upper and lower 95% CIs with the 2.5% and 97.5% quantiles from 1000 sampling iterations.  This approach allows for nonsymmetrical CIs around a mean and prevents CIs from including negative values.  We estimated contrasts between pairs of CWD domains by subtracting within-iteration domain point estimates.    
 
-We 
+Our analysis approach results in many comparisons.  We conducted a Monte Carlo (MC) permutation analysis to provide species-level false positive rates. The MC permutation analysis had 1000 iterations; for each iteration the bootstrap sampling was conducted 1000 times.  The domain assignments for each species was sampled without replacement.  The distance of contrast CI bounds from zero were compared against test CI bounds: The permutation recorded a null significant value if the absolute values of the permutation iteration CI bounds were at least as far from zero as observed bounds were.  The false detection rate for a  
 
 [permutation analysis]
 
@@ -453,7 +453,7 @@ knitr::include_graphics(paste0(RESULTS.OTHER, "Example_spp_figure.png"))
 ```
 
 
-```{r diff_grow_fig, fig.height = 6, width = 6, fig.dpi=300, fig.cap=fig.diff_grow, fig.cap.sep=""}
+```{r diff_grow_fig, fig.height = 6.5, width = 6.5, fig.dpi=300, fig.cap=fig.diff_grow, fig.cap.sep=""}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS1.LOC, "/Growth_figs_cwd/Growth_Panel_Plot.png"))
@@ -461,7 +461,7 @@ knitr::include_graphics(paste0(RESULTS1.LOC, "/Growth_figs_cwd/Growth_Panel_Plot
 ```
 
 
-```{r diff_mort_fig, fig.height = 6, width = 6, fig.dpi=300, fig.cap=fig.diff_mort, fig.cap.sep=""}
+```{r diff_mort_fig, fig.height = 6.5, width = 6.5, fig.dpi=300, fig.cap=fig.diff_mort, fig.cap.sep=""}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS1.LOC, "/Mort_figs_cwd/Mort_Panel_Plot.png"))
