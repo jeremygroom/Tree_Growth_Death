@@ -48,6 +48,8 @@ source('Global.R')
 source(paste0(CODE.LOC, "Functions.R"))
 # Some general analysis info + plots
 analysis.stats <- read_rds(paste0(RESULTS.OTHER, "analysis.stats.RDS"))
+# Correlation/fits for Initial CWD vs Delta CWD:
+CWD.rels <- read_rds(paste0(RESULTS.OTHER, "CWD_deltaCWD_relationship.rds"))
 
 
 
@@ -55,6 +57,8 @@ analysis.stats <- read_rds(paste0(RESULTS.OTHER, "analysis.stats.RDS"))
 
 
 ```{r cwd_summary_tables}
+ft.lm1 <- CWD.rels$ft_lm1
+
 cwd.init <- analysis.stats$init.cwd.stats 
 cwd.diff <- analysis.stats$diff.cwd.stats
 
@@ -94,12 +98,27 @@ psig.ft.m <- psig.ft.fcn(psig.m)
 
 
 
-```{r table-legends}
+```{r legends}
+fig_nums <- captioner::captioner(prefix = " S")
 tab_nums <- captioner::captioner(prefix = "Table S")
+
+f.ref <- function(x) {
+ caption_text <- fig_nums(x)
+  # Remove any leading numbers and extract just "Figure X"
+  stringr::str_extract(caption_text, "\\d+")
+}
 
 t.ref <- function(x)  {
   stringr::str_extract(tab_nums(x), "[^:]*")
 }
+
+
+tbl_cwd_lm1 <- tab_nums(name = "tbl_cwdlm1", 
+                         caption = "Linear regression model output for the linear fit of initial and delta CWD plot data (green line in Figure S1). Variable name CWD refers to initial CWD value.")
+
+
+tbl_cwd_lm2 <- tab_nums(name = "tbl_cwdlm2", 
+                         caption = "Linear regression model output for the third-order polynomial fit of initial and delta CWD plot data (orange line in Figure S1). Variable name CWD refers to initial CWD value.")
 
 tbl_cwd_init <- tab_nums(name = "tbl_cwdinit", 
                          caption = "Summary statistics for initial-visit plot CWD values by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
@@ -114,8 +133,69 @@ tbl_psig_mort <- tab_nums(name = "tbl_psigmort",
                             caption = "Monte Carlo permutation p-values for tree species mortality domains. Values correspond to Manuscript Figure 4 values. Values of zero represented no permutation results with confidence intervals equal to or greater than those observed in the data.")
 
 
+fig_cwd_all <- fig_nums(name = "fig_cwdall", 
+                        caption = "Initial CWD and Delta CWD values for all FIA plots occupied by analysis species. The green line is a linear fit of the values while the orange line is a third-order polynomial fit of the points.  ")
+
+fig_cwd_spp <- fig_nums(name = "fig_cwdspp", 
+                        caption = "Third-order polynomial fits for initial CWD and delta CWD values for FIA plots occupied by individual species.")
+
+
 ```
 
+<br>
+
+<br>
+
+```{r cwdfig-all, fig.width=6, fig.height=6,  fig.dpi=300, fig.cap=fig_cwd_all, fig.cap.sep=""}
+
+# Output from Nplot_Climvar_analysis.R
+knitr::include_graphics(paste0(RESULTS.OTHER, "CWD_deltaCWD.png"))
+
+```
+
+\newpage
+
+```{r table-cwd-lm1, tab.cap=tbl_cwd_lm1}
+
+# Output from Nplot_Climvar_analysis.R
+#ft.lm1.1 <- ft.lm1 %>%
+#  compose(i = 2, j = 1, value = as_paragraph("CWD"), part = "body")
+
+
+ft.lm1.1 <- ft.lm1 %>%
+     mk_par(i = 2, j = 1, value = as_paragraph("CWD"), part = "body")
+
+ft.lm1.1
+
+
+```
+
+<br>
+
+<br> 
+
+```{r table-cwd-lm2, tab.cap=tbl_cwd_lm2}
+
+# Output from Nplot_Climvar_analysis.R
+ft.lm2 <- CWD.rels$ft_lm2 %>%
+ set_formatter(
+      values = function(y) formatC(y, format = "e", digits = 2),
+      part = "body"
+    ) %>%
+  mk_par(i = 2:4, j = 1, value = c(as_paragraph("CWD"), as_paragraph("CWD^2"), as_paragraph("CWD^3")), part = "body")
+
+ft.lm2
+
+```
+
+\newpage
+
+```{r cwdfig-spp, fig.width = 6, fig.height= 6,  fig.dpi=300, fig.cap=fig_cwd_spp, fig.cap.sep=""}
+
+# Output from Nplot_Climvar_analysis.R
+knitr::include_graphics(paste0(RESULTS.OTHER, "CWD_spp_plt.png"))
+
+```
 
 
 \newpage

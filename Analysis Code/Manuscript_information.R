@@ -86,7 +86,7 @@ analysis.stats <- list(tree.num = tree.num,
                        diff.cwd.90range.min = diff.cwd.90range.min,
                        diff.cwd.90range.max = diff.cwd.90range.max,
                        diff.cwd.95max = diff.cwd.95max
-                       ) 
+) 
 
 write_rds(analysis.stats, paste0(RESULTS.OTHER, "analysis.stats.RDS"))
 
@@ -261,7 +261,6 @@ inset_map <- ggplot() +
 cwd.map.fcn <- function(var.use, title.txt, lab.use, add_extras = FALSE) {
   p <- ggplot() +
     # Add state boundaries
-    geom_sf(data = west_states_proj, fill = "transparent", color = "black", size = 0.8) +
     # Add climate data points
     geom_point(data = climate_proj_df, 
                aes(x = X, y = Y, color = get(var.use)), 
@@ -276,6 +275,7 @@ cwd.map.fcn <- function(var.use, title.txt, lab.use, add_extras = FALSE) {
                             frame.colour = "black",
                             ticks.colour = "black"
                           )) +
+    geom_sf(data = west_states_proj, fill = "transparent", color = "black", size = 0.8) +
     coord_sf(xlim = x_range, ylim = y_range, expand = FALSE) +
     theme_void() +
     theme(
@@ -368,7 +368,7 @@ cwd.maps <- plot_grid(
 cwd.maps <- ggdraw() +
   draw_plot(cwd.plt.startcwd, x = 0, y = 0, width = 0.5, height = 1) +
   draw_plot(cwd.plt.deltcwd, x = 0.5, y = 0, width = 0.5, height = 1) 
-  
+
 
 # Print the final figure
 print(cwd.maps)
@@ -379,7 +379,7 @@ ggsave(paste0(RESULTS.OTHER, "cwd_maps_figure.png"), cwd.maps, device = 'png',
        bg = "white")
 
 ms.figures.other <- list(cwd.maps = cwd.maps)
-  
+
 write_rds(ms.figures.other, paste0(RESULTS.OTHER, "ms.figures.other.RDS"))
 
 

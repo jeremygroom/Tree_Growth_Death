@@ -356,14 +356,6 @@ if(n_domain == 6) {
   psig.dat <- read_csv(paste0(RESULTS.OTHER, "Permutation_results.csv"), show_col_types = FALSE)
 
     for(k in 1:2){ # 1 = growth, 2 = mortality
-      font_to_use <- if("Times New Roman" %in% systemfonts::system_fonts()$family) {
-      "Times New Roman"
-    } else if("Times" %in% systemfonts::system_fonts()$family) {
-      "Times"
-    } else {
-      "serif"  # Fallback to default serif
-    }
-    
     
     psig.join.fcn <- function(k, position) {
       pos.adj <- 3*(k-1) + position

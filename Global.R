@@ -115,6 +115,17 @@ spp.id <- names(orig)[(ncol(orig) - (length(grep("X", names(orig))) - 1)):ncol(o
 spp.names <- readxl::read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx")) %>% dplyr::filter(SPCD %in% spp.list)
 
 
+## Plotting
+font_to_use <- if("Times New Roman" %in% systemfonts::system_fonts()$family) {
+  "Times New Roman"
+} else if("Times" %in% systemfonts::system_fonts()$family) {
+  "Times"
+} else {
+  "serif"  # Fallback to default serif
+}
+
+
+
 ## Items for parallel computing
 #n.cores <- round(detectCores() * 0.75, 0) # Number of cores, package "parallel".  Using 75% of the available cores, rounded.
 n.cores <- N.WORKERS
