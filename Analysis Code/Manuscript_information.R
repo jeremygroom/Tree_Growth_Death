@@ -257,6 +257,28 @@ inset_map <- ggplot() +
   theme(panel.background = element_rect(fill = "lightblue", color = "black", linewidth = 0.5),
         plot.background = element_rect(fill = "white", color = "black", linewidth = 0.5))
 
+
+# Create a data frame with mountain range names and approximate coordinates
+mountain_ranges <- data.frame(
+  name = c("Cascade Range", "Sierra Nevada", "Coast Ranges", 
+           "Blue Mountains", "Klamath\nMountains"),
+  #lon = c(-121.5, -119.5, -123.5, -123.5, -118.5, -123.0),
+  lon = c(-122, -119.5, -123.8,  -118.5, -123.0),
+  lat = c(45.5, 37.5, 44.0, 45.2, 42)
+) %>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
+  st_transform(crs = 3310)  # Match your projection
+
+# Extract coordinates for plotting
+coords <- st_coordinates(mountain_ranges)
+mountain_ranges_df <- cbind(mountain_ranges, coords) %>%
+  st_drop_geometry() %>%
+  mutate(ang = c(82, -55, 82, 65, 0),
+         #colr = c("white", "black", "white", "white", "black", "black"))
+         colr = rep("black", 5))
+
+
+
 # Enhanced mapping function
 cwd.map.fcn <- function(var.use, title.txt, lab.use, add_extras = FALSE) {
   p <- ggplot() +
@@ -277,6 +299,10 @@ cwd.map.fcn <- function(var.use, title.txt, lab.use, add_extras = FALSE) {
                           )) +
     geom_sf(data = west_states_proj, fill = "transparent", color = "black", size = 0.8) +
     coord_sf(xlim = x_range, ylim = y_range, expand = FALSE) +
+    geom_text(data = mountain_ranges_df,
+              aes(x = X, y = Y, label = name, angle = ang),
+              size = 3, fontface = "bold.italic", color = mountain_ranges_df$colr,
+              check_overlap = TRUE) +
     theme_void() +
     theme(
       panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.8),

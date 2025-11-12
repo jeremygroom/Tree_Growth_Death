@@ -126,6 +126,28 @@ font_to_use <- if("Times New Roman" %in% systemfonts::system_fonts()$family) {
 
 
 
+# Shinyapp: Create a data frame with mountain range names and approximate coordinates
+mountain_ranges <- data.frame(
+  name = c("Cascade Range", "Sierra Nevada", "Coast Ranges", 
+           "Blue Mountains", "Klamath\nMountains"),
+  #lon = c(-121.5, -119.5, -123.5, -123.5, -118.5, -123.0),
+  lon = c(-122, -119.5, -123.8,  -118.5, -123.0),
+  lat = c(45.5, 37.5, 44.0, 45.2, 42)
+) %>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326) #%>%
+#st_transform(crs = 3310)  # Match your projection
+
+# Extract coordinates for plotting
+mtn_coords <- st_coordinates(mountain_ranges)
+mountain_ranges_df <- cbind(mountain_ranges, mtn_coords) %>%
+  st_drop_geometry() %>%
+  mutate(ang = c(82, -55, 82, 65, 0),
+         #colr = c("white", "black", "white", "white", "black", "black"))
+         colr = rep("black", 5))
+
+
+
+
 ## Items for parallel computing
 #n.cores <- round(detectCores() * 0.75, 0) # Number of cores, package "parallel".  Using 75% of the available cores, rounded.
 n.cores <- N.WORKERS
