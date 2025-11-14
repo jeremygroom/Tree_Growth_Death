@@ -985,7 +985,6 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use, poin
   
   
   ggplot() +# + data = map.dat.2, aes(x = LON, y = LAT)) +
-    #coord_fixed(xlim = c(minlong - 1, maxlong + 1),  ylim = c(minlat - 1, maxlat + 1), ratio = 1.3) +
     geom_sf(data = map.dat.2, aes(color = factor(targ.spp)), size = point.size) +
     #  geom_tile(data = map.dat.1, mapping = aes(x = LON, y = LAT, z = targ.spp), binwidth = 0.15, 
     #            stat = "summary_2d", fun = mean, na.rm = TRUE, show.legend = FALSE) + 
@@ -995,8 +994,10 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use, poin
     geom_polygon(data = west_df, mapping = aes(x = long, y = lat, group = group), color = "black", fill = "transparent") +
     geom_text(data = mountain_ranges_df,
               aes(x = X, y = Y, label = name, angle = ang),
-              size = 3, fontface = "bold.italic", color = mountain_ranges_df$colr,
+              size = 4, fontface = "bold.italic", color = mountain_ranges_df$colr,
               check_overlap = TRUE) +
+
+    coord_sf(xlim = c(minlong - 1, maxlong + 1),  ylim = c(minlat - 1, maxlat + 1)) +
     theme_void() +
     theme(panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.5),
           legend.position = "none")

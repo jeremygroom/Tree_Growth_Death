@@ -45,19 +45,21 @@ ui <- fluidPage(
   
   # Control panel at top
   fluidRow(
-    column(6,
-           selectInput("analysis_type", 
-                       "Analysis Type:",
-                       choices = list("Growth" = 1, "Mortality" = 2),
-                       selected = 1)
-    ),
-    column(6,
+    column(3,
            selectInput("species", 
                        "Select Species:",
                        choices = NULL,  # Will be populated in server
                        selected = NULL)
+           ),    
+    column(3,
+           selectInput("analysis_type", 
+                       "Analysis Type:",
+                       choices = list("Growth" = 1, "Mortality" = 2),
+                       selected = 1)
     )
   ),
+  
+
   
   # Main plot area
   fluidRow(
