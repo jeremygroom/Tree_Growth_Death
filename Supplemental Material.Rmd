@@ -48,6 +48,9 @@ source('Global.R')
 source(paste0(CODE.LOC, "Functions.R"))
 # Some general analysis info + plots
 analysis.stats <- read_rds(paste0(RESULTS.OTHER, "analysis.stats.RDS"))
+cwd.init <- analysis.stats$init.cwd.stats  
+cwd.diff <- analysis.stats$diff.cwd.stats
+
 # Correlation/fits for Initial CWD vs Delta CWD:
 CWD.rels <- read_rds(paste0(RESULTS.OTHER, "CWD_deltaCWD_relationship.rds"))
 
@@ -59,8 +62,10 @@ CWD.rels <- read_rds(paste0(RESULTS.OTHER, "CWD_deltaCWD_relationship.rds"))
 ```{r cwd_summary_tables}
 ft.lm1 <- CWD.rels$ft_lm1
 
-cwd.init <- analysis.stats$init.cwd.stats 
-cwd.diff <- analysis.stats$diff.cwd.stats
+cwd.init2 <- cwd.init %>% dplyr::select(-UCI, -LCI)
+cwd.diff2 <- cwd.diff %>% dplyr::select(-UCI, -LCI)
+
+
 
 init.ft <- flextable(cwd.init) %>%
   fontsize(size = 10, part = "body") %>%
@@ -98,6 +103,7 @@ psig.ft.m <- psig.ft.fcn(psig.m)
 
 
 
+
 ```{r legends}
 fig_nums <- captioner::captioner(prefix = " S")
 tab_nums <- captioner::captioner(prefix = "Table S")
@@ -132,6 +138,9 @@ tbl_psig_growth <- tab_nums(name = "tbl_psiggrowth",
 tbl_psig_mort <- tab_nums(name = "tbl_psigmort", 
                             caption = "Monte Carlo permutation p-values for tree species mortality domains. Values correspond to Manuscript Figure 4 values. Values of zero represented no permutation results with confidence intervals equal to or greater than those observed in the data.")
 
+fig.negcwdmap_cap <- fig_nums(name = "fig_cwdnegmap", 
+                        caption = "Fuzzed FIA plot locations for plots with negative CWD values.  The initial CWD values for those plots are displayed in A while the negative delta CWD values are displayed in B.  The inset map (B) shows the locations of the study states within the USA: From north to south, Washington, Oregon, and California.")
+
 
 fig_cwd_all <- fig_nums(name = "fig_cwdall", 
                         caption = "Initial CWD and Delta CWD values for all FIA plots occupied by analysis species. The green line is a linear fit of the values while the orange line is a third-order polynomial fit of the points.  ")
@@ -142,9 +151,16 @@ fig_cwd_spp <- fig_nums(name = "fig_cwdspp",
 
 ```
 
-<br>
 
-<br>
+
+```{r cwdfig-negcwdmap, fig.height = 7,  fig.dpi=300, fig.cap=fig.negcwdmap_cap, fig.cap.sep=""}
+
+# Output from Manuscript_information.R
+knitr::include_graphics(paste0(RESULTS.OTHER, "cwdneg_maps_figure.png"))
+
+```
+
+
 
 ```{r cwdfig-all, fig.width=6, fig.height=6,  fig.dpi=300, fig.cap=fig_cwd_all, fig.cap.sep=""}
 

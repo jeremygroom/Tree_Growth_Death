@@ -58,7 +58,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
       mutate(., var.quants = ifelse(!!sym(var1) > quant.lims[2], 1, ifelse(!!sym(var1) < quant.lims[1], -1, 0)),
              deltvar.quants = ifelse(!!sym(var.delt) > quant.lims.delta, 1, 0),
              vq = case_match(var.quants, -1 ~ "L", 0 ~ "M", 1 ~ "H"),
-             dvq = case_match(deltvar.quants, 0 ~ "B", 1 ~ "A"),
+             dvq = case_match(deltvar.quants, 0 ~ "S", 1 ~ "I"),
              var.deltvar = factor(paste0(dvq, vq), levels = DOMAIN.LEVELS))
     }}
   
@@ -153,7 +153,7 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
         mutate(., var.quants = ifelse(!!sym(var1) > quant.lims[2], 1, ifelse(!!sym(var1) < quant.lims[1], -1, 0)),
                deltvar.quants = ifelse(!!sym(var.delt) > quant.lims.delta, 1, 0),
                vq = case_match(var.quants, -1 ~ "L", 0 ~ "M", 1 ~ "H"),
-               dvq = case_match(deltvar.quants, 0 ~ "B", 1 ~ "A"),
+               dvq = case_match(deltvar.quants, 0 ~ "S", 1 ~ "I"),
                var.deltvar = factor(paste0(dvq, vq), levels = DOMAIN.LEVELS))
       } else {
         values$errorMessage <- "Error: Expecting 6 or 9 estimation domains. Check Global.R:DOMAIN.LEVELS and Functions.R:clim.mort.resp.fcn."
@@ -815,7 +815,7 @@ cm2.fcn <- function(k, results.table){
 
 
 ## This plot provides the 
-diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right, ft_to_use = font_to_use) {
+diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right, ft_to_use = font_to_use, plt.mcperm) {
   
   # Position for astrices 
   diff.dat <- diff.dat %>% mutate(
@@ -842,9 +842,9 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right, ft_to_use =
                    fill = ifelse(significant, "black", "white"),
                    color = Domain),
                size = 2, shape = 21, stroke = 0.8) +
-    geom_text(aes(x = lab.x, 
+    {if(plt.mcperm) {geom_text(aes(x = lab.x, 
                   y = as.numeric(species_label) + y.offset + yadj,
-                  label = symb), size = 6) + 
+                  label = symb), size = 6) }} + 
     geom_hline(yintercept = decid.break, linetype = 2) +
     #scale_y_continuous(breaks = 1:length(levels(DvS2$species_label)),
     #                    labels = levels(DvS2$species_label)) +
@@ -887,11 +887,11 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right, ft_to_use =
 ### Plot of domain estimates for Growth or Mortality ###
 ## Used in pair.plts.fcn below.
 domain.grid.plt.fcn <- function(domains, domain.index, use.dat2, qt.max, 
-                                q.g.p.labs, ylabs, text.size) {
+                                q.g.p.labs, ylabs, text.size, virid_use = virid.use) {
   g1 <- ggplot(data = use.dat2 %>% filter(Domain %in% domain.index), aes(factor(Domain), Means, fill = factor(Domain))) + 
     geom_col() + 
     geom_errorbar(aes(ymax = UCI.95, ymin = LCI.95), width = 0.1) + 
-    scale_fill_manual(values = virid.use[domain.index]) + 
+    scale_fill_manual(values = virid_use[domain.index]) + 
     scale_y_continuous(limits = c(0, qt.max)) +
     scale_x_discrete(labels = q.g.p.labs[domain.index]) +
     theme_bw() +
@@ -941,13 +941,20 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
     geom_vline(xintercept = quant.lims.plt[2], col = "darkorange", linewidth = 1) +
     geom_hline(yintercept = 0, col = "black") +
     theme_bw() + 
-    scale_color_manual(values = scatter.virid.use, name = "Domains", labels = DOMAIN.LEVELS[which(n.plots.used$n > 0)]) + 
+    scale_color_manual(values = scatter.virid.use, name = "Domains:", labels = DOMAIN.LEVELS[which(n.plots.used$n > 0)]) + 
     labs(title = fig.lab,
          x = var.label, y = var.delt.label) +
-    theme(text = element_text(size = text.size),
-          legend.position = "bottom") +
-    guides(color = guide_legend(nrow = 1))
-  
+    theme(
+      legend.position = "bottom",
+      legend.key.spacing.x = unit(20, "pt"),
+      #legend.box.margin = unit(, "pt"), 
+      #legend.key.spacing.y = unit(20, "pt"),
+      legend.text = element_text(margin = margin(l = 0), size = text.size + 3),
+      legend.title = element_text(margin = margin(r = 40), size = text.size + 3)) +
+        guides(color = guide_legend(nrow = 1),
+               title.hjust = 5,
+               title.position = "left",
+               label.position = "right")
   return(plot.vals.plt)
 }
 
@@ -961,7 +968,7 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
 
 ### -- Mapping elements -- ###
 
-domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use, point.size) {
+domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid_use, point.size) {
   
   map.dat.1 <- domain.matrix %>% 
     mutate(targ.spp = get(spp.num)) %>%
@@ -1017,7 +1024,7 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid.use, poin
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
 pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
-                          quant.lims, domain.n, k, SHINYAPP.IN.USE, SHINY.FONTSIZE, cm = TRUE){
+                          quant.lims, domain.n, k, SHINYAPP.IN.USE, SHINY_FONTSIZE, cm1 = TRUE){
   
   use.dat2 <- use.dat %>% filter(Species == sppnum.to.plot)
   
@@ -1035,15 +1042,15 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   # Create a grid of plots to match bivariate plot
   q.g.p.labs <- paste0(DOMAIN.LEVELS, ", n = ", as.numeric(use.dat2$n.plts)) # Labels for the domain grid plot
   
-  ylabs <- if (k == 1 & cm == FALSE) {
+  ylabs <- if (k == 1 & cm1 == FALSE) {
     "Mean Decadal Growth (inches^2)"
-  } else if (k == 1 & cm == TRUE) {
+  } else if (k == 1 & cm1 == TRUE) {
     "Mean Decadal Growth (cm^2)"
   } else {
     "Mean Decadal Mortality Rate"
   }
   
-  text_size <- if(SHINYAPP.IN.USE == TRUE) SHINY.FONTSIZE else 7
+  text_size <- if(SHINYAPP.IN.USE == TRUE) SHINY_FONTSIZE else 7
   point_size <- if(SHINYAPP.IN.USE == TRUE) 1 else 0.5
   
   # These will be arranged in a plot below
@@ -1053,8 +1060,8 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
     p3 <- domain.grid.plt.fcn(c("LiLc", "MiLc", "HiLc"), 7:9, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size)
     p_all <- plot_grid(p1, p2, p3, ncol = 1)
   } else if(n_domain == 6) {
-    p1 <- domain.grid.plt.fcn(c("AL", "AM", "AH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size)
-    p2 <- domain.grid.plt.fcn(c("BL", "BM", "BH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size)
+    p1 <- domain.grid.plt.fcn(c("IL", "IM", "IH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size)
+    p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs, text.size = text_size)
     p_all <- plot_grid(p1, p2, ncol = 1)
   }
   
@@ -1072,7 +1079,7 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   
   
   # Plotting the map of plot locations:
-  domain.map <- domain.map.fcn(domain.matrix, spp.num = sppnum.to.plot, n.plots.used = n_plots2, virid.use = virid.use, point.size = point_size)
+  domain.map <- domain.map.fcn(domain.matrix, spp.num = sppnum.to.plot, n.plots.used = n_plots2, virid_use = virid.use, point.size = point_size)
   
   
   if(SHINYAPP.IN.USE == TRUE) {
@@ -1259,7 +1266,9 @@ summ.spp.fcn <- function(data.all, var.select, spp.names.use) {
       Median = median(get(var.select)),
       q75 = quantile(get(var.select), 0.75),
       q95 = quantile(get(var.select), 0.95),
-      Maximum = max(get(var.select))
+      Maximum = max(get(var.select)),
+      UCI = Mean + 1.96*sqrt(var(get(var.select))/n),
+      LCI = Mean - 1.96*sqrt(var(get(var.select))/n)
     ) %>%
     left_join(spp.names.use %>% dplyr::select(SPCD, sci_name), by = c("spp" = "SPCD")) %>%
     relocate(sci_name) %>%
@@ -1286,7 +1295,7 @@ psig.ft.fcn <- function(psig.table){
     p3 = "p-value"
   ) %>%
   add_header_row(
-    values = c("", "Above vs. Below", "Above Threshold, High/Med/Low", "Below Threshold, High/Med/Low"),
+    values = c("", "Increasing vs. Stable", "Increasing, High/Med/Low", "Stable, High/Med/Low"),
     colwidths = c(1, 2, 2, 2)
   ) %>%
   italic(j = 1, part = "body") %>%

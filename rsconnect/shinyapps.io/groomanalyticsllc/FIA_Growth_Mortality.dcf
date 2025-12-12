@@ -5,9 +5,9 @@ account: groomanalyticsllc
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 15427357
-bundleId: 11029450
+bundleId: 11276515
 url: https://groomanalyticsllc.shinyapps.io/FIA_Growth_Mortality/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: Manuscript.docx|Manuscript.qmd|Manuscript.Rmd|Manuscript_files/figure-docx/mapfig-1.png|README.md|Species_Fig.csv|Supplemental-Material.docx|Supplemental Material.Rmd|template_use2.docx|test.eps
+ignoredFiles: Manuscript.docx|Manuscript.qmd|Manuscript.Rmd|Manuscript_files/figure-docx/mapfig-1.png|README.md|Species_Fig.csv|Supplemental-Material.docx|Supplemental Material.Rmd|template_use2.docx

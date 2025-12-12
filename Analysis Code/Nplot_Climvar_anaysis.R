@@ -97,6 +97,41 @@ ggplot(map.dat.1, aes(ELEV, difference)) +
   theme_bw()
 
 
+# Examining elevation and delta CWD, highlighting negative plots
+map.dat.2 <- map.dat.1 %>% 
+  mutate(neg.delt.cwd = ifelse(difference < 0, 1, 0)) %>%
+#  separate_wider_regex(var = puid, c(var1 = ".*", "_", var2 = ".*", "_", var3 = ".*"))
+  separate_wider_delim(cols = puid, delim = "_", names = c("var1", "state", "var3"), too_many = "merge") %>%
+  dplyr::select(-var1, -var3)
+
+  # All plots, negative CWD = black points.
+ggplot(map.dat.2, aes(pre_mean, ELEV, color = state)) + geom_point(alpha = 0.15) +
+  geom_point(data = map.dat.2 %>% filter(neg.delt.cwd == 1, pre_mean < 250), aes(pre_mean, ELEV)) +
+  theme_bw() + 
+  labs(x = "Initial CWD", y = "Elevation (m)") + 
+  theme(text = element_text(family = font_to_use))
+
+  # Only negative CWD plots, Initial CWD x Elevation, color = negative delta CWD value
+ggplot(data = map.dat.2 %>% filter(neg.delt.cwd == 1, pre_mean < 250), aes(pre_mean, ELEV, color = difference)) + geom_point(alpha = 0.5) +
+  theme_bw() +
+  scale_color_viridis(discrete = FALSE, option = "H", name = "Delta\nCWD", begin = 0.1, end = 0.9) +
+  labs(x = "Initial CWD", y = "Elevation (m)") + 
+  theme(text = element_text(family = font_to_use))
+
+ # Only negative CWD plots, Delta CWD x Elevation.  Seeing if any relationship exists here.  
+ggplot(data = map.dat.2 %>% filter(neg.delt.cwd == 1), aes(ELEV, difference, color = state)) + geom_point(alpha = 0.5) + geom_smooth() +
+  theme_bw() + 
+  labs(y = "Delta CWD", x = "Elevation (m)") + 
+  theme(text = element_text(family = font_to_use))
+
+  # Only negative CWD plots, Initial CWD vs. Delta CWD, no elevation.  Just checking.
+ggplot(data = map.dat.2 %>% filter(neg.delt.cwd == 1, pre_mean < 250), aes(pre_mean, difference, color = state)) + geom_point(alpha = 0.5) + geom_smooth() +
+  theme_bw() + 
+  labs(y = "Delta CWD", x = "Initial CWD") + 
+  theme(text = element_text(family = font_to_use))
+
+# I really don't see any relationship between negative delta CWD and elevation
+
 
 
 ### --- Number of plots per INVYR per spp

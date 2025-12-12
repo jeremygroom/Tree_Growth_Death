@@ -54,7 +54,11 @@ diff.cwd.90range.max <- diff.range[which(diff.range == max(diff.range))]
 diff.cwd.95max <- which(diff.cwd.stats$q95 == max(diff.cwd.stats$q95))
 
 # For supplemental, MC permutation p-values
-psig.dat <- read_csv(paste0(RESULTS.OTHER, "Permutation_results.csv"), show_col_types = FALSE)
+psig.dat <- read_csv(paste0(RESULTS.OTHER, "Permutation_results.csv"), show_col_types = FALSE) %>%
+  ## Changing domain designations from A/B to I/S ##
+  mutate(across(everything(), ~str_replace_all(., "A", "I")),
+         mutate(across(everything(), ~str_replace_all(., "B", "S"))))
+
 psig.dat2 <- psig.dat %>% dplyr::select(-order.c) %>%
   left_join(gym.angio.dat %>% dplyr::select(SpeciesCode, sci_name, SFTWD_HRDWD), by = c("Species" = "SpeciesCode")) %>%
   arrange(desc(SFTWD_HRDWD), sci_name) %>%
@@ -89,6 +93,37 @@ analysis.stats <- list(tree.num = tree.num,
 ) 
 
 write_rds(analysis.stats, paste0(RESULTS.OTHER, "analysis.stats.RDS"))
+
+
+##### Figure: Mean initial/delta CWD by species (scatterplo) -----------------------
+cwd.init.ci <- init.cwd.stats %>% dplyr::select(Species, Mean, UCI, LCI) %>% rename("Mean_Init" = Mean, "UCI_Init" = UCI, "LCI_Init" = LCI)
+cwd.diff.ci <- diff.cwd.stats %>% dplyr::select(Species, Mean, UCI, LCI) %>% rename("Mean_Diff" = Mean, "UCI_Diff" = UCI, "LCI_Diff" = LCI)
+cwd.ci <- left_join(cwd.init.ci, cwd.diff.ci, by = "Species")
+
+# CI bars don't add much. Sticking with points
+cwd.ci.plt <- ggplot(cwd.ci, aes(Mean_Init, Mean_Diff, group = Species, label = Species)) + 
+  #geom_errorbar(aes(ymin = LCI_Diff, ymax = UCI_Diff)) +  
+  #geom_errorbar(aes(xmin = LCI_Init, xmax = UCI_Init)) +
+  geom_point() + 
+  geom_text_repel(
+    family = font_to_use,
+    max.overlaps = 12,
+    point.padding = 0.2,
+    nudge_x = 1,
+    box.padding = 0.5,
+    nudge_y = 0.05,
+    # segment.curvature = -1e-10,
+    #segment.ncp = 3,
+    segment.angle = 20) +
+  theme_bw() + 
+  labs(x = "Initial Climatic Water Deficit", y = "Change in Climatic Water Deficit") +
+  ylim(2, 7) +
+  xlim(25, 175) +
+  theme(text = element_text(family = font_to_use))#+
+#geom_hline(yintercept = 0)
+
+ggsave(paste0(RESULTS.OTHER, "Spp_InitDeltCWD.png"), cwd.ci.plt, device = 'png',
+       width = 7, height = 6, dpi = 300, units = "in", bg = "white")
 
 
 
@@ -137,13 +172,19 @@ for(k in 1:2){
   ylabs <- if (k == 1) "Mean Growth (cm\u00B2/decade)" else "Mean Decadal Mortality Rate"
   
   text.size <- 9
+  y.lab.shift <- 10
   
-  p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs, text.size) 
-  p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs, text.size) 
+  p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs, text.size) +
+    theme(text = element_text(family = font_to_use),
+          axis.title.y = element_text(margin = margin(r = y.lab.shift)))
+  p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs, text.size) +
+    theme(text = element_text(family = font_to_use),
+          axis.title.y = element_text(margin = margin(r = y.lab.shift)))
   #p_all <- plot_grid(p1, p2, ncol = 1)
   list1 <- list(p1 = p1, p2 = p2)
   fig.letter <- switch(k, "A", "B")
-  domain.figs[[paste0("p1_", k)]] <- p1 + annotate("text", x = 0.65 , y = qt.max * 0.95, label = fig.letter, parse = TRUE, size = 6) + theme(text = element_text(size = text.size))
+  domain.figs[[paste0("p1_", k)]] <- p1 + annotate("text", x = 0.65 , y = qt.max * 0.95, label = fig.letter, parse = TRUE, size = 6, family = font_to_use) + 
+    theme(text = element_text(size = text.size))
   domain.figs[[paste0("p2_", k)]] <- p2 + theme(text = element_text(size = text.size))
   
   
@@ -187,21 +228,23 @@ for(k in 1:2){
     
     plot.vals.plt <- plot.vals.plt + 
       labs(title = NULL) + 
-      annotate("text", x = pts.min.x , y = pts.max.y, label = "C", parse = TRUE, size = 6) +
-      annotate("text", x = txt.loc.x.vec , y = txt.loc.y.vec, label = DOMAIN.LEVELS, parse = TRUE, size = 4) +
-      theme(text = element_text(size = text.size)) 
+      annotate("text", x = pts.min.x , y = pts.max.y, label = "C", parse = TRUE, size = 6, family = font_to_use) +
+      annotate("text", x = txt.loc.x.vec , y = txt.loc.y.vec, label = DOMAIN.LEVELS, parse = TRUE, size = 4, family = font_to_use) +
+      theme(text = element_text(size = text.size, family = font_to_use))
     
-    plot.vals.plt.no_legend <- plot.vals.plt + theme(legend.position = 'none')
+    plot.vals.plt.no_legend <- plot.vals.plt + theme(legend.position = 'none', 
+                                                     axis.title.y = element_text(margin = margin(r = y.lab.shift)))
   }
   
 }
+
 
 p1_1 <- domain.figs$p1_1
 p1_2 <- domain.figs$p1_2
 p2_1 <- domain.figs$p2_1
 p2_2 <- domain.figs$p2_2 
 
-comb.plt <- ((p1_1/p2_1 + plot_layout(axis_titles = "collect")) | (p1_2/p2_2 + plot_layout(axis_titles = "collect")) | plot.vals.plt.no_legend ) #/ guide_area() + plot_layout(guides = 'collect', heights = c(10, 0.01)) 
+comb.plt <- ((p1_1/p2_1 + plot_layout(axis_titles = "collect")) | (p1_2/p2_2 + plot_layout(axis_titles = "collect")) | plot.vals.plt.no_legend )#/ guide_area()
 
 comb.plt.legend <- get_legend(plot.vals.plt)
 
@@ -235,6 +278,11 @@ climate_sf_proj <- st_transform(climate_sf, crs = 3310)
 
 # Extract coordinates in projected system
 coords_proj <- st_coordinates(climate_sf_proj)
+
+# This for-loop may seem abrupt. The idea is that two paneled figures are produced,
+# one for the manuscript (all plots) and one for the supplemental (only plots with 
+#  negative delta CWD values)
+for(j in 1:2){
 climate_proj_df <- climate_sf_proj %>%
   st_drop_geometry() %>%
   bind_cols(data.frame(X = coords_proj[,1], Y = coords_proj[,2]))
@@ -277,7 +325,9 @@ mountain_ranges_df <- cbind(mountain_ranges, coords) %>%
          #colr = c("white", "black", "white", "white", "black", "black"))
          colr = rep("black", 5))
 
-
+if(j == 2) {
+  climate_proj_df <- climate_proj_df %>% filter(difference < 0)
+}
 
 # Enhanced mapping function
 cwd.map.fcn <- function(var.use, title.txt, lab.use, add_extras = FALSE) {
@@ -399,6 +449,9 @@ cwd.maps <- ggdraw() +
 # Print the final figure
 print(cwd.maps)
 
+# A plot of all CWD values (for manuscript) has j == 1. If j == 2 then the figure
+#  for the supplement (only plots with negative delta CWD values) is saved.
+if(j == 1) {
 # Saving a png of the figure and a RDS version as well. The MS relies on the RDS.
 ggsave(paste0(RESULTS.OTHER, "cwd_maps_figure.png"), cwd.maps, device = 'png',
        width = 6, height = 8.81, dpi = 300, units = "in",
@@ -407,7 +460,13 @@ ggsave(paste0(RESULTS.OTHER, "cwd_maps_figure.png"), cwd.maps, device = 'png',
 ms.figures.other <- list(cwd.maps = cwd.maps)
 
 write_rds(ms.figures.other, paste0(RESULTS.OTHER, "ms.figures.other.RDS"))
+} else {
+  # Saving a png of the figure and a RDS version as well. The MS relies on the RDS.
+  ggsave(paste0(RESULTS.OTHER, "cwdneg_maps_figure.png"), cwd.maps, device = 'png',
+         width = 6, height = 8.81, dpi = 300, units = "in",
+         bg = "white")
+}
 
-
+}
 
 

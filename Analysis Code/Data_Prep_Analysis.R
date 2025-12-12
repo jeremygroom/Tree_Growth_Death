@@ -38,6 +38,8 @@ library(tictoc)  # For development, timing routines.
 library(data.table)
 library(matrixStats) # For fast iteration processing
 library(abind) # for combining matrices into arrays
+library(ggrepel) # For plotting, avoiding overlapping labels
+
 #### 2) Base data prep --------------------------------------------------------
 # These are the base data sets that will be transformed by the analysis types.
 
@@ -291,6 +293,16 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     saveRDS(list(bootstrap_results = bootstrap_results, domain.summaries = domain.summaries, all_dat = all_dat), 
             file = paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS"))
     
+ 
+    ## TO ADAPT THE INPUT WITHOUT RERUNNING THE BOOTSTRAP/PERMUTATION TEST SKIP THE    
+    #   BOOTSTRAP AND saveRDS() CALL AND RUN THE FOLLOWING. THIS WAS USED TO RENAME THE
+    #   CHANGE DOMAINS FROM ABOVE/BELOW TO INCREASING/STABLE.
+#    dmd <- readRDS(paste0(save.loc.fcn(k), "Domain_Analysis_Output.RDS"))
+#    bootstrap_results = dmd$bootstrap_results
+#    domain.summaries = dmd$domain.summaries
+#   all_dat = dmd$all_dat
+    
+    
     ## The code in this section is dedicated to preparing data files for plotting the differences in six-domain results.
     ## This process has two steps: first, the domain matrix pairs are subtracted from one another 
     #  using the domain.diff.fcn function.  Then, using the differenced matrices, the matrices
@@ -298,25 +310,25 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
     #  prepped for inclusion.  
     if(n_domain == 6) {
       
-    # Domains compared: Above vs. Below threshold 
-    A.vec <- c("AL", "AM", "AH")
-    B.vec <- c("BL", "BM", "BH")
+    # Domains compared: Increasing vs. Stable threshold 
+    I.vec <- c("IL", "IM", "IH")
+    S.vec <- c("SL", "SM", "SH")
     
-    AvB <- bind_rows(map2(A.vec, B.vec, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
+    IvS <- bind_rows(map2(I.vec, S.vec, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
       arrange(Species, Domain)
     
-    # Domains compared: Above threshold, Low/Med/High comparisons
-    A_LMH.vec1 <- c("AH", "AM", "AH")
-    A_LMH.vec2 <- c("AL", "AL", "AM")
+    # Domains compared: Increasing threshold, Low/Med/High comparisons
+    I_LMH.vec1 <- c("IH", "IM", "IH")
+    I_LMH.vec2 <- c("IL", "IL", "IM")
     
-    A_LMH <- bind_rows(map2(A_LMH.vec1, A_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
+    I_LMH <- bind_rows(map2(I_LMH.vec1, I_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
       arrange(Species, Domain)
     
-    # Domains compared: Below threshold, Low/Med/High comparisons
-    B_LMH.vec1 <- c("BH", "BM", "BH")
-    B_LMH.vec2 <- c("BL", "BL", "BM")
+    # Domains compared: Stable threshold, Low/Med/High comparisons
+    S_LMH.vec1 <- c("SH", "SM", "SH")
+    S_LMH.vec2 <- c("SL", "SL", "SM")
     
-    B_LMH <- bind_rows(map2(B_LMH.vec1, B_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
+    S_LMH <- bind_rows(map2(S_LMH.vec1, S_LMH.vec2, domain.diff.fcn, results.array = bootstrap_results, domain_n = domain.n)) %>%
       arrange(Species, Domain)
     
     spp.names.fig <- spp.names %>% select(SPCD, GENUS, SPECIES) %>% 
@@ -324,13 +336,13 @@ for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
       select(-SPCD)
     
     
-    AvB2 <- diff.fig.prep.fcn(AvB, diff.levels = c("AL - BL", "AM - BM", "AH - BH"))
-    A_LMH2 <- diff.fig.prep.fcn(A_LMH, diff.levels = c("AH - AL", "AH - AM", "AM - AL"))
-    B_LMH2 <- diff.fig.prep.fcn(B_LMH, diff.levels = c("BH - BL", "BH - BM", "BM - BL"))
+    IvS2 <- diff.fig.prep.fcn(IvS, diff.levels = c("IL - SL", "IM - SM", "IH - SH"))
+    I_LMH2 <- diff.fig.prep.fcn(I_LMH, diff.levels = c("IH - IL", "IH - IM", "IM - IL"))
+    S_LMH2 <- diff.fig.prep.fcn(S_LMH, diff.levels = c("SH - SL", "SH - SM", "SM - SL"))
     
     
-    saveRDS(list(AvB = AvB, A_LMH = A_LMH, B_LMH = B_LMH, 
-                 AvB2 = AvB2, A_LMH2 = A_LMH2, B_LMH2 = B_LMH2, 
+    saveRDS(list(IvS = IvS, I_LMH = I_LMH, S_LMH = S_LMH, 
+                 IvS2 = IvS2, I_LMH2 = I_LMH2, S_LMH2 = S_LMH2, 
                  spp.names.fig = spp.names.fig), 
             file = paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
     
@@ -352,11 +364,16 @@ if(RUN.SUMMARY == TRUE) {
 # Plotting the multi-species panels
 
 if(n_domain == 6) {
-  plt.dat <- readRDS(paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
-  psig.dat <- read_csv(paste0(RESULTS.OTHER, "Permutation_results.csv"), show_col_types = FALSE)
-
-    for(k in 1:2){ # 1 = growth, 2 = mortality
-    
+  psig.dat <- read_csv(paste0(RESULTS.OTHER, "Permutation_results.csv"), show_col_types = FALSE) %>%
+    ## Changing domain designations from A/B to I/S ##
+    mutate(across(everything(), ~str_replace_all(., "A", "I")),
+  mutate(across(everything(), ~str_replace_all(., "B", "S"))))
+  
+  PLT.MCPERM <- FALSE  # Plot the MC permutation asterisks? TRUE = yes, FALSE = no
+  
+  for(k in 1:2){ # 1 = growth, 2 = mortality
+      plt.dat <- readRDS(paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
+      
     psig.join.fcn <- function(k, position) {
       pos.adj <- 3*(k-1) + position
       psig.cols <- grep(pos.adj, colnames(psig.dat))
@@ -378,9 +395,9 @@ if(n_domain == 6) {
       return(join.table)
     }
     
-    AvB2 <- cm2.fcn(k, results.table = plt.dat$AvB2) %>% left_join(psig.join.fcn(k, position = 1), by = c("Species", "Domain"))
-    A_LMH2 <- cm2.fcn(k, results.table = plt.dat$A_LMH2) %>% left_join(psig.join.fcn(k, position = 2), by = c("Species", "Domain"))
-    B_LMH2 <- cm2.fcn(k, results.table = plt.dat$B_LMH2) %>% left_join(psig.join.fcn(k, position = 3), by = c("Species", "Domain"))
+    IvS2 <- cm2.fcn(k, results.table = plt.dat$IvS2) %>% left_join(psig.join.fcn(k, position = 1), by = c("Species", "Domain"))
+    I_LMH2 <- cm2.fcn(k, results.table = plt.dat$I_LMH2) %>% left_join(psig.join.fcn(k, position = 2), by = c("Species", "Domain"))
+    S_LMH2 <- cm2.fcn(k, results.table = plt.dat$S_LMH2) %>% left_join(psig.join.fcn(k, position = 3), by = c("Species", "Domain"))
     
     
     xlab.use <- switch(k, "1" = "Difference in Domain Growth Rates (cm\u00B2/decade)", "2" = "Difference in Domain Decadal Mortality Rate")  #  "Annual Growth Rate (in2/yr)"
@@ -390,9 +407,9 @@ if(n_domain == 6) {
            "2" = c(FALSE, FALSE, TRUE))
     
     
-    p1 <- diff.panel.fcn(AvB2, remove.y = FALSE, fig.title = "Above vs. Below Threshold", lab.right = legend.side[1])
-    p2 <- diff.panel.fcn(A_LMH2, remove.y = TRUE, fig.title = "Above Threshold, High/Med/Low", lab.right = legend.side[2])
-    p3 <- diff.panel.fcn(B_LMH2, remove.y = TRUE, fig.title = "Below Threshold, High/Med/Low", lab.right = legend.side[3])
+    p1 <- diff.panel.fcn(IvS2, remove.y = FALSE, fig.title = "Increasing vs. Stable", lab.right = legend.side[1], plt.mcperm = PLT.MCPERM)
+    p2 <- diff.panel.fcn(I_LMH2, remove.y = TRUE, fig.title = "Increasing, High/Med/Low", lab.right = legend.side[2], plt.mcperm = PLT.MCPERM)
+    p3 <- diff.panel.fcn(S_LMH2, remove.y = TRUE, fig.title = "Stable, High/Med/Low", lab.right = legend.side[3], plt.mcperm = PLT.MCPERM)
     
     grand.x.lab <- ggdraw() + draw_label(xlab.use, x = 0.6, y = 0.5, size = 13, fontfamily = "Times New Roman") + theme_bw() + 
       theme(rect = element_blank())
@@ -437,7 +454,7 @@ for(k in 1:2){ # 1 = growth, 2 = mortality
   # Plotting paired plots of mortality/growth by quantile and a scatterplot of plot distribution by quantiles.
   SEL.SPP %>% purrr::map(\(s) pair.plts.fcn(sppnum.to.plot = s, use.dat = plt.dat2, domain.matrix = domain.matrix,
                                             quant.lims = quant.lims, domain.n = domain.n, k = k, 
-                                            SHINYAPP.IN.USE = FALSE, SHINYAPP.FONTSIZE = SHINYAPP.FONTSIZE)) # fontsize irrelevant here
+                                            SHINYAPP.IN.USE = FALSE, SHINY_FONTSIZE = SHINY.FONTSIZE)) 
 }
 
 

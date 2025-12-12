@@ -77,7 +77,7 @@ INIT.CLIM.BREAKS <- c(75, 125) # if USE.QUANT.PROBS are FALSE, these are the dom
 if(THREE.CHANGE.CATEGORIES) {
 DOMAIN.LEVELS <- c("LiHc", "MiHc", "HiHc", "LiMc", "MiMc", "HiMc", "LiLc", "MiLc", "HiLc")
 } else {
-DOMAIN.LEVELS <- c("AL", "AM", "AH", "BL", "BM", "BH") # Above/Below threshold and Low/Medium/High
+DOMAIN.LEVELS <- c("IL", "IM", "IH", "SL", "SM", "SH") # Increasing/Stable threshold and Low/Medium/High
 }
 N.PLOT.LIM <- 10  # Limit to the minimum number of plots for which an estimate will be calculated
 BS.N <- 1000    # Bootstrap iteration number
@@ -114,6 +114,7 @@ spp.id <- names(orig)[(ncol(orig) - (length(grep("X", names(orig))) - 1)):ncol(o
 
 spp.names <- readxl::read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx")) %>% dplyr::filter(SPCD %in% spp.list)
 
+spp.cat <- read_csv(paste0(DATA.LOC, "Species_Categories.csv"))
 
 ## Plotting
 font_to_use <- if("Times New Roman" %in% systemfonts::system_fonts()$family) {
