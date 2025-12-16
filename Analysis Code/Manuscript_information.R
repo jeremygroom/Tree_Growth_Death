@@ -112,6 +112,7 @@ cwd.ci.plt <- ggplot(cwd.ci, aes(Mean_Init, Mean_Diff, group = Species, label = 
     nudge_x = 1,
     box.padding = 0.5,
     nudge_y = 0.05,
+    fontface = "italic", 
     # segment.curvature = -1e-10,
     #segment.ncp = 3,
     segment.angle = 20) +

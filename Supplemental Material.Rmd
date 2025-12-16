@@ -234,22 +234,4 @@ diff.ft
 ```
 
 
-\newpage
-
-```{r table-psig-growth, tab.cap=tbl_psig_growth}
-
-psig.ft.g
-
-
-```
-
-\newpage
-
-```{r table-psig-mortality, tab.cap=tbl_psig_mort}
-
-psig.ft.m
-
-
-```
-
 <!---BLOCK_LANDSCAPE_STOP--->

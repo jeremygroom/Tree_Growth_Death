@@ -406,6 +406,7 @@ if(n_domain == 6) {
     legend.side <- switch(k, "1" = c(TRUE, TRUE, FALSE),
            "2" = c(FALSE, FALSE, TRUE))
     
+    IvS2 <- IvS2 %>% mutate(Domain = factor(Domain, levels = c("IL - SL", "IM - SM", "IH - SH")))
     
     p1 <- diff.panel.fcn(IvS2, remove.y = FALSE, fig.title = "Increasing vs. Stable", lab.right = legend.side[1], plt.mcperm = PLT.MCPERM)
     p2 <- diff.panel.fcn(I_LMH2, remove.y = TRUE, fig.title = "Increasing, High/Med/Low", lab.right = legend.side[2], plt.mcperm = PLT.MCPERM)
