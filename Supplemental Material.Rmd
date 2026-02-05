@@ -1,5 +1,5 @@
 ---
-title: "Supplemental material for Tree growth, mortality, and climatic stress in west-coast states, USA"
+title: "Supplemental material for: Tree growth, mortality, and climatic water deficit in west-coast states, USA"
 date: "`r Sys.Date()`"
 author: "Jeremiah D. Groom"
 output: 
@@ -139,7 +139,7 @@ tbl_psig_mort <- tab_nums(name = "tbl_psigmort",
                             caption = "Monte Carlo permutation p-values for tree species mortality domains. Values correspond to Manuscript Figure 4 values. Values of zero represented no permutation results with confidence intervals equal to or greater than those observed in the data.")
 
 fig.negcwdmap_cap <- fig_nums(name = "fig_cwdnegmap", 
-                        caption = "Fuzzed FIA plot locations for plots with negative CWD values.  The initial CWD values for those plots are displayed in A while the negative delta CWD values are displayed in B.  The inset map (B) shows the locations of the study states within the USA: From north to south, Washington, Oregon, and California.")
+                        caption = "Public FIA plot locations for plots with negative CWD values.  The initial CWD values for those plots are displayed in A while the negative delta CWD values are displayed in B.  The inset map (B) shows the locations of the study states within the USA: From north to south, Washington, Oregon, and California.")
 
 
 fig_cwd_all <- fig_nums(name = "fig_cwdall", 

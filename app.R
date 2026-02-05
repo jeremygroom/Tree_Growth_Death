@@ -196,7 +196,7 @@ server <- function(input, output, session) {
       virid.use <<- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
       
       
-#     browser()
+    # browser()
       # Generate the plot using pair.plts.fcn with SHINYAPP.IN.USE = TRUE
       plot_result <- pair.plts.fcn(
         sppnum.to.plot = input$species, 
@@ -206,7 +206,7 @@ server <- function(input, output, session) {
         domain.n = domain.n, 
         k = k, 
         SHINYAPP.IN.USE = TRUE,
-        SHINY.FONTSIZE = SHINY.FONTSIZE
+        SHINY_FONTSIZE = SHINY.FONTSIZE
       )
       
       return(plot_result)

@@ -1065,7 +1065,7 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
     p_all <- plot_grid(p1, p2, ncol = 1)
   }
   
-  
+  #browser()
   
   # Code to prep for next two figures - helps in reducing the color palette.
   n_plots <- get(sppnum.to.plot, domain.n)

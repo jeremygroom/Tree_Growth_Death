@@ -45,8 +45,8 @@ RESULTS.OTHER <- "Results/Other_Results/"  # For summaries, maps, etc.
 
 
 # Assuming WA/OR/CA zipped databases are in the same location (outside of GitHub clone)
-SQL.LOC <- "G:/My Drive/Consulting Practice/Contracts/ODF_FIA_2024/sqlDB_WA_CA/"
-CLIMATE.LOC <- "G:/My Drive/Consulting Practice/Contracts/ODF_FIA_2024/TerraClimate data/"
+SQL.LOC <- ""
+CLIMATE.LOC <- ""
 
 # Which analysis to do??
 # Pathway 1 = Mortality/Growth analysis by 9 quantiles, 4 climate variables.

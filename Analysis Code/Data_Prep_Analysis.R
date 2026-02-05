@@ -209,9 +209,6 @@ toc()
 
 tic() 
 # For ANALYSIS.PATHWAY == 1, one climate variable, and 16 dedicated cores, the analysis takes about 8 minutes.
-# With 6 domains and 23 species, 16 dedicated cores, 3.8 minutes
-# With 6 domains, 1000 iterations, 23 spp, 16 cores, 15 min.
-# With 6 domains, 1000 iterations, 23 spp, 20 cores, 16 min.
 
 for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
   
