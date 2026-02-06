@@ -28,7 +28,6 @@ ui <- fluidPage(
     "))
   ),
   
-  titlePanel("FIA Tree Growth and Mortality Analysis"),
   
   # Logo
   tags$div(
@@ -42,6 +41,9 @@ ui <- fluidPage(
                title = "Groom Analytics Home")
     )
   ),
+  
+  titlePanel("Tree Growth and Mortality by Climatic Water Deficit Domain"),
+  
   
   # Control panel at top
   fluidRow(
@@ -73,7 +75,37 @@ ui <- fluidPage(
     column(12,
            textOutput("status")
     )
-  )
+  ),
+  fluidRow(column(width = 10, offset = 0,
+                  div(htmlOutput("box9"),  style = 'color:black; border-radius: .5em; font-size:20px; padding: 20px; margin: 20px;' , # background-color:#b8d9b9;
+                      h2("Dashboard Synopsis"),
+                      h3("Overview"),
+                      p("This page offers a data visualization tool for the manuscript 'Tree growth, mortality, and climatic water deficit in west-coast states, USA' by JD Groom (", 
+                        a("Groom Analytics LLC", href = "https://www.groomanalytics.com/"), ") and B Frank (USDA Forest Service; 2026).
+                         We examined the average growth and mortality rates for 23 tree species across California, Oregon, and Washington. The tree data were obtained from study plots measured by the ", a("USDA Forest 
+                        Service Forest Inventory and Analysis Program", href = "https://research.fs.usda.gov/programs/fia"), ", or FIA. For these figures we look at tree growth and mortality according to the water stress, measured as Climatic 
+                        Water Deficit (CWD), that each FIA sample plot experienced. Go ahead and select a species at the top along with an analysis type (Growth or Mortality)."),
+                      h3("Figure: FIA plot distributions by CWD"), 
+                      p("Since we can only directly measure tree growth and death rates by visiting individual trees over time, it is possible that the water stress a tree experiences can change over time as well. 
+                       Some places get drier while others receive more rain or snow. Our data comes from FIA plots that were visited twice, 10 years apart. The x-axis of the middle figure, \"FIA plot distribution by CWD\", 
+                       captures CWD value at the initial study plot visit.  The figure's y-axis depicts the change in CWD between visits. 
+                         For all species we define a plot as having an Increasing (I) CWD value if the y-axis value is above 5 mm, and a Stable (S) CWD value if it is below 5 mm. The horizontal blue dashed line is
+                         at 5 mm of CWD change between the two plot visits.  For the x-axis, the initial CWD values are broken into species-specific quartiles, defined by the vertical orange lines.  The 
+                         25% of data on the left are Low (L) initial CWD values, the middle 50% of points are 
+                        Medium (M), and the upper 25% are High (H). We thus have six domains, IL (Increasing, Low), IM (Increasing, Medium), IH (Increasing, High), SL (Stable, Low), 
+                        SM (Stable, Medium), and SH (Stable, High). Domain SL (yellow) includes plots with little increase in CWD at the lower range of initial CWD values. These plots arguably experience the least water stress. 
+                        IH (light green) is the opposite; these FIA plots have the greatest water stress. This figure shows, for each species, the relationship and distribution of plot values across the six domains."),
+                      h3("Figure: CWD domain estimates"),
+                        p("The leftmost figure gives us the estimated 10-year growth or mortality rates (depending on which you selected) for the trees in each of the domains.  That is, the dark blue column for IL 
+                          is the mean growth or mortality estimate for the trees in the FIA plots represented by the dark-blue points in the middle figure \"FIA plot distrubution by CWD\". We use the same 
+                          domain abbreviations (IL, IM, etc.) as before.  The error bars are the 95% bootstrapped confidence intervals"),
+                      h3("Figure: FIA fuzzed plot locations"),
+                      p("The right-most figure provides a map of the approximate geographic location of each of the FIA plots in which your selected species was found.  The color scheme of the points remains 
+                        consistent with the domain labels at the bottom of the middle figure.  We can see, for instance, that ", em("Abies amablis"), " SL plots are mostly found in northern Washington in the Cascades range
+                         and in the upper Olympic Peninsula.")
+                      
+                  )
+  ))
 )
 
 # Server

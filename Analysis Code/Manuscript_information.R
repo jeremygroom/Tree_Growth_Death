@@ -168,19 +168,24 @@ for(k in 1:2){
   qt.max <- ceiling(max(use.dat2$UCI.95, na.rm = TRUE) * 10) / 10 # For consistent y-axis heights
   
   # Create a grid of plots to match bivariate plot
-  q.g.p.labs <- paste0(DOMAIN.LEVELS, ", n = ", as.numeric(use.dat2$n.plts)) # Labels for the domain grid plot
+  q.g.p.labs <- paste0(DOMAIN.LEVELS, "\nn = ", as.numeric(use.dat2$n.plts)) # Labels for the domain grid plot
   
   ylabs <- if (k == 1) "Mean Growth (cm\u00B2/decade)" else "Mean Decadal Mortality Rate"
   
   text.size <- 9
+  ax.title.size <- 11
+  ax.text.size <- 9
+  
   y.lab.shift <- 10
   
   p1 <- domain.grid.plt.fcn(c("DL", "DM", "DH"), 1:3, use.dat2, qt.max, q.g.p.labs, ylabs, text.size) +
     theme(text = element_text(family = font_to_use),
-          axis.title.y = element_text(margin = margin(r = y.lab.shift)))
+          axis.title.y = element_text(margin = margin(r = y.lab.shift), size = ax.title.size),
+          axis.text = element_text(size = ax.text.size))
   p2 <- domain.grid.plt.fcn(c("SL", "SM", "SH"), 4:6, use.dat2, qt.max, q.g.p.labs, ylabs, text.size) +
-    theme(text = element_text(family = font_to_use),
-          axis.title.y = element_text(margin = margin(r = y.lab.shift)))
+    theme(text = element_text(family = font_to_use, size = ax.title.size),
+          axis.title.y = element_text(margin = margin(r = y.lab.shift), size = ax.title.size),
+          axis.text = element_text(size = ax.text.size))
   #p_all <- plot_grid(p1, p2, ncol = 1)
   list1 <- list(p1 = p1, p2 = p2)
   fig.letter <- switch(k, "A", "B")
@@ -199,7 +204,7 @@ for(k in 1:2){
     
     plot.vals.plt <- domain.dist.plt.fcn(plot.spp = sppnum.to.plot, domain.matrix = domain.matrix, 
                                          var1 = var1, var.delt = var.delt, quant.lims = quant.lims,
-                                         n.plots.used = n_plots2, size.trees = "", text.size) 
+                                         n.plots.used = n_plots2, size.trees = "", text.size = text.size, legend_point_size = 2) 
     
     q_plot_spp <- domain.matrix %>% dplyr::select(all_of(sppnum.to.plot), all_of(var1), all_of(var.delt)) %>%
       filter(get(sppnum.to.plot) > 0) 
@@ -231,7 +236,10 @@ for(k in 1:2){
       labs(title = NULL) + 
       annotate("text", x = pts.min.x , y = pts.max.y, label = "C", parse = TRUE, size = 6, family = font_to_use) +
       annotate("text", x = txt.loc.x.vec , y = txt.loc.y.vec, label = DOMAIN.LEVELS, parse = TRUE, size = 4, family = font_to_use) +
-      theme(text = element_text(size = text.size, family = font_to_use))
+      theme(text = element_text(size = text.size, family = font_to_use),
+            axis.text = element_text(size = ax.text.size),
+            axis.title = element_text( size = ax.title.size))
+    #axis.title.y = ax.title.size)
     
     plot.vals.plt.no_legend <- plot.vals.plt + theme(legend.position = 'none', 
                                                      axis.title.y = element_text(margin = margin(r = y.lab.shift)))

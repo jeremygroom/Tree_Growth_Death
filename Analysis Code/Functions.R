@@ -910,7 +910,7 @@ domain.grid.plt.fcn <- function(domains, domain.index, use.dat2, qt.max,
 # for each species, var1, var.delt = carried through from input for pairs.plts.fcn,
 # quant.lims, domain.n = quantile boundaries and number of plots, established in parse.tree.clim.fcn,
 # size.trees = one of "small diameter ", "large diameter ", and (for pathways 1 and 3) "".  
-domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.lims, n.plots.used, size.trees, text.size) {
+domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.lims, n.plots.used, size.trees, text.size, legend_point_size) {
   
   q_plot_spp <- domain.matrix %>% dplyr::select(all_of(plot.spp), all_of(var1), all_of(var.delt)) %>%
     filter(get(plot.spp) > 0) 
@@ -950,11 +950,14 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
       #legend.box.margin = unit(, "pt"), 
       #legend.key.spacing.y = unit(20, "pt"),
       legend.text = element_text(margin = margin(l = 0), size = text.size + 3),
-      legend.title = element_text(margin = margin(r = 40), size = text.size + 3)) +
-        guides(color = guide_legend(nrow = 1),
+      legend.title = element_text(margin = margin(r = 40), size = text.size + 3),
+      axis.text = element_text(size = 11),
+      axis.title = element_text( size = 15)) +
+        guides(color = guide_legend(nrow = 1, override.aes = list(size = legend_point_size)),
                title.hjust = 5,
                title.position = "left",
-               label.position = "right")
+               label.position = "right"
+               )
   return(plot.vals.plt)
 }
 
@@ -1072,10 +1075,13 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   n_plots2 <- tibble(loc = 1:n_domain, n = n_plots) %>%
     left_join(tibble(Domain = plot.domain.dat$Domains, loc = 1:n_domain), by = "loc")
   
+  legend.pt.size <- if(SHINYAPP.IN.USE) 5 else 2
+  
   # Plotting the scatterplot of points in quadrants:
   plot.vals.plt <- domain.dist.plt.fcn(plot.spp = sppnum.to.plot, domain.matrix = domain.matrix, 
                                        var1 = var1, var.delt = var.delt, quant.lims = quant.lims,
-                                       n.plots.used = n_plots2, size.trees = "", text.size = text_size) 
+                                       n.plots.used = n_plots2, size.trees = "", text.size = text_size,
+                                       legend_point_size = legend.pt.size) 
   
   
   # Plotting the map of plot locations:
