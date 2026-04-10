@@ -28,7 +28,7 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   # For alive/dead tree assessments
   Tree2 <- treedat.sel %>% 
     filter(SPCD == spcd) %>%
-    dplyr::select(puid, REMPER, SUBP, TREE, STATUSCD, ntree.rep)
+    dplyr::select(puid, SUBP, TREE, STATUSCD, ntree.rep)
   
   tree.plots <- clim.dat %>% filter(puid %in% Tree2$puid) %>% 
     dplyr::select(puid, all_of(var1), all_of(var.delt))
@@ -78,8 +78,9 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   Tree3 <- left_join(Tree2, tree.plots2, by = "puid") %>%
     group_by(puid) %>% #, var.deltvar, get(var1), get(var.delt)) %>%  # This will assign the names `get(var1)` and `get(var.delt)`, which are cleaned up below
     reframe(n.trees = sum(ntree.rep),
-            #n.died.yr = sum(ntree.rep[STATUSCD == 2])/mean(REMPER),  # Annual mortality rate
-            n.died.dcd = 10 * sum(ntree.rep[STATUSCD == 2])/mean(REMPER), # Decadal mortality rate
+            #n.died.yr = sum(ntree.rep[STATUSCD == 2])/mean(REMPER),  # Annualized mortality rate using REMPER (this is incorrect)
+            #n.died.dcd = 10 * sum(ntree.rep[STATUSCD == 2])/mean(REMPER), # Decadal mortality rate adjusting each plot by REMPER (also incorrect)
+            n.died.dcd = sum(ntree.rep[STATUSCD == 2]), # Decadal mortality, no adjustment by REMPER
             #pct.died.yr = n.died.yr / n.trees)
             pct.died.dcd = n.died.dcd / n.trees)
   
@@ -95,8 +96,8 @@ clim.mort.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   
   
   domain.out1 <- purrr::map(DOMAIN.LEVELS, domain.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
-  domain.out2 <- reduce(domain.out1, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts")) %>%
-    dplyr::select(-c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts"))
+  domain.out2 <- reduce(domain.out1, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts", "REMPER")) %>%
+    dplyr::select(-c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts", "REMPER"))
   
   out.list <- list(spp.list = spp.list, spp.id = spp.id, died.out = died.out, all.trees = all.trees, 
                    domain.out = domain.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
@@ -117,12 +118,14 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   
   # For basal area growth/tree
   TreeG <- Tree.spp %>%
-    # Amount of tree growth per year since the previous visit, multiplied by the number of trees per acre the tree represents. 
+    # Amount of tree growth per year since the previous visit, multiplied by the number of trees per acre the tree represents. <Proportion method>
     #mutate(BA_Growth = ntree.rep * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)/REMPER) %>%
-    # Amount of tree growth per decade since the previous visit, multiplied by the number of trees per acre the tree represents. 
-    mutate(BA_Growth = ntree.rep * 10 * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)/REMPER) %>%
+    # Amount of tree growth per decade since the previous visit, multiplied by the number of trees per acre the tree represents. <Proportion method>
+    mutate(
+      #BA_Growth = ntree.rep * 10 * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)/REMPER) %>%    ## Incorrectly adjusted plot-level decadal growth rate
+      BA_Growth = ntree.rep * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)) %>%  # Decadal basal area growth
+    
     group_by(puid) %>%
-    #Goal: sum(change in BA/REMPER)/Total # trees
     reframe(n_g.trees = sum(ntree.rep),
             total.growth = sum(BA_Growth))
   
@@ -198,8 +201,8 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   
   
   domain.out1 <- purrr::map(DOMAIN.LEVELS, domain.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
-  domain.out2 <- reduce(domain.out1, left_join, by = c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum")) %>%
-    dplyr::select(-c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum"))
+  domain.out2 <- reduce(domain.out1, left_join, by = c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "REMPER")) %>%
+    dplyr::select(-c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "REMPER"))
   
   out.list <- list(spp.list = spp.list, spp.id = spp.id, growth.val = growth.val, growth.n.trees = growth.n.trees,
                    domain.out = domain.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
@@ -219,12 +222,13 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
   # Makes a list of all of the response tables and all-tree tables for the next step to operate on.
   
   extract.resp <- purrr::map(tree.dat , ~.[[resp.dat]]) 
-  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts")) # Combining the list into a single tibble.
+  vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts", "REMPER")) %>% # Combining the list into a single tibble.
   #vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "puid", "W_h", "STRATUM","SITECLCD_plot")) # Combining the list into a single tibble.
+    dplyr::select(-REMPER)
   
   extract.all <- purrr::map(tree.dat , ~.[[tot.dat]]) 
-  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts")) 
-  
+  all_dat <- reduce(extract.all, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts", "REMPER")) %>%
+  dplyr::select(-REMPER)
   
   # Now extracting the domain category information for each species 
   extract.domain <- purrr::map(tree.dat , ~.[["domain.out"]]) 
@@ -495,7 +499,7 @@ calculate_domain_estimates.fcn <- function(samp, domain_data, domain_idx, select
   vals_stratum <- dt_vals[, lapply(.SD, sum), by = stratum, .SDcols = spp_cols]
   
   # Calculate weighted values directly
-  all_matrix <- as.matrix(all_stratum[, ..spp_cols])
+  all_matrix <- as.matrix(all_stratum[, ..spp_cols]) # Creates matrix of species columns (that's all)
   vals_matrix <- as.matrix(vals_stratum[, ..spp_cols])
   weights <- all_stratum$w_h / all_stratum$n_h # Shortcut: dividing w_h by n_h as part of estimation
   
@@ -504,7 +508,7 @@ calculate_domain_estimates.fcn <- function(samp, domain_data, domain_idx, select
   Yv_all <- colSums(vals_matrix * weights)
   
   # Calculate all ratios at once
-  ratios <- Yv_all / Zt_all
+  ratios <- Yv_all / Zt_all  # Proportion estimate
   
   # Vectorized plot threshold check
   plot_counts <- sapply(selected.spp, function(spp) get(spp, domain.n)[domain_idx])

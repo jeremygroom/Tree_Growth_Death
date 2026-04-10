@@ -365,7 +365,7 @@ tab.summ_grow_mort <- tab_nums(name = "tbl_summ_grow_mort",
 Western North American forests are experiencing accelerating tree mortality rates alongside intensifying drought and water stress.  Tree growth and mortality reflect cumulative effects of direct physiological stress (xylem cavitation, carbon starvation), and indirect climate-mediated impacts (wildfire, insects, pathogens).  Relating design-based estimates for mortality and growth to a climate variable can be challenging, as directly assessing mortality and growth requires the visitation of plots at two different points in time.  Plots can differ both in their initial climate variable value and the change in that value between visits, necessitating estimation domains that jointly consider initial conditions and temporal change. We developed an analysis framework that partitions plots into domains defined by their initial-visit climatic water deficit (CWD) value and the change in the CWD value between visits.  We applied this approach to `r comma(analysis.stats$plot.num)` National Forest Inventory (FIA) plots spanning California, Oregon, and Washington, tracking `r comma(analysis.stats$tree.num)` trees from `r n.spp` species over decade-long intervals.  We estimated decadal growth and mortality across three states, by state, and for six CWD domains per species, along with associated measures of uncertainty.  Species responses were highly variable, with no universal pattern of increased mortality or reduced growth in domains experiencing elevated water stress. Several species exhibited overall mortality rates exceeding 0.20 (i.e., 20% decadal mortality), with estimates of 0.34 for *Picea engelmannii* in Washington, 0.27 for *Acer macrophyllum* in California, and 0.37 for *Pinus contorta* in Washington. Domain-specific patterns aligned with known regional disturbances (bark beetles, drought, fire) for multiple species.  We found that CWD increased in 91.6% of plots. The FIA sampling design enabled our study to contribute reliable regional insights into the condition of several tree species that exhibit abnormally high mortality and low growth rates. 
 
 
-# Introduction
+# 1. Introduction
 
 Western North American forests are experiencing increases in tree mortality across multiple species in concert with changing climate conditions.  Species and tree groups have incurred extraordinary losses in specific regions.  Johnston et al. (2025) documented a 29% 10-year mortality rate of 300+ yr old trees in Eastern Oregon.  High-severity fires in California in 2020 and 2021 killed 13%-19% of extant giant sequoia (*Sequoiadendron giganteum*) with >1.07-m bole diameters (Stephenson and Brigham 2021, Shive et al. 2022); recruitment in these burns was depressed (Soderberg et al. 2024).  Species and genera have also seen their mortality rates increase overall. For example, van Mantgem et al. (2009) found modeled mortality rates for the genera *Abies* and *Pinus* in the western USA increased from less than 0.05% annually in 1960 to almost 0.2% by 2010. Perret et al. (2023) estimated a decadal range-wide mortality rate of 25% for Subalpine fir (*Picea engelmannii*). Five of eight common tree species in western North America exhibit declines as measured by relative stand density (Stanke et al. 2021).  Shriver et al. (2022) found that four of five juniper (*Juniperus* spp.) and piñon pine (*Pinus* spp.) species were declining in portions of their range, comparing mortality to recruitment rates.      
 
@@ -383,9 +383,9 @@ Our study has two objectives.  The first is to utilize a design-based estimation
 
 
 
-# Methods  
+# 2. Methods  
 
-## FIA data  
+## 2.1 FIA data  
 
 Our analysis relies on FIA data for forestland in California, Oregon, and Washington, USA.  Forestland is defined as an area of at least 4,050 m^2^ (i.e., one acre) that is at least 10 percent stocked or potentially stocked with tree species, excluding urban and agricultural land uses (Reams et al. 2005).  We constrained our analysis to only include remeasurements for areas considered forestland during both visits.  
 
@@ -395,15 +395,15 @@ Our analysis depends on examining the fate and growth of trees measured during t
 
 Remeasured trees within plots were retained in the analysis if they were alive at the initial visit and met the 12.7 cm stem diameter criterion during that visit (i.e., plot ingrowth was not included). The growth analysis further restricted trees to those that were alive at both visits.  The mortality analysis excluded trees killed through silvicultural practices.  Both analyses excluded trees that shrank in diameter, physically moved due to landslides or other events, were erroneously tallied at either visit, were missed due to data collection procedural changes, or existed at either visit in a nonsampled area.      
 
-## Climate data
+## 2.2 Climate data
 
 We obtained plot-level CWD data from the TerraClimate dataset (Abatzoglou et al. 2018) for June, July, and August (summer months) between 1980 and 2023. In general, access to true plot coordinates is restricted to internal FIA staff or those approved to view them. For general use, FIA makes a set of perturbed  plot coordinates available to the public, which are randomized locations typically located within 1.6 km of the true position, and up to 20 percent of plots on private land swapped with other randomized locations in similar forest types (Burrill et al. 2023).  Perturbed plot coordinates have the potential to weaken correlations between forest attributes of interest and spatially explicit climate covariates, like the CWD data used in this study, because the perturbed locations may land in areas experiencing different climatic conditions. We determined that the Pearson's correlation between the public and confidential CWD plot values was > 0.99, so for simplicity we used the CWD values derived from public coordinates. The second author is authorized to handle confidential coordinates and conducted the correlation analysis. Using the public coordinates facilitates scientific replication by those external to FIA, and they are available in the database used for this study. We defined 'initial CWD' values as the 20-year mean of summer CWD values for each plot prior to and including the first visit year (initial CWD = mean of summer CWD from visit year$_{-19}$ to year$_0$).  We then found the mean of summer CWD values between visits and including the second visit year (second visit CWD = mean of summer CWD from year$_1$ to year$_10$).  We then defined 'delta CWD' as the second visit CWD values minus initial CWD values.  Figure `r fig_nums("fig_cwdmap", display = "num")` presents maps of both the initial CWD and delta CWD values for forested and nonforested FIA plots.  
 
-## Species  Classification
+## 2.3 Species  Classification
 
 We coarsely categorized tree species by several taxonomic and ecological characteristics, such as tree type (angiosperm [hardwood] vs. conifer), drought tolerance, fire adaption, elevation, shade tolerance, and mesic and riparian specialization.  We obtained the category information from https://plants.usda.gov/ (accessed 12/12/2025) and Burns and Honkala (1990a, 1990b).  Categorization was done to aid the presentation of results; some species could fall under more than one category (e.g., we classified *Picea engelmannii* as a high elevation conifer [HEC] while it could have been classified as a shade-tolerant conifer [STC]).  Our categories with abbreviations also include fire-adapted conifers (FAC), drought-tolerant conifers (DTC), drought-tolerant hardwoods (DTH) and riparian and mesic hardwoods (RMH).  These abbreviations are used in Tables `r tab_nums("tbl_growth", display = "num")` and `r tab_nums("tbl_mort", display = "num")`. 
 
-## Analysis
+## 2.4 Analysis
 We limited the number of species examined to those with more than 400 occupied plots across the states of Oregon, Washington, and California.  We obtained point estimates of species growth and mortality using ratio estimators (Eqn 4.16 in Scott et al. 2005).  We expanded the number of trees in each plot by the area measured (subplot or macroplot area) adjusted by the proportion of the plot area available for measurement and the number of years between visits, which generally aligns with the set of mortality trees used in FIA estimates of change components (Scott et al. 2005). The mortality estimator describes the proportion of trees that transitioned from live to dead between remeasurements. For a given species mortality is calculated as a ratio, with the numerator equaling the sum of stratum-weighted means, where each mean is the sum of trees that died between visits within each FIA stratum (Scott et al. 2005) divided by the number of plots within the stratum.  The denominator for the mortality estimator is also a sum of stratum-weighted means, except each mean is the sum of all live trees within a stratum at the initial visit divided by the number of plots within the stratum.   
 
 The species-specific growth estimate is also a ratio with the numerator calculated as the sum of stratum-weighted means, where each mean is the sum of tree basal area increase (cm^2^) between visits within the stratum divided by the number of plots in the stratum while the denominator is the same as was used for the mortality estimator. This produces a point estimate for a species’ mean growth on an individual tree basis for those trees that are alive at both visits, which generally aligns with the set of survivor trees used in FIA estimates of change components (Scott et al. 2005).  We standardized mortality and growth values to a decadal time period.  
@@ -417,15 +417,15 @@ We obtained empirical means and 95% confidence intervals via a nonparametric boo
 Our  contrast analysis approach resulted in hundreds of comparisons. Given the large number of tests, we caution readers to interpret significant differences (i.e., contrast 95% CIs that do not include zero) with caution, as some proportion likely represent Type-I errors and occurred by chance.  We did not apply a multiple comparisons correction as (1) our analysis is inherently exploratory, aimed at identifying patterns within and across species rather than testing a specific *a priori* hypothesis, and (2) because we did not want to inflate the Type-II error rate and obscure real relationships in favor of reducing false positive findings.   
 
 
-## Dashboard
+## 2.5 Dashboard
 We developed a data dashboard (https://tinyurl.com/FIAgrowmort) to enable ourselves and readers to examine individual species domain estimates, the distribution of initial and delta CWD values, and the public geographic locations of plots and plot domains.  All analysis files, manuscript markdowns, dashboard code, and ancillary data sources are available at the GitHub repository https://github.com/jeremygroom/Tree_Growth_Death.  
 
 
-# Results
+# 3. Results
 
 Our study tracked the fate of `r comma(analysis.stats$tree.num)` trees from `r n.spp` species in `r comma(analysis.stats$plot.num)` plots that were visited twice by FIA crews. Of the `r n.spp` species, `r analysis.stats$n.gym.spp` were gymnosperms.  The two visits were 10 years apart for `r pct.remeas[2]`% of plots (`r pct.remeas[1]`% were 9 years, `r pct.remeas[3]`% were 11 years). Plots were distributed across `r analysis.stats$strat.num` strata spanning forested regions in all three states, from coastal temperate rainforest to semi-arid interior woodlands.  
 
-## Climatic Water Deficit
+## 3.1 Climatic Water Deficit
 
 Delta CWD was greater than zero (i.e., CWD increased) for `r analysis.stats$cwd.gt0.pct`% of plots. The increases occurred in all forested regions of the three states (Figure `r fig_nums("fig_cwdmap", display = "num")`C).  Plots where CWD decreased (indicated by negative delta CWD values) are presented alone in Figure S1.  For Washington and Oregon negative CWD values were almost entirely found in the Coast Ranges and the mesic west slope of the Cascades Range crest.  The Blue Mountains and northern and northeastern Washington lacked negative delta CWD plots entirely. In California negative delta CWD plots with values < -1.0 mm were primarily found in the northern Sierra Nevada and in the southern portions of the state. Overall, there was a weak, positive linear correlation (Pearson's correlation = `r CWD.lin.cor`) between initial and delta CWD values. The two variables were better modeled with a 3rd order polynomial although the resulting R^2^ value still indicated that the variance was not well explained by the model ($\Delta AIC$ =  `r CWD.dAIC`, R^2^ = `r round(CWD.rels$lm2$r.squared, 2)`, Figure S2, see model fits in Tables S1 and S2), implying that other processes likely affected the relationship between initial and delta CWD. For most species delta CWD was neither linearly related to nor monotonically increased with initial CWD values (Figure S3; see dashboard). For instance, the relationship between the initial and delta CWD values for *Calocedrus decurrens* may be described overall with a concave curve, with some of the most negative delta CWD values occurring in the High domain (along with some of largest delta CWD values; Figure `r fig_nums("fig_domains", display = "num")`C).  
 
@@ -435,7 +435,7 @@ Initial CWD means and ranges differed among tree species (Table S3).  The `r n.s
 
 Species did not differ greatly by delta CWD (Table S4).   The riparian species *`r delta.mean.sm$spp.out`* had the smallest mean delta CWD value of `r delta.mean.sm$mean.alone` mm `r delta.mean.sm$spp.range`.  The species with the second smallest mean (`r delta.mean.sm2$mean.alone`mm) and smallest range of delta CWD values `r delta.mean.sm2$spp.range` was the largely coastal *`r delta.mean.sm2$spp.out`*.  The mostly high-elevation *`r delta.mean.lg$spp.out`* had the largest mean increase in CWD values of `r delta.mean.lg$mean.alone` mm `r delta.mean.lg$spp.range`.  *`r delta.range.lg$spp.out`*, another high-elevation species, had the greatest range in delta CWD values `r delta.range.lg$spp.range`.   
 
-## Growth
+## 3.2 Growth
 
 Overall growth rates differed by species but in some instances coincided with species’ ecological traits.  For instance, the drought-tolerant hardwoods (*Arbutus menziesii*, *Notholithocarpus densiflorus*, *Quercus chrysolepis*, and *Quercus kelloggii*) exhibited the lowest growth rates overall, with all mean decadal basal area increases < 75 cm^2^ (Table 1).  *Quercus chrysolepis* had the lowest mean growth rate of the four species at 40.5 cm^2^/decade. Riparian and mesic hardwoods like *Acer macrophyllum* and *Alnus rubra* on average grew by 145 cm^2^/decade, although growth for *Acer macrophyllum* varied by state; its mean growth in California was 52.3 cm^2^/decade, less than half of its growth rate in Oregon and almost four times less than its growth rate in Washington.  High-elevation conifers like *Abies concolor* and *Picea engelmannii* grew at similar rates in Oregon, approximately 170-190 cm^2^/decade. In Washington the rate for *Picea engelmannii* was only 125.4 cm/decade. The other high-elevation conifers, *Abies lasiocarpa*, and *Tsuga mertensiana* grew more slowly at almost 70 cm^2^/decade.   
 
@@ -446,7 +446,7 @@ The patterns of CWD domain estimates for growth were not necessarily reflected i
 We observed varying growth responses across the CWD domains (Figure `r fig_nums("fig_diffgrow", display = "num")`). Depending on the species, growth may have been susceptible (negatively or positively) to a change in CWD and/or differed by initial CWD values. We consider a lesser initial CWD value to indicate a relatively more favorable condition for plant growth, and *Abies amabilis*, *Abies grandis*, *Calocedrus decurrens*, *Pinus ponderosa*, *Pseudotsuga menziesii*, *Tsuga mertensiana*, *Acer macrophyllum*, and *Alnus rubra* exhibited greater growth in the Low domains than the Medium and/or High domains. This was exemplified by *Acer macrophyllum* and *Abies grandis* with a mean difference of `r fig.val.fcn("g", "X312", "IH - IL", 0)` cm^2^/decade, IH-IL and `r fig.val.fcn("g", "X312", "SH - SL", 0)` cm^2^/decade, SH-SL, respectively while less for contrasts for species like *Tsuga mertensiana* (approximately -0.20 for IM-IL and SM-SL) and *Quercus chrysolepis* (`r fig.val.fcn("g", "X805", "SH - SM", 0)` for SH-SM).  Except for *Alnus rubra*, these results predominantly occurred in both the Stable domain (2 spp.) or the Increasing and Stable domains (5 spp.). However, this finding is not uniform for all species, and we found that *Thuja plicata* had higher growth rates in the Medium domains than either High or Low domains (Increasing: `r fig.val.fcn("g", "X242", "IH - IM", 0)` cm^2^/decade for IH-IM and `r fig.val.fcn("g", "X242", "IM - IL", 0)` cm^2^/decade for IM-IL; Stable: `r fig.val.fcn("g", "X242", "SH - SM", 0)` cm^2^/decade for SH-SM and `r fig.val.fcn("g", "X242", "SM - SL", 0)` cm^2^/decade for SM-SL). *Abies concolor*, *Larix occidentalis*, *Picea engelmannii*, *Pinus contorta*, *Pinus lambertiana*, *Arbutus menziesii*, and *Quercus kelloggii* had higher growth rates in the more water stressed High domains than the Medium and/or Low domains, with some of the greatest differences for *Pinus lambertiana* (`r fig.val.fcn("g", "X117", "IH - IL", 0)` cm^2^/decade for IH-IL) and *Picea engelmannii* (`r fig.val.fcn("g", "X93", "SH - SL", 0)` cm^2^/decade for SH-SL).  Except for *Larix occidentalis*, these results predominantly occurred in both the Increasing domain (3 spp.) or the Increasing and Stable domains (3 spp.). Other species exhibited no significant findings (4 spp.) or displayed other result patterns (3 spp.).
 
 
-## Mortality  
+## 3.3 Mortality  
 
 Overall decadal mean mortality rates were highest among high elevation conifers. Three out of the four species had mortality rates of 0.20/decade or higher, including *Picea engelmannii* with the highest mean mortality rate of 0.28/decade (95% CI = 0.21, 0.36).  This species exhibited a mean mortality rate that was almost five times higher in Washington (0.34) than in Oregon (0.07).  Drought-tolerant conifers had overall mortality rates that were relatively low (*Calocedrus decurrens* had the greatest mortality of the four species at 0.15/decade). *Calocedrus decurrens* and *Pinus ponderosa* both exhibited higher mortality and lower growth rates in California than Oregon. The mean mortality rates for drought-tolerant hardwoods ranged from 0.14 to 0.20, with *Quercus chrysolepis* and *Quercus kelloggii* having the highest mortality rates (0.20 and 0.18, respectively).  Of the fire-adapted conifers, *Pinus monticola* and *Pinus contorta* had the greatest mortality rates (0.19 and 0.20, respectively), with *Pinus contorta* exhibiting a low decadal mortality rate in California (0.07), more than twice that rate in Oregon (0.17), and five times the California rate in Washington (0.37).  For the riparian and mesic hardwoods, *Alnus rubra* had an overall decadal mortality rate of 0.21, compared to 0.13 for *Acer macrophyllum*.  However, *Acer macrophyllum* exhibited a mortality rate of 0.27/decade in California, almost three times as high as rates for Washington and Oregon. Decadal mortality rates for shade-tolerant conifers varied greatly, from 0.04 (*Thuja plicata*) to 0.20 (*Pinus lambertiana*).  The mortality rate for *Abies grandis* in Washington was approximately twice as high as the rates for Oregon and California.    
 
@@ -454,12 +454,12 @@ A suite of species had greater mortality in the Low domains than the Medium and/
 
 Like growth domain contrasts, the three types of mortality contrasts did not appear to be predominantly positive or negative (Figure `r fig_nums("fig_diffmort", display = "num")`, `r t.ref("tbl_summ_grow_mort")`). There were fewer mortality estimates with significant findings than growth (46 vs 74). There were fewer differences for “Increasing vs. Stable” contrasts (9) than for Increasing (21) or Stable (16), indicating that mortality may not have been as strongly associated with delta CWD as it was with initial CWD values.
 
-## Geography  
+## 3.4 Geography  
 The interactive dashboard revealed geographic patterns that were associated with specific domains while not necessarily captured by state-level estimates. For the Increasing and Stable Low domains *Abies lasiocarpa* had less mortality in northeastern Washington and *Tsuga mertensiana* exhibited greater growth in the same region. *Pinus contorta* exhibited less growth and greater mortality in northern Washington (Increasing Low). In the southern Sierra Nevada *Pinus lambertiana* had greater growth (Increasing Medium and High) and greater mortality (Increasing High), *Calocedrus decurrens* had greater mortality (Increasing High), and *Pinus monticola* had less mortality (Increasing High). *Acer macrophyllum* exhibited less growth in the Sierra Nevada and southern Klamath Mountains (Increasing High) and greater growth in northwestern Washington in the Coast and Cascade ranges (Increasing and Stable Low).
 
 
 
-# Discussion
+# 4. Discussion
 
 Analysis of 23 tree species revealed diverse species-specific associations with climatic water deficit, with different species exhibiting contrasting relationships among growth, mortality, and water stress. Responses were potentially driven by differences in drought tolerance strategies, local disturbance regimes, and biotic interactions. We found more significant CWD contrasts for species growth than mortality, possibly indicating that growth differences by CWD domain were more readily detectable than mortality over a decade, although growth and mortality findings were not necessarily negatively related. Delta CWD was greater than zero across almost all plots although the magnitude of change was generally not large relative to initial CWD values. We additionally found high decadal mortality rates for some species within and across states.  
 
@@ -494,26 +494,31 @@ Although our current analysis offers a coarse examination of species status acro
 Our analysis captures significant changes in mortality and growth for the tree species we examined, with some trees exhibiting increases in mortality and decreases in growth either in portions of their ranges or across their entire range.  For some species in semi-arid environments such as *Pinus ponderosa*, *Pseudotsuga menziesii*, *Pinus contorta*, *Picea engelmannii*, and *Abies lasiocarpa*, we may be observing ecosystem shifts with a change in water stress combined with disturbances such as wildfire and insect mortality (Parks et al. 2019, Halofsky et al. 2020, Raymond et al. 2023).  Our hope is that our results for individual species serve to highlight potential further inquiries into the status of the species we examined.  For managers, the results may be used to inform action for resiliency.   With the shift in ecosystems, landowners may be motivated to assist with species migration when planting or replanting (Raymond et al. 2023), and forest thinning may help reduce water stress and the impacts of fire and insects (Bernal et al. 2023).  
 
 
-# Conclusion
+# 5. Conclusion
 
 We assessed a mortality and growth rates for 23 species across the west coast of the United States. For the species examined we found no general patterns in CWD domains related to tree growth or mortality; rather, the results appeared species specific. We believe our analysis approach can be refined for individual species analysis, with the potential for integrating a third variable that could introduce information besides a condition variable and change variable. Results from our analysis and the analyses of others provide valuable and reliable insights into the condition of several tree species that exhibit abnormally high mortality and low growth. Our hope is that these findings will inform management and be of use in the development of monitoring efforts for these species in the rapidly changing landscape of western North America.
 
+# Declaration of Generative AI and AI-assisted technologies in the writing process
+During the preparation of this work the authors used Claude.ai to provide initial manuscript proofreading, initial construction of the Shiny app, and a reduction of analysis code execution time. After using this tool, the authors reviewed, validated, and edited the content as needed and take full responsibility for the content of the published article.   
 
-# Acknowledgments
-We thank Andrew Yost from the Oregon Department of Forestry for supporting this project and for reviewing a manuscript draft. We thank Josée Rousseau for reviewing a manuscript draft.  Also, we are grateful to FIA field crews and data managers for their expertise and efforts to provide quality data.
+# Declaration of Competing Interest  
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.   
 
-# Author Contributions
-J.D.G. was responsible for project conceptualization, formal analysis, writing of the main manuscript, app development, reviewing and editing, and project administration.  B.F. performed concept review, FIA database navigation, advice, code assistance, manuscript review, and data acquisition.  
+# CRediT Author Contribution Statement
+**Jeremiah D Groom**: Writing – original draft, visualization, validation, software, project administration, methodology, formal analysis, data curation, conceptualization.  **Bryce Frank**: Writing – review & editing, visualization, methodology. 
 
 # Data Availability
 The data for this study are available at from the corresponding author upon reasonable request and at the GitHub repository https://github.com/jeremygroom/Tree_Growth_Death.  
 
+# Supplemental Material  
+Supplemental material associated with this article can be found in the online version. 
+
+# Acknowledgments
+We thank Andrew Yost from the Oregon Department of Forestry for supporting this project and for reviewing a manuscript draft. We thank Josée Rousseau for reviewing a manuscript draft.  Also, we are grateful to FIA field crews and data managers for their expertise and efforts to provide quality data.
 
 # References
 
 ::: {#refs}
-
-References
 
 Abatzoglou JT, Williams AP (2016) Impact of anthropogenic climate change on wildfire across western US forests. Proc Natl Acad Sci 113(42):11770-11775. https://doi.org/10.1038/sdata.2017.191    
 
@@ -688,7 +693,9 @@ g.m.summ.ft
 ```
 
 
-```{r mapfig, fig.height = 7,  fig.dpi=300, fig.cap=fig.cwdmap_cap, fig.cap.sep=""}
+```{r mapfig, fig.height = 7,  fig.dpi=300, fig.cap=fig.cwdmap_cap, fig.cap.sep="", include=FALSE}
+
+# Set include=FALSE to prevent the chunks from running.  Figures are provided as individual files.
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS.OTHER, "cwd_maps_figure.png"))
@@ -696,7 +703,7 @@ knitr::include_graphics(paste0(RESULTS.OTHER, "cwd_maps_figure.png"))
 ```
 
 
-```{r domainsfig, fig.width = 6,  fig.dpi=300, fig.cap=fig.domains, fig.cap.sep=""}
+```{r domainsfig, fig.width = 6,  fig.dpi=300, fig.cap=fig.domains, fig.cap.sep="", include=FALSE}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS.OTHER, "Example_spp_figure.png"))
@@ -704,7 +711,7 @@ knitr::include_graphics(paste0(RESULTS.OTHER, "Example_spp_figure.png"))
 ```
 
 
-```{r cwdmeansfig, fig.width = 7, fig.height=6, fig.dpi=300, fig.cap=fig.cwd_initdelt, fig.cap.sep=""}
+```{r cwdmeansfig, fig.width = 7, fig.height=6, fig.dpi=300, fig.cap=fig.cwd_initdelt, fig.cap.sep="", include=FALSE}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS.OTHER, "Spp_InitDeltCWD.png"))
@@ -712,7 +719,7 @@ knitr::include_graphics(paste0(RESULTS.OTHER, "Spp_InitDeltCWD.png"))
 ```
 
 
-```{r diff_grow_fig, fig.height = 6.5, width = 6.5, fig.dpi=300, fig.cap=fig.diff_grow, fig.cap.sep=""}
+```{r diff_grow_fig, fig.height = 6.5, width = 6.5, fig.dpi=300, fig.cap=fig.diff_grow, fig.cap.sep="", include=FALSE}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS1.LOC, "/Growth_figs_cwd/Growth_Panel_Plot.png"))
@@ -720,7 +727,7 @@ knitr::include_graphics(paste0(RESULTS1.LOC, "/Growth_figs_cwd/Growth_Panel_Plot
 ```
 
 
-```{r diff_mort_fig, fig.height = 6.5, width = 6.5, fig.dpi=300, fig.cap=fig.diff_mort, fig.cap.sep=""}
+```{r diff_mort_fig, fig.height = 6.5, width = 6.5, fig.dpi=300, fig.cap=fig.diff_mort, fig.cap.sep="", include=FALSE}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS1.LOC, "/Mort_figs_cwd/Mort_Panel_Plot.png"))

@@ -123,8 +123,8 @@ cwd.ci.plt <- ggplot(cwd.ci, aes(Mean_Init, Mean_Diff, group = Species, label = 
   theme(text = element_text(family = font_to_use))#+
 #geom_hline(yintercept = 0)
 
-ggsave(paste0(RESULTS.OTHER, "Spp_InitDeltCWD.png"), cwd.ci.plt, device = 'png',
-       width = 7, height = 6, dpi = 300, units = "in", bg = "white")
+ggsave(paste0(RESULTS.OTHER, "Spp_InitDeltCWD.jpeg"), cwd.ci.plt, device = 'jpeg',
+       width = 7, height = 6, dpi = 1000, units = "in", bg = "white")
 
 
 
@@ -260,8 +260,8 @@ comb.plt.legend <- get_legend(plot.vals.plt)
 comb.plt <- plot_grid(comb.plt, comb.plt.legend, ncol = 1, rel_heights = c(1, 0.03))
 
 
-ggsave(paste0(RESULTS.OTHER, "Example_spp_figure.png"), comb.plt, device = 'png',
-       width = 8, height = 6, dpi = 300, units = "in", bg = "white")
+ggsave(paste0(RESULTS.OTHER, "Example_spp_figure.jpeg"), comb.plt, device = 'jpeg',
+       width = 8, height = 6, dpi = 1000, units = "in", bg = "white")
 
 
 
@@ -466,6 +466,11 @@ ggsave(paste0(RESULTS.OTHER, "cwd_maps_figure.png"), cwd.maps, device = 'png',
        width = 6, height = 8.81, dpi = 300, units = "in",
        bg = "white")
 
+ggsave(paste0(RESULTS.OTHER, "cwd_maps_figure.jpeg"), cwd.maps, device = 'jpeg',
+         width = 6, height = 8.81, dpi = 1000, units = "in",
+         bg = "white")
+  
+  
 ms.figures.other <- list(cwd.maps = cwd.maps)
 
 write_rds(ms.figures.other, paste0(RESULTS.OTHER, "ms.figures.other.RDS"))
@@ -474,6 +479,11 @@ write_rds(ms.figures.other, paste0(RESULTS.OTHER, "ms.figures.other.RDS"))
   ggsave(paste0(RESULTS.OTHER, "cwdneg_maps_figure.png"), cwd.maps, device = 'png',
          width = 6, height = 8.81, dpi = 300, units = "in",
          bg = "white")
+  
+  ggsave(paste0(RESULTS.OTHER, "cwdneg_maps_figure.jpeg"), cwd.maps, device = 'jpeg',
+         width = 6, height = 8.81, dpi = 1000, units = "in",
+         bg = "white")
+  
 }
 
 }

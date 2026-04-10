@@ -106,9 +106,10 @@ treedat.use <- data.use
 
 n_domain <- length(DOMAIN.LEVELS)
 
-PlotDat <- treedat.use %>% dplyr::select(STATECD, puid, ESTN_UNIT, STRATUMCD, w) %>% 
+PlotDat <- treedat.use %>% dplyr::select(STATECD, puid, ESTN_UNIT, STRATUMCD, w, REMPER) %>% 
   distinct() %>%
   mutate(stratum = as.numeric(paste0(STRATUMCD, 0, ESTN_UNIT, 0, STATECD))) 
+
 #pd.check <- PlotDat %>% select(State_Plot) %>% distinct() # Yes, same number of rows
 
 
@@ -155,15 +156,7 @@ arrays.mort <- parse.tree.clim.fcn(tree.mort.dat, clim.var = CLIM.VAR.USE, analy
 arrays.grow <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
 
 if(file.exists(paste0(DATA.LOC, "analysis.arrays.zip")) == FALSE){
-  write_rds(list(arrays.mort = arrays.mort, arrays.grow = arrays.grow, PlotDat = PlotDat), file = paste0(DATA.LOC, "analysis.arrays.RDS"))
-  zip(zipfile = file.path(DATA.LOC, "analysis.arrays.zip"), files = file.path(DATA.LOC, "analysis.arrays.RDS"),
-      flags = '-r9Xj' )  # This weird bit keeps the parent directory from being included in the zip folder
-  
-  # Deleting written CSV file (~200 MB), cleaning up after the data zip process. 
-  if (file.exists(file.path(DATA.LOC, "analysis.arrays.RDS")) == TRUE) {
-    file.remove(file.path(DATA.LOC, "analysis.arrays.RDS"))
-  }
-  
+  saveRDS(list(arrays.mort = arrays.mort, arrays.grow = arrays.grow, PlotDat = PlotDat), file = paste0(DATA.LOC, "analysis.arrays.RDS"), compress = TRUE)
 }
 
 
@@ -195,7 +188,7 @@ death.prop <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/Fire_P
 
 # If desired, the analysis will obtain mortality estimates for the selected species
 #  by state and overall. These values can be used to evaluate species for inclusion in the
-#  main analysis.  200 iterations, 16 cores = 4 minutes
+#  main analysis.  1000 iterations = 2 minutes
 tic()
 if(RUN.STATES == TRUE) {
   source(paste0(CODE.LOC, "Overall_Mort_Est.R"))
@@ -427,8 +420,8 @@ if(n_domain == 6) {
   #                         ncol = 1, 
   #                         rel_heights = c(1, 0.03)) 
     
-    ggsave(paste0(save.loc.fcn(k), filename.use, "Panel_Plot.png"), plot = diff.plt, device = ragg::agg_png, 
-           width = 10, height = 10, units = 'in', res = 300)
+    ggsave(paste0(save.loc.fcn(k), filename.use, "Panel_Plot.jpeg"), plot = diff.plt, device = ragg::agg_jpeg, 
+           width = 10, height = 10, units = 'in', res = 1000)
   }
 }
 
