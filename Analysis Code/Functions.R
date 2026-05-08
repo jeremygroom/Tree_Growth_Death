@@ -223,12 +223,12 @@ parse.tree.clim.fcn <- function(tree.dat, clim.var, analysis.type, resp.dat, tot
   
   extract.resp <- purrr::map(tree.dat , ~.[[resp.dat]]) 
   vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts", "REMPER")) %>% # Combining the list into a single tibble.
-  #vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "puid", "W_h", "STRATUM","SITECLCD_plot")) # Combining the list into a single tibble.
+    #vals_dat <- reduce(extract.resp, left_join, by = c("STATECD", "PLOT_FIADB", "puid", "W_h", "STRATUM","SITECLCD_plot")) # Combining the list into a single tibble.
     dplyr::select(-REMPER)
   
   extract.all <- purrr::map(tree.dat , ~.[[tot.dat]]) 
   all_dat <- reduce(extract.all, left_join, by = c("STATECD", "puid", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "n_h.plts", "REMPER")) %>%
-  dplyr::select(-REMPER)
+    dplyr::select(-REMPER)
   
   # Now extracting the domain category information for each species 
   extract.domain <- purrr::map(tree.dat , ~.[["domain.out"]]) 
@@ -573,7 +573,7 @@ generate_bootstrap_array.fcn <- function(vals.dat, all.dat, domain.array, domain
       batch_results <- replicate(actual_batch_size, {
         samp <- generate_bootstrap_sample.fcn(strata.num = strata.num)
         
-       # Calculate estimates for all domains for this iteration
+        # Calculate estimates for all domains for this iteration
         1:n_domains %>% 
           purrr::map(\(d) calculate_domain_estimates.fcn(
             samp = samp,
@@ -710,7 +710,7 @@ sig.dist.fcn2 <- function(data.set, k.level){
       LCI.95 < 0 & Means > 0 ~ 0,
       UCI.95 > 0 & Means < 0 ~ 0,
       .default = NA)
-    ) %>% left_join(sig.dist %>% dplyr::select(Species, order.c, all_of(domain.col), all_of(sig.col)), by = c("Species", "Domain" = domain.col)) %>%
+  ) %>% left_join(sig.dist %>% dplyr::select(Species, order.c, all_of(domain.col), all_of(sig.col)), by = c("Species", "Domain" = domain.col)) %>%
     arrange(order.c) %>%
     mutate(
       sig.temp = get(sig.col),
@@ -718,7 +718,7 @@ sig.dist.fcn2 <- function(data.set, k.level){
     dplyr::select(Species, order.c, Domain, abs.gt) %>%
     rename("{domain.col}" := "Domain",
            "{gt.col}" := "abs.gt")
-    return(sig.data.set)
+  return(sig.data.set)
 }
 
 
@@ -831,7 +831,7 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right, ft_to_use =
     )
   )
   
-
+  
   # Kludgy way to get a conifer/deciduous break.  X312 = bigleaf maple.
   decid.break <- length(SEL.SPP) - which(SEL.SPP == "X312") + 1.5
   
@@ -847,8 +847,8 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right, ft_to_use =
                    color = Domain),
                size = 2, shape = 21, stroke = 0.8) +
     {if(plt.mcperm) {geom_text(aes(x = lab.x, 
-                  y = as.numeric(species_label) + y.offset + yadj,
-                  label = symb), size = 6) }} + 
+                                   y = as.numeric(species_label) + y.offset + yadj,
+                                   label = symb), size = 6) }} + 
     geom_hline(yintercept = decid.break, linetype = 2) +
     #scale_y_continuous(breaks = 1:length(levels(DvS2$species_label)),
     #                    labels = levels(DvS2$species_label)) +
@@ -867,7 +867,7 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right, ft_to_use =
           legend.text = element_text(size = 8),
           title = element_text(size = 10),
           legend.key.size = unit(0.4, "cm")
-          )  + 
+    )  + 
     {if(remove.y) {
       theme(axis.text.y = element_blank())
     }}
@@ -957,11 +957,11 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
       legend.title = element_text(margin = margin(r = 40), size = text.size + 3),
       axis.text = element_text(size = 11),
       axis.title = element_text( size = 15)) +
-        guides(color = guide_legend(nrow = 1, override.aes = list(size = legend_point_size)),
-               title.hjust = 5,
-               title.position = "left",
-               label.position = "right"
-               )
+    guides(color = guide_legend(nrow = 1, override.aes = list(size = legend_point_size)),
+           title.hjust = 5,
+           title.position = "left",
+           label.position = "right"
+    )
   return(plot.vals.plt)
 }
 
@@ -975,12 +975,35 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
 
 ### -- Mapping elements -- ###
 
-domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid_use, point.size) {
+domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid_use, 
+                           point.size, mort.cause.dat, map.display = "CWD Domain",
+                           show.mountains = TRUE) {
   
+  # Lookup table: Shiny dropdown label -> column name in mort.cause.dat
+  pct.col.map <- c(
+    "Fire"       = "Fire_pct",
+    "Insect"     = "Insect_pct",
+    "Disease"    = "Disease_pct",
+    "Weather"    = "Weather_pct",
+    "Vegetation" = "Vegetation_pct",
+    "Unknown"    = "Unknown_pct",
+    "Animal"     = "Animal_pct"
+  )
+  
+  use.mort.cause <- map.display != "CWD Domain" && !is.null(mort.cause.dat)
+  
+  
+  # Need to join mort.cause.dat here
   map.dat.1 <- domain.matrix %>% 
     mutate(targ.spp = get(spp.num)) %>%
     filter(targ.spp > 0) %>%
-    dplyr::select(LAT, LON, targ.spp)
+    dplyr::select(puid, LAT, LON, targ.spp)
+  
+  if (use.mort.cause) {
+    pct.col <- pct.col.map[[map.display]]
+    map.dat.1 <- map.dat.1 %>%
+      left_join(mort.cause.dat %>% dplyr::select(puid, all_of(pct.col)), by = "puid")
+  }
   
   # Points defining the boundaries of the map
   maxlat <- max(map.dat.1$LAT); minlat <- min(map.dat.1$LAT)
@@ -995,26 +1018,49 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid_use, poin
   
   #browser()
   map.dat.2 <- st_as_sf(map.dat.1, coords = c("LON", "LAT"), crs = 4326) #%>%
-#    st_transform(crs = 3310)  # Match your projection
+  #    st_transform(crs = 3310)  # Match your projection
   
   
-  ggplot() +# + data = map.dat.2, aes(x = LON, y = LAT)) +
-    geom_sf(data = map.dat.2, aes(color = factor(targ.spp)), size = point.size) +
-    #  geom_tile(data = map.dat.1, mapping = aes(x = LON, y = LAT, z = targ.spp), binwidth = 0.15, 
-    #            stat = "summary_2d", fun = mean, na.rm = TRUE, show.legend = FALSE) + 
-    scale_color_manual(values = map.virid.use) +  
-    #                  labels = gsub(".", " ", DOMAIN.LEVELS[domains.used], fixed = TRUE)) +
-    #scale_fill_viridis(option = "H", begin = virid.min, end = virid.max) +
-    geom_polygon(data = west_df, mapping = aes(x = long, y = lat, group = group), color = "black", fill = "transparent") +
-    geom_text(data = mountain_ranges_df,
-              aes(x = X, y = Y, label = name, angle = ang),
-              size = 4, fontface = "bold.italic", color = mountain_ranges_df$colr,
-              check_overlap = TRUE) +
-
-    coord_sf(xlim = c(minlong - 1, maxlong + 1),  ylim = c(minlat - 1, maxlat + 1)) +
+  base.map <- ggplot() +
+    geom_polygon(data = west_df,
+                 mapping = aes(x = long, y = lat, group = group),
+                 color = "black", fill = "transparent") +
+    coord_sf(xlim = c(minlong - 1, maxlong + 1), ylim = c(minlat - 1, maxlat + 1)) +
     theme_void() +
-    theme(panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.5),
-          legend.position = "none")
+    theme(panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.5))  
+  
+  if (use.mort.cause) {
+    base.map <- base.map +
+      geom_sf(data = map.dat.2, aes(color = .data[[pct.col]]), size = point.size,
+              alpha = 0.5) +
+      #scale_color_viridis_c(option = "H", begin = 0.1, end = 0.9, 
+      scale_color_viridis(direction = -1,
+      #scale_color_gradientn(  
+      #colors = c("#DEEBF7", "#9ECAE1", "#3182BD"),                    
+      #colors =  c("#F0FFFF", "#C1CDCD", "#838B8B"),
+         name = "% of Plot",
+        na.value = "grey70") +
+      theme(#legend.position = "right",
+            legend.position = c(0.75, 0.53),  # Top right inside
+            legend.justification = c("left", "top"),
+            legend.title = element_text(size = 12),
+            legend.text = element_text(size = 11)
+            #legend.margin = margin(l = -1, unit = "cm")
+            )
+  } else {
+    base.map <-base.map +
+      geom_sf(data = map.dat.2, aes(color = factor(targ.spp)), size = point.size) +
+      scale_color_manual(values = map.virid.use) +
+      theme(legend.position = "none")
+  } 
+  base.map <- base.map  + 
+    {if (show.mountains)
+      geom_text(data = mountain_ranges_df,
+                aes(x = X, y = Y, label = name, angle = ang),
+                size = 4, fontface = "bold.italic", color = mountain_ranges_df$colr,
+                check_overlap = TRUE)
+    }
+  return(base.map)
 }
 
 
@@ -1031,7 +1077,9 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid_use, poin
 
 ## Function for plotting the mortality numbers by quantile and the distribution of plots in quantiles
 pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
-                          quant.lims, domain.n, k, SHINYAPP.IN.USE, SHINY_FONTSIZE, cm1 = TRUE){
+                          quant.lims, domain.n, k, SHINYAPP.IN.USE, SHINY_FONTSIZE, cm1 = TRUE,
+                          mort.cause.dat = NULL, map.display = "CWD Domain",
+                          show.mountains = TRUE){
   
   use.dat2 <- use.dat %>% filter(Species == sppnum.to.plot)
   
@@ -1089,15 +1137,22 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
   
   
   # Plotting the map of plot locations:
-  domain.map <- domain.map.fcn(domain.matrix, spp.num = sppnum.to.plot, n.plots.used = n_plots2, virid_use = virid.use, point.size = point_size)
+  domain.map <- domain.map.fcn(domain.matrix, spp.num = sppnum.to.plot, n.plots.used = n_plots2, virid_use = virid.use, point.size = point_size,
+                               mort.cause.dat = mort.cause.dat, map.display = map.display, show.mountains = show.mountains)
   
   
   if(SHINYAPP.IN.USE == TRUE) {
     p_all <- (p1/p2) + plot_layout(axis_titles = "collect") 
     plot.vals.plt <- plot.vals.plt + labs(title = "FIA plot distributions by CWD") +
       theme(plot.title = element_text(size = text_size + 2, hjust = 0))
-    domain.map <- domain.map + labs(title = "FIA fuzzed plot locations") +
-      theme(plot.title = element_text(size = text_size + 2, hjust = 0.4, margin = margin(b = 7)))  
+    
+    map.title <- if (map.display == "CWD Domain") {
+      "FIA fuzzed plot locations, CWD domains"
+    } else {
+      paste0("FIA fuzzed plot locations, percent ", map.display, " mortality")
+    }
+    domain.map <- domain.map + labs(title = map.title) +
+      theme(plot.title = element_text(size = text_size + 2, hjust = 0.4, margin = margin(b = 7)))
   }
   
   if(n_domain == 9) {
@@ -1295,25 +1350,25 @@ psig.ft.fcn <- function(psig.table){
   names(psig.table2) <- c("Species", "Dom1", "p1", "Dom2", "p2", "Dom3", "p3")
   
   flextable(psig.table2) %>%
-  set_header_labels(
-#    sci_name = "Species",
-    Dom1 = "Domain",
-    p1 = "p-value",
-    Dom2 = "Domain",
-    p2 = "p-value",
-    Dom3 = "Domain",
-    p3 = "p-value"
-  ) %>%
-  add_header_row(
-    values = c("", "Increasing vs. Stable", "Increasing, High/Med/Low", "Stable, High/Med/Low"),
-    colwidths = c(1, 2, 2, 2)
-  ) %>%
-  italic(j = 1, part = "body") %>%
-  fontsize(size = 10, part = "body") %>%
-  fontsize(size = 11, part = "header") %>%
-  line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>%
-  set_table_properties(layout = "autofit", width = 0) %>%
-  border_remove() %>%
-  hline_top(part = "all") %>%
-  hline_bottom(part = "all")  
+    set_header_labels(
+      #    sci_name = "Species",
+      Dom1 = "Domain",
+      p1 = "p-value",
+      Dom2 = "Domain",
+      p2 = "p-value",
+      Dom3 = "Domain",
+      p3 = "p-value"
+    ) %>%
+    add_header_row(
+      values = c("", "Increasing vs. Stable", "Increasing, High/Med/Low", "Stable, High/Med/Low"),
+      colwidths = c(1, 2, 2, 2)
+    ) %>%
+    italic(j = 1, part = "body") %>%
+    fontsize(size = 10, part = "body") %>%
+    fontsize(size = 11, part = "header") %>%
+    line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>%
+    set_table_properties(layout = "autofit", width = 0) %>%
+    border_remove() %>%
+    hline_top(part = "all") %>%
+    hline_bottom(part = "all")  
 }

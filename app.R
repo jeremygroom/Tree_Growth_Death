@@ -50,18 +50,33 @@ ui <- fluidPage(
     column(3,
            selectInput("species", 
                        "Select Species:",
-                       choices = NULL,  # Will be populated in server
+                       choices = NULL,
                        selected = NULL)
-           ),    
+    ),    
     column(3,
            selectInput("analysis_type", 
                        "Analysis Type:",
                        choices = list("Growth" = 1, "Mortality" = 2),
                        selected = 1)
+    ),
+    column(3,
+           checkboxInput("show_mountains",
+                         "Show mountain ranges",
+                         value = TRUE)
+    ),
+    column(3,
+           conditionalPanel(
+             condition = "input.analysis_type == '2'",
+             selectInput("map_display",
+                         "Map Display:",
+                         choices = c("CWD Domain", "Fire", "Insect", "Disease",
+                                     "Weather", "Vegetation", "Unknown", "Animal"),
+                         selected = "CWD Domain")
+           )
     )
   ),
   
-
+  
   
   # Main plot area
   fluidRow(
@@ -96,7 +111,7 @@ ui <- fluidPage(
                         SM (Stable, Medium), and SH (Stable, High). Domain SL (yellow) includes plots with little increase in CWD at the lower range of initial CWD values. These plots arguably experience the least water stress. 
                         IH (light green) is the opposite; these FIA plots have the greatest water stress. This figure shows, for each species, the relationship and distribution of plot values across the six domains."),
                       h3("Figure: CWD domain estimates"),
-                        p("The leftmost figure gives us the estimated 10-year growth or mortality rates (depending on which you selected) for the trees in each of the domains.  That is, the dark blue column for IL 
+                      p("The leftmost figure gives us the estimated 10-year growth or mortality rates (depending on which you selected) for the trees in each of the domains.  That is, the dark blue column for IL 
                           is the mean growth or mortality estimate for the trees in the FIA plots represented by the dark-blue points in the middle figure \"FIA plot distrubution by CWD\". We use the same 
                           domain abbreviations (IL, IM, etc.) as before.  The error bars are the 95% bootstrapped confidence intervals"),
                       h3("Figure: FIA fuzzed plot locations"),
@@ -137,6 +152,10 @@ server <- function(input, output, session) {
       # Load species names and create choices
       incProgress(0.2, detail = "Loading species information...")
       spp_names_data <- readxl::read_xlsx(paste0(DATA.LOC, "FullSppNames.xlsx"))
+      
+      # Load species mortality causes
+      incProgress(0.2, detail = "Loading mortality-specific information...")
+      analysis_data$spp_mort_data <- readRDS(paste0(DATA.LOC, "Mort_type.rds"))
       
       # Create species choices in the format "Genus species - Common name"
       choices_df <- spp_names_data %>%
@@ -202,7 +221,7 @@ server <- function(input, output, session) {
     if (!data_loaded() || is.null(input$species) || input$species == "") {
       return(NULL)
     }
-
+    
     tryCatch({
       # Get analysis type
       k <- as.numeric(input$analysis_type)
@@ -212,23 +231,30 @@ server <- function(input, output, session) {
         # Growth
         mort_grow_dat <- analysis_data$arrays_grow
         plt_dat <- analysis_data$growth_output
+        mort_cause <- NULL
+        map.display <- "CWD Domain"
+        
       } else {
         # Mortality
         mort_grow_dat <- analysis_data$arrays_mort
         plt_dat <- analysis_data$mort_output
+        mort_cause <- analysis_data$spp_mort_data[[input$species]]
+        map.display <- if (!is.null(input$map_display)) input$map_display else "CWD Domain"
       }
       
-
+      
       plt_dat2 <- cm2.fcn(k, plt_dat$domain.summaries) # Transforming growth data to cm2
       domain.matrix <- mort_grow_dat$domain.matrix
       domain.n <- mort_grow_dat$domain.n
       quant.lims <- mort_grow_dat$quant.lims
       quant.lims.delta <<- mort_grow_dat$quant.lims.delt
       
+      
+      
       virid.use <<- viridis_pal(option = "H", begin = 0.1, end = 0.9)(n_domain)  # Get colors for plotting
       
       
-    # browser()
+      #browser()
       # Generate the plot using pair.plts.fcn with SHINYAPP.IN.USE = TRUE
       plot_result <- pair.plts.fcn(
         sppnum.to.plot = input$species, 
@@ -238,7 +264,10 @@ server <- function(input, output, session) {
         domain.n = domain.n, 
         k = k, 
         SHINYAPP.IN.USE = TRUE,
-        SHINY_FONTSIZE = SHINY.FONTSIZE
+        SHINY_FONTSIZE = SHINY.FONTSIZE,
+        mort.cause.dat = mort_cause,
+        map.display = map.display,
+        show.mountains = input$show_mountains
       )
       
       return(plot_result)

@@ -160,6 +160,43 @@ if(file.exists(paste0(DATA.LOC, "analysis.arrays.zip")) == FALSE){
 }
 
 
+# A table for plotting mortality type
+if(file.exists(paste0(DATA.LOC, "Mort_type.rds")) == FALSE) {
+mort.type <- treedat.use %>% 
+  filter(SPCD %in% sel.spp) %>%
+  dplyr::select(STATECD, SPCD, puid, ntree.rep, AGENTCD2) %>%
+  group_by(STATECD, puid, SPCD, AGENTCD2) %>%
+  summarize(sum.trees = sum(ntree.rep)) %>%
+  pivot_wider(names_from = AGENTCD2, values_from = sum.trees) %>%
+  rename( "Alive" = `0`,
+          "Insect" = `10`,
+          "Disease" = `20`,
+          "Fire" = `30`, 
+          "Animal" = `40`,
+          "Weather" = `50`,
+          "Vegetation" = `60`,
+          "Unknown" = `70`) %>%
+  replace(is.na(.), 0) %>%
+  mutate("Total" = sum(Alive, Fire, Weather, Vegetation, Disease, Unknown, Insect, Animal),
+         across(c(Fire, Weather, Vegetation, Disease, Unknown, Insect, Animal), 
+                ~ .x / Total * 100, 
+                .names = "{.col}_pct")) %>%
+  ungroup() %>%
+  dplyr::select(puid, SPCD, ends_with("_pct") )
+
+mort.type2 <- mort.type %>% mutate(spcd = paste0("X", SPCD)) %>% dplyr::select(-SPCD)
+
+mort.type.fcn <- function(spp.code) {
+  mortX <- mort.type2 %>% filter(spcd == .env$spp.code)
+  return(mortX)
+}
+
+mort.type.map <- SEL.SPP %>% purrr::map(\(x) mort.type.fcn(spp.code = x))
+names(mort.type.map) <- SEL.SPP
+
+
+write_rds(mort.type.map, paste0(DATA.LOC, "Mort_type.rds"))
+}
 #### 4) Analysis and plotting  --------------------------------------------------------
 
 

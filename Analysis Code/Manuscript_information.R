@@ -98,13 +98,18 @@ write_rds(analysis.stats, paste0(RESULTS.OTHER, "analysis.stats.RDS"))
 ##### Figure: Mean initial/delta CWD by species (scatterplo) -----------------------
 cwd.init.ci <- init.cwd.stats %>% dplyr::select(Species, Mean, UCI, LCI) %>% rename("Mean_Init" = Mean, "UCI_Init" = UCI, "LCI_Init" = LCI)
 cwd.diff.ci <- diff.cwd.stats %>% dplyr::select(Species, Mean, UCI, LCI) %>% rename("Mean_Diff" = Mean, "UCI_Diff" = UCI, "LCI_Diff" = LCI)
-cwd.ci <- left_join(cwd.init.ci, cwd.diff.ci, by = "Species")
+cwd.ci <- left_join(cwd.init.ci, cwd.diff.ci, by = "Species") %>%
+  left_join(spp.cat, by = "Species")
+
+# Setting colors for points, avoiding yellows and light greens
+virid.use.cwd <-   viridis_pal(option = "H", begin = 0.95, end = 0.05)(length(unique(spp.cat$cat_abbr)) + 2)[c(1:3, 6:8)]
 
 # CI bars don't add much. Sticking with points
-cwd.ci.plt <- ggplot(cwd.ci, aes(Mean_Init, Mean_Diff, group = Species, label = Species)) + 
+cwd.ci.plt <- ggplot(cwd.ci, aes(Mean_Init, Mean_Diff, color = spp_cat, label = Species)) + 
   #geom_errorbar(aes(ymin = LCI_Diff, ymax = UCI_Diff)) +  
   #geom_errorbar(aes(xmin = LCI_Init, xmax = UCI_Init)) +
   geom_point() + 
+  scale_color_manual(values = virid.use.cwd,  name = "Ecological Category") +
   geom_text_repel(
     family = font_to_use,
     max.overlaps = 12,
@@ -113,18 +118,29 @@ cwd.ci.plt <- ggplot(cwd.ci, aes(Mean_Init, Mean_Diff, group = Species, label = 
     box.padding = 0.5,
     nudge_y = 0.05,
     fontface = "italic", 
+    size = 4,
     # segment.curvature = -1e-10,
     #segment.ncp = 3,
     segment.angle = 20) +
   theme_bw() + 
-  labs(x = "Initial Climatic Water Deficit", y = "Change in Climatic Water Deficit") +
+  guides(
+    color = guide_legend(
+      override.aes = aes(label = "")
+    )
+  ) +
+  labs(x = "Initial Climatic Water Deficit, mm", y = "Change in Climatic Water Deficit, mm") +
   ylim(2, 7) +
   xlim(25, 175) +
-  theme(text = element_text(family = font_to_use))#+
+  theme(text = element_text(family = font_to_use,
+                            size = 12),
+        legend.position = "inside",
+        legend.position.inside = c(0.85, 0.2),
+        legend.text = element_text(size = 9),
+        legend.title=element_text(size = 10))#+
 #geom_hline(yintercept = 0)
 
 ggsave(paste0(RESULTS.OTHER, "Spp_InitDeltCWD.jpeg"), cwd.ci.plt, device = 'jpeg',
-       width = 7, height = 6, dpi = 1000, units = "in", bg = "white")
+       width = 9, height = 6, dpi = 1000, units = "in", bg = "white")
 
 
 
