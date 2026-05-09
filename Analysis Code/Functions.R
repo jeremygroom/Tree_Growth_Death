@@ -1002,7 +1002,8 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid_use,
   if (use.mort.cause) {
     pct.col <- pct.col.map[[map.display]]
     map.dat.1 <- map.dat.1 %>%
-      left_join(mort.cause.dat %>% dplyr::select(puid, all_of(pct.col)), by = "puid")
+      left_join(mort.cause.dat %>% dplyr::select(puid, all_of(pct.col)), by = "puid") %>%
+      dplyr::arrange(pick(pct.col))
   }
   
   # Points defining the boundaries of the map
@@ -1016,7 +1017,7 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid_use,
   map.virid.use <- virid.use[n.plots.used$loc[n.plots.used$n > 0]]
   
   
-  #browser()
+  #if(use.mort.cause == TRUE) browser()
   map.dat.2 <- st_as_sf(map.dat.1, coords = c("LON", "LAT"), crs = 4326) #%>%
   #    st_transform(crs = 3310)  # Match your projection
   
@@ -1032,7 +1033,7 @@ domain.map.fcn <- function(domain.matrix, spp.num, n.plots.used, virid_use,
   if (use.mort.cause) {
     base.map <- base.map +
       geom_sf(data = map.dat.2, aes(color = .data[[pct.col]]), size = point.size,
-              alpha = 0.5) +
+              alpha = 1) +
       #scale_color_viridis_c(option = "H", begin = 0.1, end = 0.9, 
       scale_color_viridis(direction = -1,
       #scale_color_gradientn(  
