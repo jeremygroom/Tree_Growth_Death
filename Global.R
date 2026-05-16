@@ -64,7 +64,7 @@ CLIM.VAR <- c("aet", "cwd", "vpdmin", "vpdmax", "temp", "precip")  # Climate var
 CLIM.VAR.USE <- "cwd" # "aet" "pet"
 CLIM.SUMMARY <- "summer_results"# "annual_results"       Select annual or summer climate summaries.
 
-ANALYSIS.TYPE <- c("grow", "mort")
+ANALYSIS.TYPE <- c("grow", "mort", "dbh.grow")  # dbh.grow = growth in DBH, whereas 'grow' is BAI
 
 
 VAR.DELTA.BOUNDARIES <- tibble(clim.var = CLIM.VAR, max.min = c(3, 5, 0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables

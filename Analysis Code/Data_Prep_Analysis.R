@@ -155,8 +155,10 @@ arrays.mort <- parse.tree.clim.fcn(tree.mort.dat, clim.var = CLIM.VAR.USE, analy
 
 arrays.grow <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
 
+arrays.dbh.grow <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.dbh.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
+
 if(file.exists(paste0(DATA.LOC, "analysis.arrays.zip")) == FALSE){
-  saveRDS(list(arrays.mort = arrays.mort, arrays.grow = arrays.grow, PlotDat = PlotDat), file = paste0(DATA.LOC, "analysis.arrays.RDS"), compress = TRUE)
+  saveRDS(list(arrays.mort = arrays.mort, arrays.grow = arrays.grow, arrays.dbh.grow = arrays.dbh.grow, PlotDat = PlotDat), file = paste0(DATA.LOC, "analysis.arrays.RDS"), compress = TRUE)
 }
 
 
@@ -228,7 +230,9 @@ death.prop <- read_csv(paste0(RESULTS1.LOC, "Mort_figs_", CLIM.VAR.USE, "/Fire_P
 #  main analysis.  1000 iterations = 2 minutes
 tic()
 if(RUN.STATES == TRUE) {
+  source(paste0(CODE.LOC, "Overall_InitialDBH_Est.R"))
   source(paste0(CODE.LOC, "Overall_Mort_Est.R"))
+  source(paste0(CODE.LOC, "Overall_DBHGrowth_Est.R"))
 }
 toc()
 
@@ -240,7 +244,7 @@ toc()
 tic() 
 # For ANALYSIS.PATHWAY == 1, one climate variable, and 16 dedicated cores, the analysis takes about 8 minutes.
 
-for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality
+for(k in 1:length(ANALYSIS.TYPE)) {  # 1 = grow, 2 = mortality, 3 = DBH grow
   
 
     # Need climate names for files and axes.
@@ -398,7 +402,7 @@ if(n_domain == 6) {
   
   PLT.MCPERM <- FALSE  # Plot the MC permutation asterisks? TRUE = yes, FALSE = no
   
-  for(k in 1:2){ # 1 = growth, 2 = mortality
+  for(k in 1:3){ # 1 = growth, 2 = mortality
       plt.dat <- readRDS(paste0(save.loc.fcn(k), "Processed_6Domain_Data.RDS"))
       
     psig.join.fcn <- function(k, position) {
@@ -422,16 +426,22 @@ if(n_domain == 6) {
       return(join.table)
     }
     
-    IvS2 <- cm2.fcn(k, results.table = plt.dat$IvS2) %>% left_join(psig.join.fcn(k, position = 1), by = c("Species", "Domain"))
-    I_LMH2 <- cm2.fcn(k, results.table = plt.dat$I_LMH2) %>% left_join(psig.join.fcn(k, position = 2), by = c("Species", "Domain"))
-    S_LMH2 <- cm2.fcn(k, results.table = plt.dat$S_LMH2) %>% left_join(psig.join.fcn(k, position = 3), by = c("Species", "Domain"))
+    if(k == 3) k2 <- 1 else k2 <- k
+    
+    IvS2 <- cm2.fcn(k, results.table = plt.dat$IvS2) %>% left_join(psig.join.fcn(k2, position = 1), by = c("Species", "Domain"))
+    I_LMH2 <- cm2.fcn(k, results.table = plt.dat$I_LMH2) %>% left_join(psig.join.fcn(k2, position = 2), by = c("Species", "Domain"))
+    S_LMH2 <- cm2.fcn(k, results.table = plt.dat$S_LMH2) %>% left_join(psig.join.fcn(k2, position = 3), by = c("Species", "Domain"))
     
     
-    xlab.use <- switch(k, "1" = "Difference in Domain Growth Rates (cm\u00B2/decade)", "2" = "Difference in Domain Decadal Mortality Rate")  #  "Annual Growth Rate (in2/yr)"
-    filename.use <- switch(k, "1" = "Growth_", "2" = "Mort_")
+    xlab.use <- switch(k, "1" = "Difference in Domain Basal Area Growth Rates (cm\u00B2/decade)", 
+                       "2" = "Difference in Domain Decadal Mortality Rate",  #  "Annual Growth Rate (in2/yr)"
+                       "3" = "Difference in Domain Diameter Growth Rates (cm/decade)")
+    
+    filename.use <- switch(k, "1" = "Growth_", "2" = "Mort_", "3" = "DBHGrowth_")
     
     legend.side <- switch(k, "1" = c(TRUE, TRUE, FALSE),
-           "2" = c(FALSE, FALSE, TRUE))
+           "2" = c(FALSE, FALSE, TRUE),
+           "3" = c(TRUE, TRUE, FALSE))
     
     IvS2 <- IvS2 %>% mutate(Domain = factor(Domain, levels = c("IL - SL", "IM - SM", "IH - SH")))
     

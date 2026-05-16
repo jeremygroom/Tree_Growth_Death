@@ -46,6 +46,14 @@ set_flextable_defaults(
 
 source('Global.R')
 source(paste0(CODE.LOC, "Functions.R"))
+
+
+# Growth data by DBH for spp overall, states, differences
+grow.dbh.state <- read_csv(paste0(RESULTS1.LOC, "Growth_figs_", CLIM.VAR.USE, "/State_DBH_cm_", CLIM.VAR.USE, ".csv"))
+grow.dbh.all <- read_csv(paste0(RESULTS1.LOC, "Growth_figs_", CLIM.VAR.USE, "/All_DBH_cm_", CLIM.VAR.USE, ".csv"))
+grow.dbh.diff <- read_rds(paste0(save.loc.fcn(3), "Processed_6Domain_Data.RDS"))
+
+
 # Some general analysis info + plots
 analysis.stats <- read_rds(paste0(RESULTS.OTHER, "analysis.stats.RDS"))
 cwd.init <- analysis.stats$init.cwd.stats  
@@ -60,6 +68,16 @@ CWD.rels <- read_rds(paste0(RESULTS.OTHER, "CWD_deltaCWD_relationship.rds"))
 
 
 ```{r cwd_summary_tables}
+
+# State growth table, DBH (cm)
+# Species scientific names
+spp.names.use <- analysis.stats$gym.angio.dat
+
+s.g.d.dat <- state.table.fcn(grow.dbh.state, grow.dbh.all, spp.cat, 2)
+growth.dbh.ft <- grow.mort.ft.fcn(s.g.d.dat)
+
+
+
 ft.lm1 <- CWD.rels$ft_lm1
 
 cwd.init2 <- cwd.init %>% dplyr::select(-UCI, -LCI)
@@ -118,6 +136,11 @@ t.ref <- function(x)  {
   stringr::str_extract(tab_nums(x), "[^:]*")
 }
 
+tab.tbl_dbhgrowth <- tab_nums(name = "tbl_dbhgrowth", 
+                        caption = "Decadal diameter growth estimates by state and overall for analysis species (cm/decade). Mean estimates with confidence intervals and plot number are provided. Estimates are not made for states with fewer than 10 plots. Ecological category abbreviations (Category) are provided in the text.")
+
+tbl_cwd_diff <- tab_nums(name = "tbl_cwddiff", 
+                         caption = "Summary statistics for the difference in plot CWD values between visits by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
 
 tbl_cwd_lm1 <- tab_nums(name = "tbl_cwdlm1", 
                          caption = "Linear regression model output for the linear fit of initial and delta CWD plot data (green line in Figure S1). Variable name CWD refers to initial CWD value.")
@@ -126,17 +149,24 @@ tbl_cwd_lm1 <- tab_nums(name = "tbl_cwdlm1",
 tbl_cwd_lm2 <- tab_nums(name = "tbl_cwdlm2", 
                          caption = "Linear regression model output for the third-order polynomial fit of initial and delta CWD plot data (orange line in Figure S1). Variable name CWD refers to initial CWD value.")
 
+
+
 tbl_cwd_init <- tab_nums(name = "tbl_cwdinit", 
                          caption = "Summary statistics for initial-visit plot CWD values by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
-
-tbl_cwd_diff <- tab_nums(name = "tbl_cwddiff", 
-                         caption = "Summary statistics for the difference in plot CWD values between visits by species. The number of species' plots (n), minimum, mean, median, and maximum CWD values are provided, along with the 5%, 25%, 75%, and 95% quantiles (q).")
 
 tbl_psig_growth <- tab_nums(name = "tbl_psiggrowth", 
                             caption = "Monte Carlo permutation p-values for tree species growth domains. Values correspond to Manuscript Figure 3 values.  Values of zero represented no permutation results with confidence intervals equal to or greater than those observed in the data.")
 
 tbl_psig_mort <- tab_nums(name = "tbl_psigmort", 
                             caption = "Monte Carlo permutation p-values for tree species mortality domains. Values correspond to Manuscript Figure 4 values. Values of zero represented no permutation results with confidence intervals equal to or greater than those observed in the data.")
+
+
+
+
+fig.dbhdiff_grow <- fig_nums(name = "fig_dbhdiffgrow", 
+                          caption = paste0("Differences in mean diameter growth rates (cm/decade) between domains by species.  Domain abbreviations are described in the legend for Figure ",
+                                           f.ref("fig_domains"), 
+                                           ". See each column legend for the key of domain differences.  Mean domain differences (circles) with 95% CIs (bars) that do not intersect zero are filled. Species above the dashed line are conifers; those below are hardwoods."))
 
 fig.negcwdmap_cap <- fig_nums(name = "fig_cwdnegmap", 
                         caption = "Public FIA plot locations for plots with negative CWD values.  The initial CWD values for those plots are displayed in A while the negative delta CWD values are displayed in B.  The inset map (B) shows the locations of the study states within the USA: From north to south, Washington, Oregon, and California.")
@@ -152,20 +182,41 @@ fig_cwd_spp <- fig_nums(name = "fig_cwdspp",
 ```
 
 
+<!---BLOCK_LANDSCAPE_START--->
+
+```{r tbl-dbhgrowth, tab.cap=tab.tbl_dbhgrowth}
+
+growth.dbh.ft
+
+```
+
+<!---BLOCK_LANDSCAPE_STOP--->
+
+
+
+```{r diff_dbhgrow_fig, fig.height = 6.5, width = 6.5, fig.dpi=300, fig.cap=fig.dbhdiff_grow, fig.cap.sep=""}
+
+# Output from Manuscript_information.R
+knitr::include_graphics(paste0(RESULTS1.LOC, "/DBH_Growth_figs_cwd/DBHGrowth_Panel_Plot.jpeg"))
+
+```
+
+
+\newpage
+
+
+```{r table-cwd-diff, tab.cap=tbl_cwd_diff}
+
+diff.ft
+
+```
+
+\newpage
 
 ```{r cwdfig-negcwdmap, fig.height = 7,  fig.dpi=300, fig.cap=fig.negcwdmap_cap, fig.cap.sep=""}
 
 # Output from Manuscript_information.R
 knitr::include_graphics(paste0(RESULTS.OTHER, "cwdneg_maps_figure.png"))
-
-```
-
-
-
-```{r cwdfig-all, fig.width=6, fig.height=6,  fig.dpi=300, fig.cap=fig_cwd_all, fig.cap.sep=""}
-
-# Output from Nplot_Climvar_analysis.R
-knitr::include_graphics(paste0(RESULTS.OTHER, "CWD_deltaCWD.png"))
 
 ```
 
@@ -206,13 +257,23 @@ ft.lm2
 
 \newpage
 
+
+```{r cwdfig-all, fig.width=6, fig.height=6,  fig.dpi=300, fig.cap=fig_cwd_all, fig.cap.sep=""}
+
+# Output from Nplot_Climvar_analysis.R
+knitr::include_graphics(paste0(RESULTS.OTHER, "CWD_deltaCWD.png"))
+
+```
+
+\newpage
+
+
 ```{r cwdfig-spp, fig.width = 6, fig.height= 6,  fig.dpi=300, fig.cap=fig_cwd_spp, fig.cap.sep=""}
 
 # Output from Nplot_Climvar_analysis.R
 knitr::include_graphics(paste0(RESULTS.OTHER, "CWD_spp_plt.png"))
 
 ```
-
 
 \newpage
 
@@ -224,14 +285,5 @@ knitr::include_graphics(paste0(RESULTS.OTHER, "CWD_spp_plt.png"))
 init.ft
 
 ```
-
-\newpage
-
-```{r table-cwd-diff, tab.cap=tbl_cwd_diff}
-
-diff.ft
-
-```
-
 
 <!---BLOCK_LANDSCAPE_STOP--->
