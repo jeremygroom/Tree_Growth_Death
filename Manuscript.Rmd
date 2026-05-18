@@ -473,7 +473,7 @@ The lower growth and higher mortality rate estimates for *Pinus contorta* in Was
 Our dashboard reveals some instances of domains that represent geographical differences in mortality. State estimates for *Pinus monticola* mortality do not appear to differ. Mortality for the Increasing High domain was low (see dashboard) and was predominantly represented by plots in the southern Sierra Nevada mountains of California. *Pinus lambertiana* and *Calocedrus decurrens* exhibited high mortality in approximately the same region, a result supported by Fettig et al. (2019). This region experienced an extreme drought that killed, as estimated from aerial detection surveys, 170 million trees between 2010 and 2021 (Office of Environmental Health Hazard Assessment 2022). Dudney et al. (2020) also estimated lower mortality rates for *Pinus monticola* than for *Pinus lambertiana* in the Sequoia and Kings Canyon National Parks, which are within this region. They attributed some of the difference in mortality to elevation, with mountain pine beetle (*Dendroctonus ponderosae*), fire, and white pine blister rust (*Cronartium ribicola*) more prevalent at lower elevations, corresponding to the range of *Pinus lambertiana*.        
 
 
-# 4.2 Climatic Water Deficit Findings and Issues  
+## 4.2 Climatic Water Deficit Findings and Issues  
 
 Although CWD increased across most plots, the increase was not consistently nor linearly related to initial plot CWD values. This finding may be informative, as it implies that water stress may appear in portions of species ranges that have not historically been stressed, and that these patterns may differ by species.  At the broader scale of mean initial and delta CWD values, we did find some separation between trees with lower initial and delta CWD values from trees with higher initial CWD values. Species within our ecological categories generally crossed this separation; the two exceptions were the riparian and mesic hardwood species and drought-tolerant conifers. We believe this indicates that our ecological category classifications, in the context of CWD, are relatively uninformative.     
 
@@ -748,7 +748,7 @@ Figure 2: Illustration of the domain analysis approach with *Calocedrus decurren
 
 Figure 3: Mean initial and change values for climatic water deficit for the 23 species examined, with coloration reflecting species ecological categories.   
 
-Figure 4: Paired domain contrasts for mean growth rates (cm2 decade) by species.  Domain abbreviations are described in the text. See each column legend for the key of domain contrasts.  Mean domain contrasts (circles) with 95% CIs (bars) that do not intersect zero are filled. Species above the dashed line are conifers; those below are hardwoods.   
+Figure 4: Paired domain contrasts for mean growth rates (cm^2^ decade) by species.  Domain abbreviations are described in the text. See each column legend for the key of domain contrasts.  Mean domain contrasts (circles) with 95% CIs (bars) that do not intersect zero are filled. Species above the dashed line are conifers; those below are hardwoods.   
 
 Figure 5. Paired domain contrasts for mean decadal mortality rates by species.  Domain abbreviations are described in the text. See each column legend for the key of domain contrasts.  Mean domain contrasts (circles) with 95% CIs (bars) that do not intersect zero are filled. Species above the dashed line are conifers; those below are hardwoods.   
 
