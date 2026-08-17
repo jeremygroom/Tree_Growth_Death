@@ -50,7 +50,7 @@ library(ggrepel) # For plotting, avoiding overlapping labels
 ## If USE.ZENODO <- TRUE in Global.R script, then the previously processed FIA data will be
 #   downloaded and made available. 
 
-if(USE.ZENODO == TRUE) source(download_zenodo_data.R)
+if(USE.ZENODO == TRUE) source(paste0(CODE.LOC, "download_zenodo_data.R"))
 
 ## If the user would rather downloade CA/OR/WA data and run through the procedure that manipulates FIA data
 #    and generates the zip files, set SQL.LOC in GLOBAL.R to the folder location for the state databases.
@@ -148,14 +148,14 @@ PlotDat <- left_join(PlotDat, plotN3, by = c("stratum"))
 ## First the data are summarized by species and climate variable (clim.mort.resp.fcn, 
 #   clim.growth.resp.fcn).  Then the data are combined into arrays for 
 #    analysis (parse.tree.clim.fcn).
+
+# Zenodo contains the analysis.arrays.zip file. The file is there for convenience. The "arrays." calls take a few minutes to process.
+if(file.exists(paste0(DATA.LOC, "analysis.arrays.zip")) == FALSE){
 tree.mort.dat <- purrr::map(sel.spp, clim.mort.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use) 
 
 # Create lists of tree growth and number of trees that grew in each plot
 tree.grow.dat <- purrr::map(sel.spp, clim.growth.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use) 
 
-
-# Zenodo contains the analysis.arrays.zip file. The file is there for convenience. The "arrays." calls take a few minutes to process.
-if(file.exists(paste0(DATA.LOC, "analysis.arrays.zip")) == FALSE){
   # Combining data into arrays and such, preparing for analysis.
   arrays.mort <- parse.tree.clim.fcn(tree.mort.dat, clim.var = CLIM.VAR.USE, analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
   
@@ -165,7 +165,6 @@ if(file.exists(paste0(DATA.LOC, "analysis.arrays.zip")) == FALSE){
 
   saveRDS(list(arrays.mort = arrays.mort, arrays.grow = arrays.grow, arrays.dbh.grow = arrays.dbh.grow, PlotDat = PlotDat), file = paste0(DATA.LOC, "analysis.arrays.RDS"), compress = TRUE)
 } else {
-  
   analysis.arrays <- read_rds(unzip(paste0(DATA.LOC, "analysis.arrays.zip"), "analysis.arrays.RDS")) 
   file.remove(paste0(DATA.LOC, "analysis.arrays.RDS"))
   list2env(analysis.arrays, envir = .GlobalEnv)
