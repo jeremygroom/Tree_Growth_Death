@@ -123,11 +123,14 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
     # Amount of tree growth per decade since the previous visit, multiplied by the number of trees per acre the tree represents. <Proportion method>
     mutate(
       #BA_Growth = ntree.rep * 10 * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)/REMPER) %>%    ## Incorrectly adjusted plot-level decadal growth rate
-      BA_Growth = ntree.rep * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2)) %>%  # Decadal basal area growth
-    
+      BA_Growth = ntree.rep * (pi * (DIA / 2)^2 - pi * (PREVDIA / 2)^2),  # Decadal basal area growth
+      DIA_Growth = ntree.rep * (DIA - PREVDIA),
+      Init_DBH_w  = ntree.rep * PREVDIA) %>%     # For initial diameter estimates
     group_by(puid) %>%
     reframe(n_g.trees = sum(ntree.rep),
-            total.growth = sum(BA_Growth))
+            total.growth = sum(BA_Growth),
+            total.dbh.growth = sum(DIA_Growth),
+            total.init.dbh = sum(Init_DBH_w))
   
   tree.plots <- Tree.spp %>% 
     dplyr::select(puid, all_of(var1), all_of(var.delt)) %>% distinct()
@@ -188,24 +191,37 @@ clim.growth.resp.fcn <- function(spcd, clim.var, treedat.sel, clim.dat) {
   # Overall data:
   Growth.dat <- left_join(PlotDat, TreeG, by = "puid") 
   Growth.dat[is.na(Growth.dat)] <- 0
+
+  # Plot-level numerator for initial DBH
+  init.dbh.val <- Growth.dat %>%
+    dplyr::select(-n_g.trees, -total.growth, -total.dbh.growth) %>%
+    rename(!!return.col := total.init.dbh)
   
-  # Cubic inches of growth by plot
+    
+  # Squared inches of growth by plot
   growth.val <- Growth.dat %>% 
-    dplyr::select(-n_g.trees) %>%                 
+    dplyr::select(-n_g.trees, -total.init.dbh, -total.dbh.growth) %>%                 
     rename(!!return.col := total.growth) 
+  
+  # Inches of DBH growth
+  growth.dbh.val <- Growth.dat %>% 
+    dplyr::select(-n_g.trees, -total.growth, -total.init.dbh) %>%                 
+    rename(!!return.col := total.dbh.growth) 
+  
+  
   
   # Number of 'growth trees' by plot
   growth.n.trees <- Growth.dat %>% 
-    dplyr::select(-total.growth) %>%                 
+    dplyr::select(-total.growth, -total.init.dbh, -total.dbh.growth) %>%                 
     rename(!!return.col := n_g.trees) 
   
-  
+
   domain.out1 <- purrr::map(DOMAIN.LEVELS, domain.divide.fcn, spcd2 = spcd, tree.plots2 = tree.plots2, PlotDat = PlotDat)
   domain.out2 <- reduce(domain.out1, left_join, by = c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "REMPER")) %>%
     dplyr::select(-c("STATECD", "puid", "n_h.plts", "ESTN_UNIT", "STRATUMCD", "w", "stratum", "REMPER"))
   
-  out.list <- list(spp.list = spp.list, spp.id = spp.id, growth.val = growth.val, growth.n.trees = growth.n.trees,
-                   domain.out = domain.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
+  out.list <- list(spp.list = spp.list, spp.id = spp.id, growth.val = growth.val, growth.n.trees = growth.n.trees, growth.dbh.val = growth.dbh.val,
+                   init.dbh.val = init.dbh.val, domain.out = domain.out2, quant.lims = quant.lims, quant.lims.delta = quant.lims.delta, cent.loc = dat.cent)
   
   return(out.list)
 }
@@ -425,7 +441,7 @@ fire.frac.table.fcn <- function(tablename, tableloc, treedat, parseddat) {
 # Determine where to save results (data and plots)
 save.loc.fcn <- function(i){
   paste0(RESULTS.LOC, "Quantile_Only/", 
-         switch(i, "1" = "Growth", "2" = "Mort"), 
+         switch(i, "1" = "Growth", "2" = "Mort", "3" = "DBH_Growth"), 
          "_figs_", CLIM.VAR.USE, "/")
 }
 
@@ -876,7 +892,64 @@ diff.panel.fcn <- function(diff.dat, remove.y, fig.title, lab.right, ft_to_use =
 
 
 
-
+## Multi-species panel for state-level estimates of an absolute quantity
+##  (e.g., mean initial DBH). Parallels diff.panel.fcn's layout: one row per
+##  species, three offset points/CIs per species (CA, OR, WA), conifer/broadleaf
+##  break, italic species labels.
+##
+##  state.dat: tibble with columns Species, State, Means, Median, LCI.95, UCI.95, n.plts
+##  x.label:   x-axis label (with units)
+##  scale.factor: multiplier applied to Means/Median/LCI.95/UCI.95 (e.g., 2.54 in→cm)
+state.var.panel.fcn <- function(state.dat, x.label, fig.title = NULL,
+                                scale.factor = 1, ft_to_use = font_to_use,
+                                spp.names.fig.use = spp.names.fig) {
+  
+  panel.dat <- state.dat %>%
+    mutate(across(c(Means, Median, LCI.95, UCI.95), ~ .x * scale.factor)) %>%
+    left_join(spp.names.fig.use, by = "Species") %>%
+    mutate(
+      species_label = paste(GENUS, SPECIES),
+      State    = factor(State, levels = c("CA", "OR", "WA")),
+      y.offset = case_when(
+        State == "CA" ~  0.20,
+        State == "OR" ~  0.00,
+        State == "WA" ~ -0.20,
+        .default = 0)
+    ) %>%
+    filter(!is.na(Means)) %>%
+    arrange(match(Species, spp.names.fig.use$Species))
+  
+  panel.dat$species_label <- factor(panel.dat$species_label,
+                                    levels = rev(unique(panel.dat$species_label)))
+  
+  # Same conifer/broadleaf break convention as diff.panel.fcn (X312 = bigleaf maple)
+  decid.break <- length(SEL.SPP) - which(SEL.SPP == "X312") + 1.5
+  
+  ggplot(panel.dat, aes(y = as.numeric(species_label) + y.offset)) +
+    geom_segment(aes(x = LCI.95, xend = UCI.95,
+                     y = as.numeric(species_label) + y.offset,
+                     yend = as.numeric(species_label) + y.offset,
+                     color = State),
+                 linewidth = 0.8) +
+    geom_point(aes(x = Means,
+                   y = as.numeric(species_label) + y.offset,
+                   color = State),
+               size = 2, shape = 16) +
+    geom_hline(yintercept = decid.break, linetype = 2) +
+    scale_y_continuous(breaks = 1:length(levels(panel.dat$species_label)),
+                       labels = levels(panel.dat$species_label)) +
+    scale_color_viridis(discrete = TRUE, name = "State",
+                        option = "D", begin = 0.15, end = 0.75) +
+    labs(x = x.label, y = NULL, title = fig.title) +
+    theme_bw() +
+    theme(text = element_text(family = ft_to_use),
+          axis.text.y = element_text(size = 11, face = "italic"),
+          legend.position = "bottom",
+          legend.background = element_rect(fill = "white", color = "gray80"),
+          legend.title = element_text(size = 9),
+          legend.text  = element_text(size = 9),
+          title        = element_text(size = 11))
+}
 
 
 
@@ -954,14 +1027,14 @@ domain.dist.plt.fcn <- function(plot.spp, domain.matrix, var1, var.delt, quant.l
       #legend.box.margin = unit(, "pt"), 
       #legend.key.spacing.y = unit(20, "pt"),
       legend.text = element_text(margin = margin(l = 0), size = text.size + 3),
-      legend.title = element_text(margin = margin(r = 40), size = text.size + 3),
+      legend.title = element_text(margin = margin(r = 55), size = text.size + 3),
       axis.text = element_text(size = 11),
       axis.title = element_text( size = 15)) +
-    guides(color = guide_legend(nrow = 1, override.aes = list(size = legend_point_size)),
-           title.hjust = 5,
-           title.position = "left",
-           label.position = "right"
-    )
+    guides(color = guide_legend(nrow = 1,
+                                override.aes = list(size = legend_point_size),
+                                title.position = "left",
+                                title.hjust = 0,
+                                label.position = "right"))
   return(plot.vals.plt)
 }
 
@@ -1181,8 +1254,8 @@ pair.plts.fcn <- function(sppnum.to.plot, use.dat, domain.matrix,
 
 #### Manuscript RMarkdown functions ------------------------------
 
-# Prepping data for the state mortality and growth plots
-state.table.fcn <- function(state.dat, all.dat, sig.places) {
+# Prepping data for the state mortality and growth tables
+state.table.fcn <- function(state.dat, all.dat, spp.cat = spp.cat, sig.places) {
   s.1 <- dplyr::left_join(spp.names.use, state.dat, by = c("SpeciesCode" = "Species")) %>%
     dplyr::filter(is.na(n.plts) == FALSE) %>%
     dplyr::mutate(across(where(is.numeric), ~ sprintf(paste0("%.", sig.places, "f"), .x)),
@@ -1214,11 +1287,31 @@ state.table.fcn <- function(state.dat, all.dat, sig.places) {
   
   
   s.3 <- dplyr::left_join(s.1, s.2, by = "sci_name") %>%
-    rename("Species Name" = "sci_name")
+    rename("Species Name" = "sci_name") %>%
+    left_join(spp.cat %>% dplyr::select(-spp_cat), by = c(`Species Name` = "Species")) %>%
+    rename("Category" = "cat_abbr") %>%
+    relocate(Category, .after = `Species Name`)
   #tidyr::replace_na(list(California = "", Washington = "", Oregon = "")) %>%
   #dplyr::filter(All != "", !grep("NA", All))
   
   return(s.3)
+}
+
+# Developing state mortality and growth tables
+grow.mort.ft.fcn <- function(input.dat){
+  gm.ft <- flextable(input.dat) %>%
+    fontsize(size = 9, part = "body") %>%
+    fontsize(size = 10, part = "header") %>%
+    italic(j = 1, part = "body") %>%
+    line_spacing(i = NULL, j = NULL, space = 0.5, part = "body") %>% # Control space between lines. 
+    theme_zebra(
+      odd_header = "#FFFFFF",   # White background for all
+      even_header = "#FFFFFF",
+      odd_body = "#FFFFFF",     
+      even_body = "#FFFFFF"     
+    ) %>%
+    set_table_properties(layout = "autofit", width = 0) 
+  return(gm.ft)
 }
 
 

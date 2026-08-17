@@ -242,8 +242,8 @@ for(k in 1:2){
     m.txt.loc <- q.lim.plot[1] + (q.lim.plot[2] - q.lim.plot[1])/2
     h.txt.loc <- q.lim.plot[2] + (pts.max.x - q.lim.plot[2])/2
     # Above/below positions
-    a.txt.loc <- pts.max.y - (pts.max.y - 5)/2
-    b.txt.loc <- pts.min.y + (5 - pts.min.y)/2
+    a.txt.loc <- pts.max.y - (pts.max.y - 11)/2
+    b.txt.loc <- pts.min.y + 1.5
     
     txt.loc.x.vec <- as.vector(rep(c(l.txt.loc, m.txt.loc, h.txt.loc), 2))
     txt.loc.y.vec <- as.vector(c(rep(a.txt.loc, 3), rep(b.txt.loc, 3)))
@@ -254,7 +254,8 @@ for(k in 1:2){
       annotate("text", x = txt.loc.x.vec , y = txt.loc.y.vec, label = DOMAIN.LEVELS, parse = TRUE, size = 4, family = font_to_use) +
       theme(text = element_text(size = text.size, family = font_to_use),
             axis.text = element_text(size = ax.text.size),
-            axis.title = element_text( size = ax.title.size))
+            axis.title = element_text( size = ax.title.size))#,
+            #legend.spacing.x = unit(3.0, "cm"))
     #axis.title.y = ax.title.size)
     
     plot.vals.plt.no_legend <- plot.vals.plt + theme(legend.position = 'none', 
@@ -277,7 +278,7 @@ comb.plt <- plot_grid(comb.plt, comb.plt.legend, ncol = 1, rel_heights = c(1, 0.
 
 
 ggsave(paste0(RESULTS.OTHER, "Example_spp_figure.jpeg"), comb.plt, device = 'jpeg',
-       width = 8, height = 6, dpi = 1000, units = "in", bg = "white")
+       width = 11, height = 8, dpi = 1000, units = "in", bg = "white")
 
 
 

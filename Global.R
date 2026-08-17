@@ -16,6 +16,7 @@ library(extrafont)
 library(sf)
 library(ggspatial)
 library(maps)
+library(zen4R)    # Access Zenodo-stored data zip files
 
 
 #library(extrafont)
@@ -42,10 +43,20 @@ RESULTS.LOC <- "Results/"
 RESULTS1.LOC <- "Results/Quantile_Only/"  # For ANALYSIS.PATHWAY 1
 RESULTS.OTHER <- "Results/Other_Results/"  # For summaries, maps, etc.
 
+## Download Zenodo zip files?  If FALSE, the code will require downloaded FIA data for California, Oregon, and Washington.
+  #  If TRUE, the zip files will only be downloaded if they are currently missing from the Data/ folder.
+USE.ZENODO <- TRUE
+ZENODO_DOI <- "10.5281/zenodo.21983562"
+ZENODO_FILES <- c(
+  "Distilled_Tree_Data.zip",
+  "Addl_PlotTreeInfo.zip",
+  "analysis.arrays.zip"
+)
+
 
 
 # Assuming WA/OR/CA zipped databases are in the same location (outside of GitHub clone)
-SQL.LOC <- ""
+SQL.LOC <- ""              # Users need to provide this information.
 CLIMATE.LOC <- ""
 
 # Which analysis to do??
@@ -64,7 +75,7 @@ CLIM.VAR <- c("aet", "cwd", "vpdmin", "vpdmax", "temp", "precip")  # Climate var
 CLIM.VAR.USE <- "cwd" # "aet" "pet"
 CLIM.SUMMARY <- "summer_results"# "annual_results"       Select annual or summer climate summaries.
 
-ANALYSIS.TYPE <- c("grow", "mort")
+ANALYSIS.TYPE <- c("grow", "mort", "dbh.grow")  # dbh.grow = growth in DBH, whereas 'grow' is BAI
 
 
 VAR.DELTA.BOUNDARIES <- tibble(clim.var = CLIM.VAR, max.min = c(3, 5, 0.5, 0.5, 0.5, 100)) # For setting absolute +/- boundaries for the listed variables
