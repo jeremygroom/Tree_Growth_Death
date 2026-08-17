@@ -380,15 +380,13 @@ where $R$ is the bole radius at times 1 and 2.  Annual changes in tree diameter 
 We obtained our FIA data from the USDA FIA DataMart web portal (https://research.fs.usda.gov/products/dataandtools/fia-datamart; downloaded May 5, 2025).  The database included plot data sampled from 2001 to 2023. We limited the number of species examined to those with more than 400 occupied plots across the states of Oregon, Washington, and California.    
 
 
-## 2.2 Climate data
+## 2.2 Climate data and species classification
 
 We obtained plot-level CWD data from the TerraClimate dataset (Abatzoglou et al. 2018) for June, July, and August (summer months) between 1980 and 2023. In general, access to true plot coordinates is restricted to internal FIA staff or those approved to view them. For general use, FIA makes a set of perturbed  plot coordinates available to the public, which are randomized locations typically located within 1.6 km of the true position, and up to 20 percent of plots on private land swapped with other randomized locations in similar forest types (Burrill et al. 2023).  Perturbed plot coordinates have the potential to weaken correlations between forest attributes of interest and spatially explicit climate covariates, like the CWD data used in this study, because the perturbed locations may land in areas experiencing different climatic conditions. We determined that the Pearson's correlation between the public and confidential CWD plot values was > 0.99, so for simplicity we used the CWD values derived from public coordinates. The second author is authorized to handle confidential coordinates and conducted the correlation analysis. Using the public coordinates facilitates scientific replication by those external to FIA, and they are available in the database used for this study. We defined 'initial CWD' values as the 20-year mean of summer CWD values for each plot prior to and including the first visit year (initial CWD = mean of summer CWD from visit year$_{-19}$ to year$_0$).  We then found the mean of summer CWD values between visits and including the second visit year (second visit CWD = mean of summer CWD from year$_1$ to year$_10$).  We then defined 'delta CWD' as the second visit CWD values minus initial CWD values.  Figure `r fig_nums("fig_cwdmap", display = "num")` presents maps of both the initial CWD and delta CWD values for forested and nonforested FIA plots.  
 
-## 2.3 Species  Classification
-
 We coarsely categorized tree species by several taxonomic and ecological characteristics, such as tree type (angiosperm [hardwood] vs. conifer), drought tolerance, fire adaption, elevation, shade tolerance, and mesic and riparian specialization.  We obtained the category information from https://plants.usda.gov/ (accessed 12/12/2025) and Burns and Honkala (1990a, 1990b).  Categorization was done to aid the presentation of results; some species could fall under more than one category (e.g., we classified *Picea engelmannii* as a high elevation conifer [HEC] while it could have been classified as a shade-tolerant conifer [STC]).  Our categories with abbreviations also include fire-adapted conifers (FAC), drought-tolerant conifers (DTC), drought-tolerant hardwoods (DTH) and riparian and mesic hardwoods (RMH).  These abbreviations are used in Tables `r tab_nums("tbl_growth", display = "num")` and `r tab_nums("tbl_mort", display = "num")`. 
 
-## 2.4 Analysis
+## 2.3 Analysis and dashboard
 We obtained point estimates of growth and mortality using standard FIA estimators from Scott et al. (2005). In this study, both growth and mortality can be framed as ratios, which manifest as special cases of the ratio estimator presented in Scott et al. For the case of growth, we develop an estimator for the growth rate of domain $d$ as 
 
 $$\hat{G}_d = \frac{\hat{Y}_d}{\hat{S}_d}$$
@@ -409,8 +407,6 @@ We obtained empirical means and 95% confidence intervals via a nonparametric boo
 
 Our contrast analysis approach resulted in hundreds of comparisons. Given the large number of tests, we encourage readers to interpret significant differences (i.e., contrast 95% CIs that do not include zero) with caution, as some proportion likely represent Type-I errors and occurred by chance.  We did not apply a multiple comparisons correction as (1) our analysis is inherently exploratory, aimed at identifying patterns within and across species rather than testing a specific *a priori* hypothesis, and (2) because we did not want to inflate the Type-II error rate and obscure real relationships in favor of reducing false positive findings.   
 
-
-## 2.5 Dashboard
 We developed a data dashboard (https://tinyurl.com/FIAgrowmort) to enable ourselves and readers to examine individual species domain estimates for growth and mortality, the distribution of initial and delta CWD values, and the public geographic locations of plots, plot domains, and mortality causes on plots.  All analysis files, manuscript markdowns, dashboard code, and ancillary data sources are available at the GitHub repository https://github.com/jeremygroom/Tree_Growth_Death.  
 
 

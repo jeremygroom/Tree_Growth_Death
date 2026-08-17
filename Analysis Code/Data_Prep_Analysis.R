@@ -47,19 +47,23 @@ library(ggrepel) # For plotting, avoiding overlapping labels
 
 ### ==> Load the tree/plot data ===================================================
 
-# Working backwards: is the tree/plot data set ready to go? If so, let's unzip the CSV file and move ahead. 
-#   If not, do the SQLite databases for CA/OR/WA need data extracted?  Those datasets are then processed by the 
-# code to produce the tree/plot dataset.  
+## If USE.ZENODO <- TRUE in Global.R script, then the previously processed FIA data will be
+#   downloaded and made available. 
+
+if(USE.ZENODO == TRUE) source(download_zenodo_data.R)
+
+## If the user would rather downloade CA/OR/WA data and run through the procedure that manipulates FIA data
+#    and generates the zip files, set SQL.LOC in GLOBAL.R to the folder location for the state databases.
+#   Those databases are then processed by the code to produce the tree/plot dataset.  
 if(all(file.exists(file.path(DATA.LOC, "Distilled_Tree_Data.zip")), file.exists(file.path(DATA.LOC, "N_Plots.csv")))) {
   tree.plt.data <- read_csv(unzip(paste0(DATA.LOC, "Distilled_Tree_Data.zip"), "Distilled_Tree_Data.csv")) # This unzips the folder in the parent directory.
   plotN2 <- read_csv(file.path(DATA.LOC, "N_Plots.csv"), show_col_types = FALSE)
   file.remove("Distilled_Tree_Data.csv")
 } else {
-  ## Some info (harvest, fire deaths for trees) was absent in the range-shift analysis.  We need to introduce it here. 
   ##  The following code relies on downloaded and zipped SQLite FIA data from Oregon, Washington, and CA.  See the Global.R file:
   #    the zip files should be placed in the same folder, defined by SQL.LOC.  The following code unpacks, reduces, combines, and saves
   #   the PLOT, TREE, and COND files for each state as a zipped RDS file.  
-  if (file.exists(paste0(DATA.LOC, "Addl_PlotTreeInfo.zip")) == FALSE) {
+  if (file.exists(paste0(DATA.LOC, "Addl_PlotTreeInfo.zip")) == FALSE) {   #  Delete this file and run this code
     source(paste0(CODE.LOC, "FIA_SQL_compile.R"))  # Data filtering for TREE occurs here as well. 
   }
   
@@ -150,15 +154,21 @@ tree.mort.dat <- purrr::map(sel.spp, clim.mort.resp.fcn, clim.var = CLIM.VAR.USE
 tree.grow.dat <- purrr::map(sel.spp, clim.growth.resp.fcn, clim.var = CLIM.VAR.USE, treedat.sel = treedat.use, clim.dat = climate.use) 
 
 
-# Combining data into arrays and such, preparing for analysis.
-arrays.mort <- parse.tree.clim.fcn(tree.mort.dat, clim.var = CLIM.VAR.USE, analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
-
-arrays.grow <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
-
-arrays.dbh.grow <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.dbh.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
-
+# Zenodo contains the analysis.arrays.zip file. The file is there for convenience. The "arrays." calls take a few minutes to process.
 if(file.exists(paste0(DATA.LOC, "analysis.arrays.zip")) == FALSE){
+  # Combining data into arrays and such, preparing for analysis.
+  arrays.mort <- parse.tree.clim.fcn(tree.mort.dat, clim.var = CLIM.VAR.USE, analysis.type = "mort", resp.dat = "died.out", tot.dat = "all.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
+  
+  arrays.grow <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
+  
+  arrays.dbh.grow <- parse.tree.clim.fcn(tree.grow.dat, clim.var = CLIM.VAR.USE, analysis.type = "grow", resp.dat = "growth.dbh.val", tot.dat = "growth.n.trees", selected.spp = SEL.SPP, clim.dat = climate.use)
+
   saveRDS(list(arrays.mort = arrays.mort, arrays.grow = arrays.grow, arrays.dbh.grow = arrays.dbh.grow, PlotDat = PlotDat), file = paste0(DATA.LOC, "analysis.arrays.RDS"), compress = TRUE)
+} else {
+  
+  analysis.arrays <- read_rds(unzip(paste0(DATA.LOC, "analysis.arrays.zip"), "analysis.arrays.RDS")) 
+  file.remove(paste0(DATA.LOC, "analysis.arrays.RDS"))
+  list2env(analysis.arrays, envir = .GlobalEnv)
 }
 
 
